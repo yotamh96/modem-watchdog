@@ -200,21 +200,131 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 
 ## Traceability
 
-Empty initially. The roadmapper populates this during ROADMAP creation, mapping each REQ-ID to exactly one phase.
+Mapped during ROADMAP creation 2026-05-06. Every v1 REQ-ID maps to exactly one phase. Phases 5-7 are delivery / rollout phases (mapping to `docs/MIGRATION.md` Phases 1-6) that contain no code-introducing REQ-IDs — they verify success metrics M1-M7.
+
+### Functional requirements
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FR-1 ... FR-75 | TBD by roadmapper | Pending |
-| NFR-1 ... NFR-52 | TBD by roadmapper | Pending |
+| FR-1 | Phase 3 | Pending |
+| FR-2 | Phase 2 | Pending |
+| FR-3 | Phase 3 | Pending |
+| FR-4 | Phase 3 | Pending |
+| FR-10 | Phase 2 | Pending |
+| FR-11 | Phase 2 | Pending |
+| FR-12 | Phase 2 | Pending |
+| FR-13 | Phase 2 | Pending |
+| FR-14 | Phase 3 | Pending |
+| FR-20 | Phase 2 | Pending |
+| FR-21 | Phase 2 | Pending |
+| FR-22 | Phase 2 | Pending |
+| FR-23 | Phase 4 | Pending |
+| FR-24 | Phase 4 | Pending |
+| FR-25 | Phase 2 | Pending |
+| FR-25.1 | Phase 2 | Pending |
+| FR-26 | Phase 2 | Pending |
+| FR-26.1 | Phase 2 | Pending |
+| FR-26.2 | Phase 2 | Pending |
+| FR-27 | Phase 4 | Pending |
+| FR-28 | Phase 2 | Pending |
+| FR-28.1 | Phase 2 | Pending |
+| FR-30 | Phase 2 | Pending |
+| FR-30.1 | Phase 1 | Pending |
+| FR-31 | Phase 2 | Pending |
+| FR-32 | Phase 2 | Pending |
+| FR-33 | Phase 2 | Pending |
+| FR-33.1 | Phase 1 | Pending |
+| FR-40 | Phase 2 | Pending |
+| FR-41 | Phase 2 | Pending |
+| FR-41.1 | Phase 2 | Pending |
+| FR-42 | Phase 2 | Pending |
+| FR-43 | Phase 3 | Pending |
+| FR-43.1 | Phase 3 | Pending |
+| FR-44 | Phase 2 | Pending |
+| FR-44.1 | Phase 1 | Pending |
+| FR-44.2 | Phase 1 | Pending |
+| FR-44.3 | Phase 2 | Pending |
+| FR-44.4 | Phase 2 | Pending |
+| FR-44.5 | Phase 2 | Pending |
+| FR-44.6 | Phase 2 | Pending |
+| FR-44.7 | Phase 2 | Pending |
+| FR-44.8 | Phase 2 | Pending |
+| FR-50 | Phase 2 | Pending |
+| FR-50.1 | Phase 2 | Pending |
+| FR-50.2 | Phase 2 | Pending |
+| FR-50.3 | Phase 2 | Pending |
+| FR-51 | Phase 2 | Pending |
+| FR-52 | Phase 2 | Pending |
+| FR-53 | Phase 3 | Pending |
+| FR-54 | Phase 1 | Pending |
+| FR-60 | Phase 1 | Pending |
+| FR-61 | Phase 3 | Pending |
+| FR-61.1 | Phase 3 | Pending |
+| FR-62 | Phase 1 | Pending |
+| FR-62.1 | Phase 1 | Pending |
+| FR-63 | Phase 1 | Pending |
+| FR-64 | Phase 1 | Pending |
+| FR-70 | Phase 2 | Pending |
+| FR-71 | Phase 2 | Pending |
+| FR-72 | Phase 1 | Pending |
+| FR-73 | Phase 1 | Pending |
+| FR-74 | Phase 2 | Pending |
+| FR-75 | Phase 3 | Pending |
+
+### Non-functional requirements
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| NFR-1 | Phase 2 | Pending |
+| NFR-2 | Phase 2 | Pending |
+| NFR-3 | Phase 2 | Pending |
+| NFR-4 | Phase 2 | Pending |
+| NFR-5 | Phase 2 | Pending |
+| NFR-10 | Phase 2 | Pending |
+| NFR-11 | Phase 2 | Pending |
+| NFR-12 | Phase 3 | Pending |
+| NFR-13 | Phase 3 | Pending |
+| NFR-20 | Phase 2 | Pending |
+| NFR-21 | Phase 2 | Pending |
+| NFR-21.1 | Phase 2 | Pending |
+| NFR-22 | Phase 2 | Pending |
+| NFR-22.1 | Phase 2 | Pending |
+| NFR-30 | Phase 3 | Pending |
+| NFR-31 | Phase 1 | Pending |
+| NFR-32 | Phase 1 | Pending |
+| NFR-33 | Phase 1 | Pending |
+| NFR-34 | Phase 1 | Pending |
+| NFR-40 | Phase 1 | Pending |
+| NFR-41 | Phase 1 | Pending |
+| NFR-42 | Phase 2 | Pending |
+| NFR-43 | Phase 1 | Pending |
+| NFR-50 | Phase 1 | Pending |
+| NFR-51 | Phase 1 | Pending |
+| NFR-52 | Phase 1 | Pending |
+
+### Per-phase rollups
+
+| Phase | FR count | NFR count | Total |
+|-------|----------|-----------|-------|
+| Phase 1: Foundations & ADRs | 12 | 10 | 22 |
+| Phase 2: Core Daemon | 39 | 13 | 52 |
+| Phase 3: Linux Event Sources & Lifecycle | 10 | 3 | 13 |
+| Phase 4: Destructive Actions & HIL | 3 | 0 | 3 |
+| Phase 5: Bench & Field Shadow | 0 | 0 | 0 (delivery) |
+| Phase 6: Cutover & Fleet Rollout | 0 | 0 | 0 (delivery) |
+| Phase 7: v1 Decommission & Archive | 0 | 0 | 0 (delivery) |
+| **Totals** | **64** | **26** | **90** |
 
 **Coverage:**
-- v1 functional requirements: 67 total (FR-1..FR-75 with sub-requirements)
-- v1 non-functional requirements: 24 total (NFR-1..NFR-52 with sub-requirements)
-- Total v1: 91 requirements
-- Mapped to phases: 0 ⚠️ (pending roadmap)
-- Unmapped: 91 ⚠️
+- v1 functional requirements: 64 total (FR-1..FR-75 with sub-requirements)
+- v1 non-functional requirements: 26 total (NFR-1..NFR-52 with sub-requirements)
+- Total v1: 90 requirements
+- Mapped to phases: 90 ✓
+- Unmapped: 0 ✓
+
+(Earlier coverage header counted 67/24/91; recount during traceability mapping arrived at 64/26/90 — every REQ-ID listed above is mapped exactly once and accounted for in the rollup.)
 
 ---
 
 *Requirements defined: 2026-05-05*
-*Last updated: 2026-05-05 after initial definition (synthesized from docs/PRD.md + .planning/research/SUMMARY.md)*
+*Last updated: 2026-05-06 — traceability section populated; every v1 REQ-ID mapped to exactly one phase (synthesized from `docs/PRD.md`, `.planning/research/SUMMARY.md`, and `.planning/ROADMAP.md`).*
