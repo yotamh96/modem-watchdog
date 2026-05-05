@@ -1,0 +1,226 @@
+# spark-modem-watchdog v2
+
+## What This Is
+
+`spark-modem-watchdog` is the on-device daemon that keeps a fleet of NVIDIA
+Jetson Orin NX bonded-uplink boxes online by watching four Sierra Wireless
+EM7421 cellular modems, detecting when one is unhealthy, and applying the
+smallest recovery action that has a chance of fixing it without making things
+worse. v2 is a from-scratch Python rewrite that preserves the operational
+principles proven out in the v1 bash toolchain while replacing the
+implementation, the wire contracts, and the observability story.
+
+## Core Value
+
+Maximize end-user uplink availability across the four bonded modems by
+applying minimum-impact recovery actions — and never running a destructive
+recovery (modem/USB reset) that has zero chance of fixing the observed
+issue (e.g. reset on bad RF).
+
+## Requirements
+
+### Validated
+
+<!-- v1 design decisions inherited and frozen by ADRs. These are the
+operational invariants v2 must preserve, not capabilities to re-prove. -->
+
+- ✓ Three-seam architecture: observe → decide → act — v1 carry-over (testability)
+- ✓ Zao log is authoritative for active lines — ADR-0003
+- ✓ Signal-quality gate on destructive actions — v1 carry-over (uptime safety)
+- ✓ Bounded escalation ladder per modem — v1 carry-over (no stuck-reset loops)
+- ✓ One-action-per-modem-per-cycle — v1 carry-over (no stacked operations)
+- ✓ Priority order across categories: config > sim > datapath > registration > qmi — v1 carry-over
+- ✓ Sysfs-based runtime discovery of `(line, cdc_wdm, usb_path, ns, iface)` — v1 carry-over
+- ✓ Idempotent action implementations — v1 carry-over
+- ✓ Atomic file writes (temp + rename) — v1 carry-over
+
+### Active
+
+<!-- v2.0 scope. All hypotheses until shipped against the live fleet
+(see Migration phases 1-5). -->
+
+**Discovery & inventory (FR-1..FR-4)**
+- [ ] Discover all Sierra-VID modems on USB at startup and on udev add/remove
+- [ ] Resolve each modem to `(line, cdc_wdm, usb_path, namespace, iface)` via sysfs
+- [ ] Detect SIM identity (ICCID, IMSI) per modem and persist `(usb_path → identity)` map
+- [ ] Detect SIM swap and trigger re-provisioning
+
+**Diagnosis (FR-10..FR-14)**
+- [ ] Consult Zao `RASCOW_STAT` before probing; never QMI-probe an active line
+- [ ] Per-inactive-modem probe: USB speed, QMI responsiveness, op mode, SIM card/app, registration, carrier MCC/MNC, signal RSSI/RSRP/RSRQ/SNR, profile-1 APN, data session, IPv4
+- [ ] Classify each modem: Healthy / Degraded / RfBlocked / Recovering(level) / Exhausted
+- [ ] Emit typed `Diag` snapshot every cycle (SCHEMA § Diag)
+- [ ] Detect host-level issues from dmesg (USB overcurrent, enum failures, thermal)
+
+**Recovery (FR-20..FR-28)**
+- [ ] At most one action per modem per cycle
+- [ ] Action selection follows priority `config > sim > datapath > registration > qmi`
+- [ ] Per-modem escalation ladder: set_apn / fix_raw_ip / sim_power_on / soft_reset → modem_reset → usb_reset → Exhausted
+- [ ] Signal-quality gate on `modem_reset`/`usb_reset` (RSRP ≥ -110, RSRQ ≥ -15, SNR ≥ 0)
+- [ ] Global `driver_reset` only when ≥75% of modems are simultaneously QMI-hung AND at least one has actionable signal
+- [ ] Same-action backoff (default 300 s) and cross-action ladder backoff (default 90 s)
+- [ ] Per-action escalation counters decay to zero after K consecutive Healthy cycles (ADR-0006)
+- [ ] All recovery actions implemented as separate idempotent functions, runnable individually via CLI
+- [ ] `--dry-run` everywhere a real action would mutate state
+
+**Provisioning (FR-30..FR-33)**
+- [ ] APN selection by `(MCC, MNC)` lookup in config-file carrier table
+- [ ] Profile #1 written only when desired APN differs from currently programmed
+- [ ] Post-write APN verification (read-back); fail loudly on mismatch
+- [ ] New MCC/MNC entries addable without code release (config reload)
+
+**Observability (FR-40..FR-44)**
+- [ ] Structured `events.jsonl` (JSON Lines) at `/var/log/spark-modem-watchdog/events.jsonl`
+- [ ] `status.json` at `/var/lib/spark-modem-watchdog/status.json` with per-modem state and aggregate health
+- [ ] Prometheus scrape endpoint on Unix socket (default `/run/spark-modem-watchdog/metrics.sock`)
+- [ ] Logrotate rotation: 7 days, 100 MiB
+- [ ] Webhook POST on `Healthy → Degraded` and `Recovering → Exhausted` transitions
+
+**Operability (FR-50..FR-54)**
+- [ ] Single `spark-modem` CLI: `diag`, `recovery`, `provision`, `reset`, `status`, `ctl` subcommands
+- [ ] `--qmi-fixture-dir=PATH` for replay; `--diag-fixture=PATH` for recovery replay
+- [ ] systemd `Type=notify` unit; graceful SIGTERM within 5 s
+- [ ] Layered config: flags > env > `/etc/spark-modem-watchdog/conf.d/*.yaml` > defaults
+
+**Safety (FR-60..FR-64)**
+- [ ] Refuse to start if `qmicli`/`ip`/`python3 ≥3.11` not on PATH
+- [ ] Single PID lock on `/run/spark-modem-watchdog/lock`
+- [ ] All persistent file writes atomic
+- [ ] Validate every external input (qmicli output, JSON, Zao log) before acting
+- [ ] Never `exec` a string built from external data — list-form argv only
+
+**Non-functional**
+- [ ] NFR-1: Diag cycle ≤ 10 s steady-state
+- [ ] NFR-3: RSS ≤ 80 MiB
+- [ ] NFR-4: Per-modem QMI probes run in parallel (`asyncio.gather`)
+- [ ] NFR-13: Steady state within 60 s of process start
+- [ ] NFR-21: Prometheus metrics exposed: `actions_total`, `signal_dbm`, `cycle_duration_seconds`, `modem_state{state}`
+- [ ] NFR-40: `mypy --strict`, `ruff`, formatter all pass in CI
+- [ ] NFR-41: Unit tests run hardware-free using fixtures only
+- [ ] NFR-43: Schema-version refusal of future versions; explicit migration
+
+**Migration (delivery, not a feature)**
+- [ ] Phase 0: `.deb` builds, HIL passes, dry-run replay agrees with v1 on ≥1000 historical cycles
+- [ ] Phase 1: bench Jetson, v2 dry-run alongside v1 for one week
+- [ ] Phase 2: one field box, dry-run alongside v1, two weeks
+- [ ] Phase 3: one field box, v2 active, v1 disabled, two weeks
+- [ ] Phase 4: 10 % canary, two weeks
+- [ ] Phase 5: rolling 10 %/day to 100 %
+- [ ] Phase 6: archive v1 scripts, decommission
+
+### Out of Scope
+
+- Replacing or modifying Zao — we integrate; we do not own it (NG1)
+- Multi-region carrier support beyond Israel in v2.0 — non-IL MCCs land via config, not release (NG2)
+- Cloud control plane / remote management — v2 is a daemon on the box (NG3)
+- Generic "any modem" support — v2 targets Sierra EM7421 + qmi_wwan (NG4)
+- GUI or web UI on the device — CLI + structured status only (NG5)
+- Replacing `qmicli` as the QMI client — we wrap it (NG6)
+- Multi-SIM / eSIM management — EM7421 is single-SIM
+- 5G NR-aware policy — NR is informational in v2.0; full NR policy is v2.1
+- Cross-vendor modems (Quectel, Telit) — single hardware target
+- HTTP API on Unix socket vs CLI-only ctl tool — open question Q1; CLI-only for v2.0
+- HMAC-SHA256 webhook payload signing — open question Q5; deferred to v2.1 unless reclassified
+- Migration of v1 state files — v2 starts fresh per box (acceptable; nothing structural is lost)
+
+## Context
+
+**Production reality.** v1 is a pipeline of bash scripts (`diag.sh` →
+`recovery.sh` → `auto_profile.sh`, `zao_reset_line.sh`) driven by a systemd
+watchdog on a 120 s loop. It currently keeps a real fleet online; v2 must
+prove itself in shadow mode before replacing v1 on any box (see Migration
+phases 1-2).
+
+**What v1 got wrong (motivates the rewrite).**
+- Two-language hybrid (bash + python heredocs); hand-rolled JSON; fragile
+  `awk -F"'"` parsing of `qmicli`.
+- Free-form `detail` strings and heterogeneous `who` field — no type checking
+  on the wire (replaced by typed enums + tagged union, ADR-0004).
+- Recovery counters never decay → modems become permanently Exhausted after
+  one bad incident (fixed by counter-decay-on-healthy, ADR-0006).
+- Wall-clock backoff (NTP step can wedge it) → all backoff math is on
+  `time.monotonic()` in v2 (ADR-0007).
+- Polling-only architecture; events ignored → v2 subscribes to udev,
+  rtnetlink, inotify, dmesg with polling fallback (ADR-0002).
+- Command injection in `auto_profile.sh` via shell-string interpolation;
+  `.bak` files instead of git; no tests, no fixtures, no replay harness;
+  no log rotation; no metrics; no status endpoint.
+
+**Domain glue.** Zao (Soliton's bonding stack) owns the modems at runtime;
+the watchdog observes around it. Zao's `RASCOW_STAT` log line tells us which
+of lines 1..4 are currently bonding — never QMI-probe a Zao-active line
+(ADR-0003). Zao's `InfraCtrl.script` owns profile programming; we invoke it
+rather than writing profiles directly so Zao observes the change.
+
+**Carrier table.** Israeli MCC 425 with MNC entries for Partner (01),
+Cellcom (02), Pelephone (03). New MCC/MNC entries are pure config (YAML
+edit + reload) — never a code release.
+
+**Observability targets.** NOC consumes Prometheus metrics + webhook alerts.
+Field engineers consume `events.jsonl` (replay-able) and the support bundle
+(`spark-modem ctl support-bundle` produces a tarball with the last 200
+events, current `status.json`, all per-modem state, journal slice, dmesg
+slice).
+
+## Constraints
+
+- **Hardware**: NVIDIA Jetson Orin NX (16 GB) on P3768 reference carrier — C1
+- **Hardware**: 4× Sierra Wireless EM7421 (VID:PID `1199:9091`) on USB 3 hub, typically `2-3.1.{1..4}` — C2
+- **Software**: JetPack 5.1.5 / L4T R35.6.4 / Ubuntu 20.04 / aarch64 / kernel 5.10-tegra — C10/C11
+- **Software**: Soliton Zao SDK 2.1.0+; `ModemManager` MUST remain disabled (Zao requires exclusive modem access) — C12/C13
+- **Language**: Python 3.11+ end-to-end; packaged as `.deb` with self-contained venv at `/opt/spark-modem-watchdog/` — ADR-0001 / NFR-40
+- **Schema/types**: pydantic v2 for all wire formats; closed enums for `IssueCategory` / `IssueDetail` / `RegistrationState` etc. — ADR-0004
+- **Network**: Install-time the box MAY be offline; installer MUST not require internet — C20
+- **Network**: Zero outbound runtime dependencies except optional alert webhook — C21
+- **Performance**: P99 cycle ≤ 10 s; RSS ≤ 80 MiB; 1 % CPU steady-state — NFR-1/3/2
+- **Process**: Single-process `asyncio` daemon; per-modem probes via `asyncio.gather` with per-task timeout (default 8 s); single `asyncio.Lock` guards state-store commits — ARCH § 4.3
+- **Time**: All durations and backoffs use `time.monotonic()`; `time.time()` only for ISO-8601 stamps — ADR-0007
+- **Subprocess**: Every external command via one wrapper, list-form argv, with timeout — FR-64 / NFR-31
+
+## Key Decisions
+
+| Decision | Rationale | Outcome |
+|----------|-----------|---------|
+| Python 3.11+, single-process asyncio daemon, `.deb` with bundled venv | ADR-0001: typed wire formats need real types; `qmicli` text parsing is awkward in any language; team velocity is best in Python | — Pending |
+| Event-driven core (udev / rtnetlink / inotify / dmesg) with 30 s polling fallback (down from v1's 120 s) | ADR-0002: cycle is much cheaper now; events shorten median MTTR | — Pending |
+| Zao `RASCOW_STAT` is authoritative for "is line N bonding"; never QMI-probe a Zao-active line | ADR-0003: avoids QMI control-channel race; Zao's view is correct by definition | — Pending |
+| Strict typed JSON contract (pydantic v2, closed enums, `schema_version` int, tagged-union `who`) | ADR-0004: v1's free-form `detail` strings + heterogeneous `who` caused silent regressions | — Pending |
+| Explicit per-modem state machine: `unknown` / `healthy` / `degraded` / `recovering(level)` / `rf_blocked` / `exhausted` / `disconnected` | ADR-0005: makes recovery decisions auditable; spec-as-tests against the markdown table | — Pending |
+| Per-action escalation counters decay to zero after K consecutive Healthy cycles (default K=10) | ADR-0006: fixes v1's permanent-`Exhausted` failure mode after a single bad incident | — Pending |
+| All backoff arithmetic uses `time.monotonic()`; wall clock only for ISO-8601 stamps | ADR-0007: NTP step on the Jetson can wedge wall-clock backoff | — Pending |
+| Policy engine is a pure function `Diag × {ModemState, Globals, Config, Clock} → PlannedAction[]` — no subprocess, no I/O | Testability: every decision-table row in RECOVERY_SPEC § 4 is a fixture | — Pending |
+| Six-phase migration (bench → field box dry-run → field box live → 10 % canary → 100 %) before v1 decommission | v1 keeps a real fleet online; conservative cutover; rollback button at every phase | — Pending |
+| CLI-only ctl tool (no HTTP API on Unix socket) for v2.0 | Open question Q1 deferred to v2.1; minimize surface area | — Pending |
+
+## Open questions (carried from PRD § 10)
+
+These are tracked, not blocked. Each is addressed during the relevant phase
+or explicitly deferred.
+
+- **Q1**: HTTP API on Unix socket vs CLI-only ctl? — deferred to v2.1
+- **Q2**: Daemon owns `qmi-proxy` or assumes Zao does? — Eng lead
+- **Q3**: Minimum-supported Zao SDK version? — 2.1.0 confirmed; older may fail Zao-log parsing
+- **Q4**: Feature parity with v1 `--watch` mode, or replace with `journalctl -fu` + Prometheus? — Product
+- **Q5**: HMAC-SHA256 webhook payload signing in v2.0 or v2.1? — Security; deferred to v2.1 default
+- **Q6**: Config-change communication: SIGHUP reload, file-watcher, restart-only? — Eng lead
+- **Q7**: Carrier-table ownership post-launch? — Product
+
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
+---
+*Last updated: 2026-05-05 after initialization (synthesized from `docs/`)*
