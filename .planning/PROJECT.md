@@ -168,7 +168,7 @@ slice).
 - **Hardware**: 4× Sierra Wireless EM7421 (VID:PID `1199:9091`) on USB 3 hub, typically `2-3.1.{1..4}` — C2
 - **Software**: JetPack 5.1.5 / L4T R35.6.4 / Ubuntu 20.04 / aarch64 / kernel 5.10-tegra — C10/C11
 - **Software**: Soliton Zao SDK 2.1.0+; `ModemManager` MUST remain disabled (Zao requires exclusive modem access) — C12/C13
-- **Language**: Python 3.11+ end-to-end; packaged as `.deb` with self-contained venv at `/opt/spark-modem-watchdog/` — ADR-0001 / NFR-40
+- **Language (target runtime)**: **Python 3.8.10** is the actual Jetson system Python and the runtime we must support on-box. ADR-0001 / docs/ assumed 3.11+; that conflict is open and must be resolved during the research/planning phases (options: bundle 3.11 in a venv as ADR-0001 originally proposed, drop to 3.8-compatible code, or upgrade the Jetson runtime). The pydantic v2, `match` statements, asyncio TaskGroup, `tomllib`, and various typing features the docs use are 3.10/3.11 — careful inventory needed.
 - **Schema/types**: pydantic v2 for all wire formats; closed enums for `IssueCategory` / `IssueDetail` / `RegistrationState` etc. — ADR-0004
 - **Network**: Install-time the box MAY be offline; installer MUST not require internet — C20
 - **Network**: Zero outbound runtime dependencies except optional alert webhook — C21
@@ -181,7 +181,7 @@ slice).
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Python 3.11+, single-process asyncio daemon, `.deb` with bundled venv | ADR-0001: typed wire formats need real types; `qmicli` text parsing is awkward in any language; team velocity is best in Python | — Pending |
+| Python 3.11+, single-process asyncio daemon, `.deb` with bundled venv | ADR-0001: typed wire formats need real types; `qmicli` text parsing is awkward in any language; team velocity is best in Python | ⚠️ Revisit — Jetson system Python is 3.8.10; resolve via venv-bundled 3.11 (ADR-0001's original plan), 3.8-compatible code, or runtime upgrade |
 | Event-driven core (udev / rtnetlink / inotify / dmesg) with 30 s polling fallback (down from v1's 120 s) | ADR-0002: cycle is much cheaper now; events shorten median MTTR | — Pending |
 | Zao `RASCOW_STAT` is authoritative for "is line N bonding"; never QMI-probe a Zao-active line | ADR-0003: avoids QMI control-channel race; Zao's view is correct by definition | — Pending |
 | Strict typed JSON contract (pydantic v2, closed enums, `schema_version` int, tagged-union `who`) | ADR-0004: v1's free-form `detail` strings + heterogeneous `who` caused silent regressions | — Pending |
@@ -204,6 +204,7 @@ or explicitly deferred.
 - **Q5**: HMAC-SHA256 webhook payload signing in v2.0 or v2.1? — Security; deferred to v2.1 default
 - **Q6**: Config-change communication: SIGHUP reload, file-watcher, restart-only? — Eng lead
 - **Q7**: Carrier-table ownership post-launch? — Product
+- **Q8** *(new, raised at init)*: Jetson system Python is **3.8.10**, not 3.11+. Resolve runtime target: bundle 3.11 in the `.deb` venv (ADR-0001's original plan), write 3.8-compatible code, or upgrade Jetson runtime. Affects pydantic v2 (works on 3.7+), `match` statements (3.10+), `asyncio.TaskGroup` (3.11+), `tomllib` (3.11+), parameterized type aliases (3.10+) — needs explicit code-survey decision before Phase 0.
 
 ## Evolution
 
