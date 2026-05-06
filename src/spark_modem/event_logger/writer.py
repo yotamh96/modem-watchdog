@@ -21,6 +21,8 @@ from pathlib import Path
 from types import TracebackType
 from typing import Self
 
+from spark_modem.state_store.atomic import _fsync_directory
+
 from spark_modem.wire.events import (
     ActionExecuted,
     ActionFailed,
@@ -71,12 +73,22 @@ class EventLogWriter:
 
     def __init__(self, path: Path | str) -> None:
         self._path = Path(path)
-        self._path.parent.mkdir(parents=True, exist_ok=True)
+        parent = self._path.parent
+        # Track whether we're creating the directory for the first time so we
+        # can fsync it. Without this, a power loss between mkdir and the first
+        # append can lose the events.jsonl file on remount (FR-43 / FR-43.1).
+        parent_existed = parent.exists()
+        parent.mkdir(parents=True, exist_ok=True)
         self._fd: int | None = os.open(
             str(self._path),
             os.O_WRONLY | os.O_CREAT | os.O_APPEND,
             _MODE,
         )
+        if not parent_existed:
+            # Fsync the newly-created directory so its entry is durable before
+            # the first append. On Windows _fsync_directory is a no-op (the
+            # daemon never runs there; this is a dev-host accommodation).
+            _fsync_directory(parent, self._path)
 
     def append(self, event: Event) -> None:
         """Serialize and write one newline-terminated JSON line.
