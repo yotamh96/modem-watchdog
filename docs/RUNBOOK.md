@@ -352,17 +352,30 @@ sudo: a terminal is required to read the password
 
 ### One-time host setup
 
-Run these once per runner host, as a user with sudo:
+Run these once per runner host, as a user with sudo. Assumes Ubuntu
+20.04 (focal) on aarch64, served from `ports.ubuntu.com`. If the runner
+host is on `archive.ubuntu.com` (x86_64 builders), substitute that
+mirror in the backports line.
 
 ```bash
-# Build deps for the .deb pipeline
+# 1. Enable focal-backports — required for debhelper 13 (debian/control
+#    Build-Depends: debhelper-compat (= 13)). Focal's default debhelper
+#    is version 12, which provides compat=12 only and breaks the build
+#    with `dpkg-checkbuilddeps: error: Unmet build dependencies:
+#    debhelper-compat (= 13)`.
+echo 'deb http://ports.ubuntu.com/ubuntu-ports/ focal-backports main universe' \
+  | sudo tee /etc/apt/sources.list.d/focal-backports.list
 sudo apt-get update
+
+# 2. Install debhelper 13 from focal-backports, plus the rest of the
+#    .deb build toolchain from focal stable.
+sudo apt-get install -y -t focal-backports debhelper
 sudo apt-get install -y --no-install-recommends \
-  debhelper devscripts fakeroot dpkg-dev \
+  devscripts fakeroot dpkg-dev \
   curl ca-certificates
 
-# Smoke-install step uses Docker. Make sure the runner user can
-# run docker without sudo:
+# 3. The Smoke-install step uses Docker. Make sure the runner user
+#    can run docker without sudo.
 sudo usermod -aG docker nvidia
 # Log the runner user out + back in (or restart the runner service)
 # for the group change to take effect.
@@ -371,8 +384,13 @@ sudo usermod -aG docker nvidia
 Verify:
 
 ```bash
-dpkg -l debhelper devscripts fakeroot dpkg-dev curl ca-certificates \
+dpkg -s debhelper | grep -E '^(Version|Provides)'
+# Version: 13.x ...
+# Provides: ... debhelper-compat (= 13) ...
+
+dpkg -l devscripts fakeroot dpkg-dev curl ca-certificates \
   | tail -n +6   # every row should start with `ii`
+
 sudo -u nvidia docker info >/dev/null && echo "docker ok"
 ```
 
