@@ -31,7 +31,7 @@ jobs:
         run: |
           uv venv --python 3.12 .venv
           uv pip install --python .venv/bin/python -e ".[dev]"
-          uv pip install --python .venv/bin/python --no-deps --frozen -r packaging/requirements.lock
+          uv pip install --python .venv/bin/python --no-deps -r packaging/requirements.lock
 
       - name: ruff format --check
         run: .venv/bin/ruff format --check src/ tests/
@@ -66,7 +66,7 @@ jobs:
           uv python install 3.12
           uv venv --python 3.12 .venv
           uv pip install --python .venv/bin/python -e ".[dev]"
-          uv pip install --python .venv/bin/python --no-deps --frozen -r packaging/requirements.lock
+          uv pip install --python .venv/bin/python --no-deps -r packaging/requirements.lock
 
       - name: pytest
         run: .venv/bin/pytest -m "unit or integration" -ra

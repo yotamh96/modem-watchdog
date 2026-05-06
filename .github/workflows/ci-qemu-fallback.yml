@@ -28,7 +28,7 @@ jobs:
               pip install --no-cache-dir uv &&
               uv venv --python 3.12 .venv &&
               uv pip install --python .venv/bin/python -e .[dev] &&
-              uv pip install --python .venv/bin/python --no-deps --frozen -r packaging/requirements.lock &&
+              uv pip install --python .venv/bin/python --no-deps -r packaging/requirements.lock &&
               .venv/bin/ruff format --check src/ tests/ &&
               .venv/bin/ruff check src/ tests/ &&
               .venv/bin/mypy --strict src/spark_modem/ &&
