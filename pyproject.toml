@@ -11,6 +11,7 @@ dependencies = []
 dev = [
     "ruff>=0.6,<1",
     "mypy>=1.13,<2",
+    "types-PyYAML>=6.0.12,<7",
     "pytest>=8.3,<9",
     "pytest-asyncio>=0.24,<1",
     "hypothesis>=6.110,<7",
@@ -44,6 +45,7 @@ indent-style = "space"
 
 [tool.mypy]
 python_version = "3.12"
+platform = "linux"
 strict = true
 warn_unreachable = true
 warn_redundant_casts = true

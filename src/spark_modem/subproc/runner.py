@@ -247,7 +247,7 @@ def _send_signal_to_group(proc: asyncio.subprocess.Process, sig: int) -> None:
         # POSIX path: kill the whole process group so qmicli's helper children
         # are also reaped (cpython#127049).
         with contextlib.suppress(ProcessLookupError, PermissionError):
-            os.killpg(os.getpgid(proc.pid), sig)  # type: ignore[attr-defined]
+            os.killpg(os.getpgid(proc.pid), sig)
     else:
         # Non-POSIX fallback (Windows dev host only -- not a production path).
         with contextlib.suppress(ProcessLookupError, PermissionError):

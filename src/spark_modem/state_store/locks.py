@@ -134,11 +134,11 @@ def acquire_flock(
     path_p.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(str(path_p), os.O_CREAT | os.O_RDWR, 0o640)
     try:
-        flags = fcntl.LOCK_EX  # type: ignore[name-defined]
+        flags = fcntl.LOCK_EX
         if not blocking:
-            flags |= fcntl.LOCK_NB  # type: ignore[name-defined]
+            flags |= fcntl.LOCK_NB
         try:
-            fcntl.flock(fd, flags)  # type: ignore[name-defined]
+            fcntl.flock(fd, flags)
         except OSError as e:
             if e.errno in (errno.EWOULDBLOCK, errno.EAGAIN):
                 holder_pid = _read_pid_from(path_p)
@@ -156,7 +156,7 @@ def acquire_flock(
         yield fd
     finally:
         with contextlib.suppress(OSError):
-            fcntl.flock(fd, fcntl.LOCK_UN)  # type: ignore[name-defined]
+            fcntl.flock(fd, fcntl.LOCK_UN)
         with contextlib.suppress(OSError):
             os.close(fd)
 
@@ -183,8 +183,8 @@ def _enter_flock_for_async(
     path_p.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(str(path_p), os.O_CREAT | os.O_RDWR, 0o640)
     try:
-        flags = fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB)  # type: ignore[name-defined]
-        fcntl.flock(fd, flags)  # type: ignore[name-defined]
+        flags = fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB)
+        fcntl.flock(fd, flags)
     except OSError as e:
         with contextlib.suppress(OSError):
             os.close(fd)
@@ -213,7 +213,7 @@ def _release_flock_fd(fd: int) -> None:
     if fd < 0:
         return  # no-op sentinel (Windows dev host)
     with contextlib.suppress(OSError):
-        fcntl.flock(fd, fcntl.LOCK_UN)  # type: ignore[name-defined]
+        fcntl.flock(fd, fcntl.LOCK_UN)
     with contextlib.suppress(OSError):
         os.close(fd)
 
