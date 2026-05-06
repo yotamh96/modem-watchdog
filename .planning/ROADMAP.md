@@ -50,7 +50,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Goal**: Lock the wire formats, packaging story, ADR set, and
 plumbing skeleton so that no Phase 2 module is ever built against a wire
 type that needs to change. By exit, a `.deb` containing CPython 3.12 and
-all 9 runtime libs installs cleanly on a real Jetson, every open question
+all 10 runtime libs installs cleanly on a real Jetson, every open question
 from PROJECT.md is closed by an ADR or explicit deferral, and the `wire/`,
 `config/`, `clock/`, `subproc/`, `state_store/`, `event_logger/` modules
 exist with mypy --strict and ruff green in CI.
@@ -66,10 +66,11 @@ NFR-52
 **Success Criteria** (what must be TRUE):
   1. The arm64 `.deb` builds in CI from a checked-in `requirements.lock`
      (uv pip compile output) and, when installed on a fresh Jetson Orin NX
-     running JetPack 5.1.5 / Ubuntu 20.04, all 9 pinned runtime libraries
-     (`pydantic`, `PyYAML`, `prometheus-client`, `pyudev`, `pyroute2`,
-     `asyncinotify`, `httpx`, `sdnotify`, `psutil`) import successfully
-     under the bundled `/opt/spark-modem-watchdog/python/bin/python3.12`.
+     running JetPack 5.1.5 / Ubuntu 20.04, all 10 pinned runtime libraries
+     (`pydantic`, `pydantic-settings`, `PyYAML`, `prometheus-client`,
+     `pyudev`, `pyroute2`, `asyncinotify`, `httpx`, `sdnotify`, `psutil`)
+     import successfully under the bundled
+     `/opt/spark-modem-watchdog/python/bin/python3.12`.
   2. All eight PROJECT.md open questions (Q1-Q8) are closed in writing:
      six new ADRs (0008 state-machine, 0009 usb_path keying, 0010 packaging,
      0011 webhook subsystem, 0012 concurrency, 0013 metric surface) are
@@ -97,7 +98,16 @@ NFR-52
      cross-check (file usb_path ↔ sysfs ↔ current cdc-wdm) raises a
      structured error on mismatch rather than silently overwriting.
 
-**Plans**: TBD
+**Plans**: 7 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Repo + lint/CI scaffolding (pyproject.toml, requirements.lock with 10 pinned runtime libs including pydantic-settings, lint_no_subprocess.sh, pre-commit, GitHub Actions self-hosted aarch64 CI)
+- [ ] 01-02-PLAN.md — `.deb` build pipeline (debian/rules with PBS+uv+compileall, postinst smoke test importing all 10 libs, systemd Type=notify with ExecStartPre=, NFR-51 ≤40 MiB, SOURCE_DATE_EPOCH reproducibility, ships Plan 06's day-one carrier YAML to /etc/spark-modem-watchdog/conf.d/)
+- [ ] 01-03-PLAN.md — `wire/` package (BaseWire + closed StrEnum types + ModemState 5+2 flat + Diag with Who tagged union + Events/Webhook discriminated unions + schema_version helpers)
+- [ ] 01-04-PLAN.md — `state_store/` (atomic temp+rename+dir-fsync writes + 3-layer locks WIRED INTO StateStore methods + inventory cross-check via StateStore.cross_check_inventory_for + hypothesis property test for SC #5 + non-destructive schema downgrade shadow with deadlock-safe public/private helper split)
+- [ ] 01-05-PLAN.md — `subproc/` runner (single async run() entrypoint with all 4 SP-03 invariants: list-form argv, LC_ALL=C, start_new_session, two-stage SIGTERM→2s→SIGKILL→drain via asyncio.timeout)
+- [ ] 01-06-PLAN.md — `clock/` + `config/` (Settings imports pydantic_settings — pin upstreamed to Plan 01) + `event_logger/` + day-one carrier YAML (12 entries IL/US/GB/DE; install line lives in Plan 02)
+- [ ] 01-07-PLAN.md — ADR set (amend 0001/0003/0004/0005/0006 + author 0008..0013; closes PROJECT.md Q1..Q8)
 
 ### Phase 2: Core Daemon (laptop-testable)
 
@@ -409,8 +419,6 @@ with a forwarding README, and update the agent-facing documentation
      metrics: MTTR, false-positive reset rate, daemon CPU/RSS, support-
      ticket count over the migration window.
 
-**Plans**: TBD
-
 ## Progress
 
 **Execution Order:**
@@ -429,3 +437,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 ---
 
 *Roadmap created: 2026-05-05 (synthesized from PROJECT.md, REQUIREMENTS.md, research/SUMMARY.md, docs/MIGRATION.md)*
+</content>
+</invoke>
