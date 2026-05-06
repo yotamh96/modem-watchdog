@@ -62,18 +62,23 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 
 ### Provisioning
 
-- [ ] **FR-30**: APN selection by `(MCC, MNC)` lookup in config-file carrier table
+- [x] **FR-30
+**: APN selection by `(MCC, MNC)` lookup in config-file carrier table
 - [x] **FR-30.1
 **: Day-one carrier coverage includes Israel (authoritative) plus minimal US (310/410, 311/480, 312/530), UK (234/10, 234/15, 234/30), DE (262/01, 262/02, 262/03) marked `unverified: true` (research §4.6)
-- [ ] **FR-31**: Profile #1 written only when desired APN differs from currently programmed value
-- [ ] **FR-32**: Post-write APN verification (read profile back); fail loudly on mismatch
-- [ ] **FR-33**: New MCC/MNC entries addable without code release (config reload)
+- [x] **FR-31
+**: Profile #1 written only when desired APN differs from currently programmed value
+- [x] **FR-32
+**: Post-write APN verification (read profile back); fail loudly on mismatch
+- [x] **FR-33
+**: New MCC/MNC entries addable without code release (config reload)
 - [x] **FR-33.1
 **: Carrier-table entries fixture-validated against hostile inputs (YAML "Norway problem", leading-zero MCC/MNC); `mnc: str` regex `r"^\d{2,3}$"` (PITFALLS §11.2)
 
 ### Observability
 
-- [ ] **FR-40**: Structured event log (JSON Lines) at `/var/log/spark-modem-watchdog/events.jsonl`
+- [x] **FR-40
+**: Structured event log (JSON Lines) at `/var/log/spark-modem-watchdog/events.jsonl`
 - [ ] **FR-41**: `status.json` at `/var/lib/spark-modem-watchdog/status.json` with current per-modem state, last cycle ts, aggregate health
 - [ ] **FR-41.1**: `status.json` includes `cycle.actions_executed` and `cycle.transitions` counters and `carrier_table_sha256` (M-11/M-17)
 - [ ] **FR-42**: Prometheus scrape endpoint on Unix socket (default `/run/spark-modem-watchdog/metrics.sock`)
@@ -172,7 +177,8 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 
 ### Security
 
-- [ ] **NFR-30**: Daemon runs as root; no other process granted suid bits
+- [x] **NFR-30
+**: Daemon runs as root; no other process granted suid bits
 - [x] **NFR-31
 **: All subprocess calls pass arguments as a list, never a shell string
 - [x] **NFR-32

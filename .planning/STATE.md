@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-04-PLAN.md
-last_updated: "2026-05-06T17:01:29.801Z"
+stopped_at: Completed 02-06-PLAN.md
+last_updated: "2026-05-06T17:20:55.984Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 17
-  completed_plans: 12
-  percent: 71
+  completed_plans: 13
+  percent: 76
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 02 (core-daemon-laptop-testable) — EXECUTING
-Plan: 6 of 10
+Plan: 7 of 10
 Status: Ready to execute
 Last activity: 2026-05-06
 
-Progress: [███████░░░] 71%
+Progress: [████████░░] 76%
 
 ## Performance Metrics
 
@@ -64,6 +64,7 @@ Progress: [███████░░░] 71%
 | Phase 02 P02-03 | 4min | 2 tasks tasks | 12 files files |
 | Phase 02 P02-05 | 25 minutes | 2 tasks tasks | 15 files files |
 | Phase 02 P02-04 | 25min | 2 tasks tasks | 16 files files |
+| Phase 02 P06 | 12m 30s | 2 tasks tasks | 22 files files |
 
 ## Accumulated Context
 
@@ -128,6 +129,13 @@ Recent decisions affecting current work:
 - Plan 02-04: §4 detection split observer-vs-policy: per-modem facts (apn_empty, raw_ip_off, sim/registration/operating_mode, qmi_proxy_died, qmi_timeout) live in observer; cross-source detections (apn_mismatch needs carrier table, qmi_channel_hung needs fleet aggregation) live in policy/
 - Plan 02-04: FixtureInventory.scan() now returns list[ModemDescriptor] (production type); _FixtureModemDescriptor removed -- Plan 02-01 promotion delivered
 - Plan 02-04: WhoModem placeholder-bug self-test (test_extract_issues_who_uses_modem_usb_path_and_cdc_wdm) catches a copy-paste failure pattern flagged in PLAN; passing test proves the implementation builds WhoModem from modem.usb_path/cdc_wdm
+- Plan 02-06: ActionKind enum extended with SET_OPERATING_MODE + FIX_AUTOSUSPEND (Rule 3 deviation) -- Phase 1 enum lacked these two cheap-action kinds the dispatcher registry references
+- Plan 02-06: actions.dispatcher._REGISTRY is exactly six cheap-action kinds; Phase 4 destructive actions land by appending entries -- no dispatcher code change
+- Plan 02-06: CarrierTable.lookup(mcc, mnc) iterates self.carriers (per-entry mcc/mnc per Phase 1 schema); shape-agnostic vs the plan's per-table-mcc example
+- Plan 02-06: soft_reset.verify() returns VerifyResult.deferred(detail='next_cycle_observation') -- modem is rebooting, in-line read-back impossible; cycle driver and replay defer judgment
+- Plan 02-06: fix_autosuspend uses Path.write_text('on') against sysfs_root -- no qmicli, no subprocess; tmp_path tests work cross-platform on Windows dev hosts
+- Plan 02-06: per-action test files share tests/unit/actions/_helpers.py (RecordingEventLogger + make_ctx + canned ok/fail builders); each per-action file stays focused on argv-shape + outcome assertions
+- Plan 02-06: test_registered_kinds_has_exactly_six_cheap_actions catches the deliberate duplicate-SET_APN bug planted in PLAN text -- frozenset comparison fails on silent-overwrite (which would otherwise still produce len==6)
 
 ### Pending Todos
 
@@ -145,8 +153,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-06T17:01:04.165Z
-Stopped at: Completed 02-04-PLAN.md
+Last session: 2026-05-06T17:20:55.963Z
+Stopped at: Completed 02-06-PLAN.md
 Resume file: None
 
 **Planned Phase:** 2 (Core Daemon (laptop-testable)) — 10 plans — 2026-05-06T15:16:01.546Z
