@@ -102,11 +102,11 @@ NFR-52
 
 Plans:
 - [x] 01-01-PLAN.md — Repo + lint/CI scaffolding (pyproject.toml, requirements.lock with 10 pinned runtime libs including pydantic-settings, lint_no_subprocess.sh, pre-commit, GitHub Actions self-hosted aarch64 CI)
-- [ ] 01-02-PLAN.md — `.deb` build pipeline (debian/rules with PBS+uv+compileall, postinst smoke test importing all 10 libs, systemd Type=notify with ExecStartPre=, NFR-51 ≤40 MiB, SOURCE_DATE_EPOCH reproducibility, ships Plan 06's day-one carrier YAML to /etc/spark-modem-watchdog/conf.d/)
-- [ ] 01-03-PLAN.md — `wire/` package (BaseWire + closed StrEnum types + ModemState 5+2 flat + Diag with Who tagged union + Events/Webhook discriminated unions + schema_version helpers)
-- [ ] 01-04-PLAN.md — `state_store/` (atomic temp+rename+dir-fsync writes + 3-layer locks WIRED INTO StateStore methods + inventory cross-check via StateStore.cross_check_inventory_for + hypothesis property test for SC #5 + non-destructive schema downgrade shadow with deadlock-safe public/private helper split)
-- [ ] 01-05-PLAN.md — `subproc/` runner (single async run() entrypoint with all 4 SP-03 invariants: list-form argv, LC_ALL=C, start_new_session, two-stage SIGTERM→2s→SIGKILL→drain via asyncio.timeout)
-- [ ] 01-06-PLAN.md — `clock/` + `config/` (Settings imports pydantic_settings — pin upstreamed to Plan 01) + `event_logger/` + day-one carrier YAML (12 entries IL/US/GB/DE; install line lives in Plan 02)
+- [x] 01-02-PLAN.md — `.deb` build pipeline (debian/rules with PBS+uv+compileall, postinst smoke test importing all 10 libs, systemd Type=notify with ExecStartPre=, NFR-51 ≤40 MiB, SOURCE_DATE_EPOCH reproducibility, ships Plan 06's day-one carrier YAML to /etc/spark-modem-watchdog/conf.d/)
+- [x] 01-03-PLAN.md — `wire/` package (BaseWire + closed StrEnum types + ModemState 5+2 flat + Diag with Who tagged union + Events/Webhook discriminated unions + schema_version helpers)
+- [x] 01-04-PLAN.md — `state_store/` (atomic temp+rename+dir-fsync writes + 3-layer locks WIRED INTO StateStore methods + inventory cross-check via StateStore.cross_check_inventory_for + hypothesis property test for SC #5 + non-destructive schema downgrade shadow with deadlock-safe public/private helper split)
+- [x] 01-05-PLAN.md — `subproc/` runner (single async run() entrypoint with all 4 SP-03 invariants: list-form argv, LC_ALL=C, start_new_session, two-stage SIGTERM→2s→SIGKILL→drain via asyncio.timeout)
+- [x] 01-06-PLAN.md — `clock/` + `config/` (Settings imports pydantic_settings — pin upstreamed to Plan 01) + `event_logger/` + day-one carrier YAML (12 entries IL/US/GB/DE; install line lives in Plan 02)
 - [x] 01-07-PLAN.md — ADR set (amend 0001/0003/0004/0005/0006 + author 0008..0013; closes PROJECT.md Q1..Q8)
 
 ### Phase 2: Core Daemon (laptop-testable)
