@@ -36,7 +36,7 @@ Granularity is `standard`. Phase 1 corresponds to MIGRATION.md Phase 0 (build
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundations & ADRs** ✅ 2026-05-06 - Resolve open questions, land 6 new + 5 amended ADRs, ship `.deb` pipeline, lock wire types (build A "plumbing")
-- [ ] **Phase 2: Core Daemon** - Laptop-testable asyncio cycle, policy engine, status/Prom/webhook surface (build B "minimal cycle" + C "status+metrics")
+- [x] **Phase 2: Core Daemon** ✅ 2026-05-06 - Laptop-testable asyncio cycle, policy engine, status/Prom/webhook surface (build B "minimal cycle" + C "status+metrics")
 - [ ] **Phase 3: Linux Event Sources & Lifecycle** - udev/rtnetlink/inotify/dmesg, sd_notify, signal handling, PID-lock, per-modem flocks (build D + E)
 - [ ] **Phase 4: Destructive Actions & HIL** - soft/modem/usb/driver_reset wired up, signal-gate end-to-end, qmi-proxy crash recovery, HIL CI lane (build F)
 - [ ] **Phase 5: Bench & Field Shadow** - MIGRATION Phases 1+2: dry-run alongside v1 on bench Jetson, then on one field box; fault-cycle agreement ≥95%
@@ -190,7 +190,7 @@ Plans:
 - [x] 02-07-PLAN.md — status_reporter/ status.json + Prom UDS + MetricRegistry + maintenance window in globals.json (FR-41, FR-41.1, FR-42, NFR-3, NFR-5, NFR-21, NFR-21.1)
 - [x] 02-08-PLAN.md — webhook/ poster + DNS pre-resolve + HMAC sign + dedup + retry queue + drain (FR-44, FR-44.3..FR-44.8)
 - [x] 02-09-PLAN.md — cli/ all subcommands (diag/recovery/provision/reset/status/explain/ctl) with PII redaction in support-bundle (FR-50, FR-50.1, FR-50.2, FR-50.3, FR-51, FR-52, NFR-22, NFR-22.1)
-- [ ] 02-10-PLAN.md — daemon/main.py cycle driver + replay harness + ≥1000 fixtures + ≥95% fault-cycle agreement gate (NFR-1, NFR-2, FR-26.1)
+- [x] 02-10-PLAN.md — daemon/main.py cycle driver + replay harness + 1002 fixtures + 100% fault-cycle agreement gate (NFR-1, NFR-2, FR-26.1)
 **UI hint**: no
 
 ### Phase 3: Linux Event Sources & Lifecycle

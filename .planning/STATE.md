@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-09-PLAN.md
-last_updated: "2026-05-06T18:18:10Z"
+stopped_at: Completed 02-10-PLAN.md (Phase 2 EXIT GATE passed)
+last_updated: "2026-05-06T18:48:00Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 7
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 17
-  completed_plans: 16
-  percent: 94
+  completed_plans: 17
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-05)
 
 **Core value:** Maximize end-user uplink availability across the four bonded modems by applying minimum-impact recovery actions — and never running a destructive recovery that has zero chance of fixing the observed issue.
-**Current focus:** Phase 02 — core-daemon-laptop-testable
+**Current focus:** Phase 02 ✅ COMPLETE; ready for Phase 03 (Linux Event Sources & Lifecycle)
 
 ## Current Position
 
-Phase: 02 (core-daemon-laptop-testable) — EXECUTING
-Plan: 10 of 10
-Status: Ready to execute (final plan: replay harness)
+Phase: 02 (core-daemon-laptop-testable) — COMPLETE (EXIT GATE PASSED)
+Plan: 10 of 10 ✅
+Status: Phase 2 complete; ready for Phase 3 (Linux Event Sources & Lifecycle)
 Last activity: 2026-05-06
 
-Progress: [█████████▌] 94%
+Progress: [██████████] 100% (Phase 2 of 7)
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Progress: [█████████▌] 94%
 | Phase 02 P08 | ~30m | 2 tasks tasks | 13 files files |
 | Phase 02 P07 | 12 minutes | 2 tasks tasks | 11 files files |
 | Phase 02 P09 | ~30m | 2 tasks tasks | 27 files files |
+| Phase 02 P10 | ~30m | 2 tasks | 1015 files (5 daemon src + 4 daemon tests + 1 generator + 4 replay tests + 1004 fixture JSONs + 1 .gitkeep) |
 
 ## Accumulated Context
 
@@ -167,6 +168,16 @@ Recent decisions affecting current work:
 - Plan 02-09: PII redaction is one-way and consistent (sha256[:8]) — same ICCID/IMSI → same <redacted:<8 hex>> across the bundle for cross-file identity correlation without exporting PII; HMAC secret never copied; webhook URL host-only
 - Plan 02-09: ctl history reader handles plain rotated siblings (.1, .2, ...) AND gzipped (.1.gz, ...); oldest-first chronological output; corrupt JSONL lines skipped not raised — events.jsonl integrity is the writer's responsibility
 - Plan 02-09: provision and reset CLI subcommands print Phase-2 stub messages — full execution requires daemon-style runner injection landing with cycle driver in plan 02-10 + Phase 3 production sysfs/zao. reset still validates action-kind correctness and rejects destructive actions before any dispatcher call
+- Plan 02-10: CycleDriver is the integration point for every Phase 2 subsystem (observe -> policy -> actions -> persist -> status -> webhook); each pipeline phase isolated to its own helper for readability and Phase 3/4 extensibility
+- Plan 02-10: per-modem QmiWrapper rebuilt per-dispatch from plan.who.usb_path -> cdc_wdm lookup against the cycle's inventory snapshot — single shared QmiWrapper would risk applying actions to the wrong modem
+- Plan 02-10: NFR-11 isolation verified end-to-end — try/except Exception around policy.engine.run_cycle stores repr(exc) on RunCycleResult.policy_exception and continues with empty plans; status.json STILL written so consumers can detect a stuck daemon
+- Plan 02-10: SC #5 webhook envelopes constructed inline in cycle_driver._enqueue_webhooks (HealthyToDegraded / RecoveringToExhausted / ActionFailedWebhook); DaemonRestart emitted ONCE at boot in daemon/main.py with DaemonStopReason.CRASH (Phase 3 swaps in SIGTERM via clean-shutdown marker)
+- Plan 02-10: CycleScheduler.advance() ceiling-loops past now to avoid back-to-back hot-loops (PITFALLS §9.3); the no-op event_queue arm is sketched for Phase 3's udev/rtnetlink/inotify producers
+- Plan 02-10: RSS tripwire is event-only in Phase 2 (T-02-10-05 mitigation) — records daemon_self_health{kind=rss} + WARNING log; Phase 3 sd_notify watchdog owns restart decision based on the counter
+- Plan 02-10: gen_replay_fixtures.py uses ceiling-divide on per_fault count so --count 1000 produces >=1000 fixtures (1002 actual: 952 fault + 50 healthy); deterministic via random.seed(42) — same seed + count produces byte-identical fixtures for CI regenerability (T-02-10-04)
+- Plan 02-10: replay verdict classifier R-02 partial order — 'safer' partial order: v2 picking cheaper than v1 is 'less-safe' ONLY when v1 picked destructive AND v1_succeeded; v1_succeeded=False/None means cheaper is at-least-as-good ('safer')
+- Plan 02-10: restart_mid_streak fixtures hand-authored (generator does not synthesise daemon-restart scenarios); two-fixture pre/post + JSON round-trip simulates restart and proves FR-26.1 streak persistence end-to-end
+- Plan 02-10: Phase 2 EXIT GATE PASSED — 100% (952/952) fault-cycle agreement with v1; replay-summary.json gitignored (T-02-10-03); full pytest suite 1675 tests in 11.82s (well under M7 30s)
 
 ### Pending Todos
 
@@ -184,8 +195,10 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-06T18:18:10Z
-Stopped at: Completed 02-09-PLAN.md
+Last session: 2026-05-06T18:48:00Z
+Stopped at: Completed 02-10-PLAN.md (Phase 2 EXIT GATE PASSED)
 Resume file: None
 
 **Planned Phase:** 2 (Core Daemon (laptop-testable)) — 10 plans — 2026-05-06T15:16:01.546Z
+**Phase 2 status:** ✅ COMPLETE — all 10 plans shipped, replay harness 100% v1 agreement, 1675-test suite green in 11.82s
+**Next:** Phase 3 (Linux Event Sources & Lifecycle) — udev/rtnetlink/inotify/dmesg producers wired into CycleScheduler.event_queue arm; sd_notify Type=notify; loop.add_signal_handler SIGTERM/SIGHUP; PID lock
