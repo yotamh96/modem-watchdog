@@ -60,6 +60,12 @@ class SysfsInventory:
                 continue
             usb_path = entry.name
             line = self._line_from_usb_path(usb_path)
+            if line is None:
+                # WR-05: usb_path tail is non-numeric or out of range; the
+                # Zao FR-10 gate keys on `line` so silently mapping multiple
+                # modems to line=1 would conflate two distinct USB devices.
+                # Skip the descriptor; the next cycle re-scans.
+                continue
             cdc_wdm = self._find_cdc_wdm(resolved)
             iface = self._find_wwan_iface(resolved)
             if cdc_wdm is None:
@@ -77,20 +83,27 @@ class SysfsInventory:
         return descriptors
 
     @staticmethod
-    def _line_from_usb_path(usb_path: str) -> int:
+    def _line_from_usb_path(usb_path: str) -> int | None:
         """Map '2-3.1.1' -> 1 (the last dotted component is the line index).
 
         On the production Jetson the four modems sit at 2-3.1.1..4.
         Phase 3 may surface a more sophisticated mapping; Phase 2 uses
-        the trailing component. Out-of-range or non-numeric tails
-        degenerate to 1 so the descriptor still validates (line >= 1).
+        the trailing component.
+
+        WR-05: returns ``None`` when the trailing component is non-numeric
+        or out of [_LINE_MIN, _LINE_MAX].  ``scan()`` then skips the
+        descriptor.  Previously the function returned ``_LINE_MIN`` (=1)
+        for both shapes, which would conflate two distinct USB devices on
+        the same Zao line if two malformed/foreign entries somehow matched
+        VID:PID — the Zao FR-10 gate keys on `line`, so a silent collision
+        is a correctness bug for the gate.
         """
         tail = usb_path.rsplit(".", 1)[-1]
         try:
             value = int(tail)
         except ValueError:
-            return _LINE_MIN
-        return value if _LINE_MIN <= value <= _LINE_MAX else _LINE_MIN
+            return None
+        return value if _LINE_MIN <= value <= _LINE_MAX else None
 
     @staticmethod
     def _find_cdc_wdm(resolved: Path) -> str | None:

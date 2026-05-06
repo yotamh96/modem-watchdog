@@ -118,12 +118,22 @@ async def test_skips_modem_without_cdc_wdm(tmp_path: Path) -> None:
 
 
 def test_line_from_usb_path() -> None:
-    """The line index is derived from the trailing dotted component."""
+    """The line index is derived from the trailing dotted component.
+
+    WR-05: malformed inputs return ``None`` (caller skips the descriptor)
+    rather than silently degrading to ``_LINE_MIN`` and conflating two
+    distinct USB devices on the same Zao line.
+    """
     assert SysfsInventory._line_from_usb_path("2-3.1.1") == 1
     assert SysfsInventory._line_from_usb_path("2-3.1.4") == 4
-    assert SysfsInventory._line_from_usb_path("2-3.1") == 1  # degenerate fallback
-    assert SysfsInventory._line_from_usb_path("foo") == 1
-    assert SysfsInventory._line_from_usb_path("2-3.1.0") == 1  # 0 out of range -> 1
+    # Trailing dotted component IS numeric and in-range:
+    assert SysfsInventory._line_from_usb_path("2-3.1") == 1
+    # Non-numeric tail -> None (skip the descriptor):
+    assert SysfsInventory._line_from_usb_path("foo") is None
+    # 0 out of [_LINE_MIN, _LINE_MAX] -> None:
+    assert SysfsInventory._line_from_usb_path("2-3.1.0") is None
+    # Above _LINE_MAX -> None:
+    assert SysfsInventory._line_from_usb_path("2-3.1.100") is None
 
 
 def test_fixture_inventory_satisfies_protocol() -> None:
