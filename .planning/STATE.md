@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-05-PLAN.md
-last_updated: "2026-05-06T16:45:35.547Z"
+stopped_at: Completed 02-04-PLAN.md
+last_updated: "2026-05-06T17:01:29.801Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 17
-  completed_plans: 11
-  percent: 65
+  completed_plans: 12
+  percent: 71
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 02 (core-daemon-laptop-testable) — EXECUTING
-Plan: 5 of 10
+Plan: 6 of 10
 Status: Ready to execute
 Last activity: 2026-05-06
 
-Progress: [███████░░░] 65%
+Progress: [███████░░░] 71%
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Progress: [███████░░░] 65%
 | Phase 02 P02 | 9min | 2 tasks | 31 files |
 | Phase 02 P02-03 | 4min | 2 tasks tasks | 12 files files |
 | Phase 02 P02-05 | 25 minutes | 2 tasks tasks | 15 files files |
+| Phase 02 P02-04 | 25min | 2 tasks tasks | 16 files files |
 
 ## Accumulated Context
 
@@ -120,6 +121,13 @@ Recent decisions affecting current work:
 - Plan 02-05: ClockProto Protocol shared between context.py and gates.py so policy/ never imports production clock module (purity boundary)
 - Plan 02-05: Decision table is dict[(IssueCategory,IssueDetail), ActionKind|str] -- skip-reasons are open str literals (extensible without enum churn); 20 rows cover the 5 IssueCategory enum values' RECOVERY_SPEC §4 rows
 - Plan 02-05: tools/check_spec.py uses substring-match against tests/test_recovery_spec.py 'Coverage manifest' docstring; parametrize ids alone don't appear as text -- the manifest is the auditable contract
+- Plan 02-04: InventorySource @runtime_checkable Protocol seam co-located with descriptor.py and sysfs.py; Phase 3 swaps SysfsInventory -> UdevInventory transparently; observer/ never changes
+- Plan 02-04: TaskGroup + per-task asyncio.timeout(8s) + per-task try/except (TimeoutError + Exception) absorbs failures inside _probe_one so the TaskGroup never sees an exception escape (NFR-11); verified by test_one_slow_probe_does_not_cancel_siblings + test_exception_in_probe_does_not_propagate_to_taskgroup
+- Plan 02-04: Zao-active gate runs BEFORE qmicli (FR-10/ADR-0003); Zao-active modems return zero-issue ModemSnapshot built fresh from descriptor fields, never QMI-probed; verified by test_zao_active_short_circuits_qmicli
+- Plan 02-04: extract_issues is pure function (no I/O, no clock); probe_modem_to_snapshot owns qmicli I/O and routes parsed results through extract_issues; preserves §4 decision-table testability
+- Plan 02-04: §4 detection split observer-vs-policy: per-modem facts (apn_empty, raw_ip_off, sim/registration/operating_mode, qmi_proxy_died, qmi_timeout) live in observer; cross-source detections (apn_mismatch needs carrier table, qmi_channel_hung needs fleet aggregation) live in policy/
+- Plan 02-04: FixtureInventory.scan() now returns list[ModemDescriptor] (production type); _FixtureModemDescriptor removed -- Plan 02-01 promotion delivered
+- Plan 02-04: WhoModem placeholder-bug self-test (test_extract_issues_who_uses_modem_usb_path_and_cdc_wdm) catches a copy-paste failure pattern flagged in PLAN; passing test proves the implementation builds WhoModem from modem.usb_path/cdc_wdm
 
 ### Pending Todos
 
@@ -137,8 +145,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-06T16:45:35.532Z
-Stopped at: Completed 02-05-PLAN.md
+Last session: 2026-05-06T17:01:04.165Z
+Stopped at: Completed 02-04-PLAN.md
 Resume file: None
 
 **Planned Phase:** 2 (Core Daemon (laptop-testable)) — 10 plans — 2026-05-06T15:16:01.546Z

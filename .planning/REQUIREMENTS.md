@@ -14,7 +14,8 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 ### Discovery & Inventory
 
 - [ ] **FR-1**: System discovers all Sierra-VID modems on USB at startup and on udev `add`/`remove` events
-- [ ] **FR-2**: System resolves each modem to `(line, cdc_wdm, usb_path, namespace, iface)` via sysfs (no hardcoded paths)
+- [x] **FR-2
+**: System resolves each modem to `(line, cdc_wdm, usb_path, namespace, iface)` via sysfs (no hardcoded paths)
 - [ ] **FR-3**: System detects SIM identity (ICCID, IMSI) per modem and persists `(usb_path → identity)` map across reboots
 - [ ] **FR-4**: System detects SIM swap (ICCID change at the same `usb_path`) and triggers re-provisioning
 
@@ -26,7 +27,8 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 **: Per-inactive-modem snapshot includes USB speed, QMI responsiveness, operating mode, SIM card/app state, registration, serving carrier (MCC/MNC/desc), signal (RSSI/RSRP/RSRQ/SNR), profile-1 APN, data session, current IPv4
 - [x] **FR-12**: System classifies each modem with state-machine v2 (post-research refactor): top-level `unknown` / `healthy` / `degraded` / `recovering(level)` / `exhausted` plus orthogonal flags `present` and `rf_blocked` (supersedes PRD FR-12
 's 7-state shape; ADR-0008)
-- [ ] **FR-13**: System emits a typed `Diag` snapshot every cycle conforming to SCHEMA § Diag
+- [x] **FR-13
+**: System emits a typed `Diag` snapshot every cycle conforming to SCHEMA § Diag
 - [ ] **FR-14**: System detects host-level issues (USB overcurrent, "device not accepting address", thermal events) from `dmesg` and treats them as global issues
 
 ### Recovery
@@ -37,8 +39,10 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 **: Action selection follows category priority `config > sim > datapath > registration > qmi`
 - [x] **FR-22
 **: Per-modem escalation ladder: `set_apn` / `fix_raw_ip` / `sim_power_on` / `soft_reset → modem_reset → usb_reset → exhausted`
-- [ ] **FR-23**: System gates `modem_reset` and `usb_reset` when signal is measurably below thresholds (RECOVERY_SPEC § 6.1)
-- [ ] **FR-24**: Global `driver_reset` fires only when ≥75 % of modems are simultaneously QMI-hung **and** at least one has actionable signal
+- [x] **FR-2
+3**: System gates `modem_reset` and `usb_reset` when signal is measurably below thresholds (RECOVERY_SPEC § 6.1)
+- [x] **FR-2
+4**: Global `driver_reset` fires only when ≥75 % of modems are simultaneously QMI-hung **and** at least one has actionable signal
 - [x] **FR-25
 **: Same-action backoff suppresses repeating an action on the same modem within `BACKOFF_SECONDS` (default 300 s)
 - [x] **FR-25
@@ -49,9 +53,12 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 .1**: `_healthy_streak` is persisted in the per-modem state file every cycle and reloaded on daemon start; mid-streak restart does not reset progress (closes PITFALLS §9.2 regression risk)
 - [x] **FR-26
 .2**: Streak update + decay check + counter reset + state-write are one atomic write per cycle; ordering pinned in RECOVERY_SPEC § 8 (closes PITFALLS §9.1)
-- [ ] **FR-27**: All recovery actions are separate idempotent functions, runnable individually via the CLI
-- [ ] **FR-28**: `--dry-run` everywhere a real action would mutate state
-- [ ] **FR-28.1**: Per-modem dry-run: config accepts `dry_run: bool | list[str]`; gate at action-execution time; surfaced in `status.json` and on each `action_planned` event (research §4.5)
+- [x] **FR-2
+7**: All recovery actions are separate idempotent functions, runnable individually via the CLI
+- [x] **FR-2
+8**: `--dry-run` everywhere a real action would mutate state
+- [x] **FR-2
+8.1**: Per-modem dry-run: config accepts `dry_run: bool | list[str]`; gate at action-execution time; surfaced in `status.json` and on each `action_planned` event (research §4.5)
 
 ### Provisioning
 
@@ -113,8 +120,10 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 
 ### Daemon design (research-derived)
 
-- [ ] **FR-70**: Single-process asyncio daemon; per-modem probes via `asyncio.TaskGroup` + per-task `asyncio.timeout` (default 8 s) — not `gather` + `wait_for` (research §4.1 #1)
-- [ ] **FR-71**: State-store concurrency uses per-modem `asyncio.Lock` plus a globals lock; in-process locks separate from the cross-process flocks of FR-61.1 (research §4.1 #2; ADR-0012)
+- [x] **FR-70
+**: Single-process asyncio daemon; per-modem probes via `asyncio.TaskGroup` + per-task `asyncio.timeout` (default 8 s) — not `gather` + `wait_for` (research §4.1 #1)
+- [x] **FR-71
+**: State-store concurrency uses per-modem `asyncio.Lock` plus a globals lock; in-process locks separate from the cross-process flocks of FR-61.1 (research §4.1 #2; ADR-0012)
 - [x] **FR-72
 **: External-IO seams behind `Protocol` types: `QmiClient`, `SubprocessRunner`, `Clock`, `ZaoLogTailer`, `StateStore`, `FileWriter`, plus research-added `WebhookPoster`, `MetricRegistry`, `PIDLock`, `SignalHandler`
 - [x] **FR-73
@@ -130,9 +139,11 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 ### Performance
 
 - [ ] **NFR-1**: A full diag cycle completes in ≤10 s on the target Jetson when no modems are unresponsive (cold-start first cycle exempt, see startup_delay_seconds)
-- [ ] **NFR-2**: Daemon consumes ≤1 % CPU averaged over a 10-min window in steady state
+- [x] **NFR-2
+**: Daemon consumes ≤1 % CPU averaged over a 10-min window in steady state
 - [ ] **NFR-3**: RSS ≤80 MiB; psutil-based tripwire fires at >200 MiB
-- [ ] **NFR-4**: Per-modem QMI probes run in parallel via `asyncio.TaskGroup`
+- [x] **NFR-4
+**: Per-modem QMI probes run in parallel via `asyncio.TaskGroup`
 - [ ] **NFR-5**: Disk write rate ≤1 MiB/min in steady state
 
 ### Reliability
@@ -143,7 +154,8 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 **: Uncaught exception in policy engine MUST NOT terminate the daemon; logged and cycle skipped
 - [x] **NFR-12
 **: Daemon tolerates `qmi_wwan` driver reload during operation: `driver_reset` is observable as a clean state transition, not a daemon crash
-- [ ] **NFR-13**: Daemon reaches steady-state operation within 60 s of process start, given Zao is already running
+- [x] **NFR-13
+**: Daemon reaches steady-state operation within 60 s of process start, given Zao is already running
 
 ### Observability
 
@@ -176,7 +188,8 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 **: Codebase passes `mypy --strict`, `ruff check`, `ruff format --check` in CI (drop `black`)
 - [x] **NFR-41
 **: Unit tests run hardware-free on a developer laptop using fixtures only
-- [ ] **NFR-42**: New MCC/MNC entries addable in a single YAML edit + reload, without a release
+- [x] **NFR-4
+2**: New MCC/MNC entries addable in a single YAML edit + reload, without a release
 - [x] **NFR-43
 **: Schema versions are integers (v1, v2); daemon refuses to load forward-version files; downgrade is non-destructive (shadow as `.from-v<N>.json`, log `schema_downgrade_pending`); `ctl migrate-state` and `ctl reset-state --all` available (closes ARCHITECTURE Q15 / PITFALLS §3.4 — research §8 #14)
 

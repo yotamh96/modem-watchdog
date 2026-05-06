@@ -184,7 +184,7 @@ Plans:
 - [x] 02-01-PLAN.md — Test fakes + Wave 0 fixture directories (FakeRunner, FakeClock, FakeWebhookPoster, FixtureInventory, FakeDNSResolver, FixtureZaoTailer)
 - [x] 02-02-PLAN.md — qmi/ wrapper + parsers + per-libqmi-version fixtures (FR-11, FR-74; --device-open-proxy always; extra='ignore' boundary)
 - [x] 02-03-PLAN.md — zao_log/ parser + ZaoLogTailer Protocol + RASCOW_STAT fixtures (FR-10)
-- [ ] 02-04-PLAN.md — inventory/ + observer/ TaskGroup orchestrator with per-task asyncio.timeout(8s) + Diag builder + Issue extractor (FR-2, FR-13, FR-70, FR-71, NFR-4, NFR-10)
+- [x] 02-04-PLAN.md — inventory/ + observer/ TaskGroup orchestrator with per-task asyncio.timeout(8s) + Diag builder + Issue extractor (FR-2, FR-13, FR-70, FR-71, NFR-4, NFR-10)
 - [ ] 02-05-PLAN.md — policy/ pure engine: transitions + decision_table + gates + engine + spec-as-tests (FR-12, FR-20, FR-21, FR-22, FR-25, FR-25.1, FR-26, FR-26.1, FR-26.2, NFR-11, NFR-20)
 - [ ] 02-06-PLAN.md — actions/ cheap set + dispatcher + verify (set_apn / fix_raw_ip / sim_power_on / soft_reset / set_operating_mode / fix_autosuspend) (FR-22, FR-28, FR-28.1, FR-30..FR-33, FR-40, NFR-42)
 - [ ] 02-07-PLAN.md — status_reporter/ status.json + Prom UDS + MetricRegistry + maintenance window in globals.json (FR-41, FR-41.1, FR-42, NFR-3, NFR-5, NFR-21, NFR-21.1)
