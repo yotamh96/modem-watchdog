@@ -1,0 +1,74 @@
+name: Build .deb (aarch64)
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Build mode'
+        required: false
+        default: 'dev'
+        type: choice
+        options: [dev, release]
+
+jobs:
+  build:
+    name: Build arm64 .deb
+    runs-on: [self-hosted, linux, ARM64]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # need git history for SOURCE_DATE_EPOCH
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            debhelper devscripts fakeroot dpkg-dev \
+            curl ca-certificates
+
+      - name: Build .deb
+        run: bash scripts/build_deb.sh ${{ inputs.mode || 'dev' }}
+
+      - name: Verify .deb meta
+        run: |
+          DEB=$(ls dist/spark-modem-watchdog_*_arm64.deb | head -n1)
+          echo "Built: $DEB"
+          dpkg-deb -I "$DEB"
+          dpkg-deb -c "$DEB" | head -50
+          SIZE_BYTES=$(stat -c %s "$DEB")
+          SIZE_MIB=$((SIZE_BYTES / 1048576))
+          echo "Size: ${SIZE_MIB} MiB"
+          test "$SIZE_MIB" -le 40
+
+      - name: Smoke-install in clean container
+        run: |
+          # Run the .deb through `apt install` in a clean Ubuntu 20.04 arm64 container
+          # to validate the postinst smoke test (B-03 belt-and-suspenders A) end-to-end.
+          DEB=$(ls dist/spark-modem-watchdog_*_arm64.deb | head -n1)
+          docker run --rm --platform linux/arm64 \
+            -v "$PWD/dist":/dist:ro \
+            ubuntu:20.04 \
+            bash -lc "
+              set -euo pipefail
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update >/dev/null
+              # Install the deb and any apt-resolvable Depends.
+              apt-get install -y --no-install-recommends /dist/$(basename $DEB) || {
+                echo 'apt install failed — postinst smoke test rejected the package.' >&2
+                exit 1
+              }
+              # Re-run the smoke test directly to confirm.
+              /opt/spark-modem-watchdog/libexec/postinst_smoke_test.sh
+            "
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: spark-modem-watchdog-arm64-deb
+          path: dist/*.deb
+          retention-days: 30

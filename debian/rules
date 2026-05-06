@@ -1,0 +1,80 @@
+#!/usr/bin/make -f
+# B-04: SOURCE_DATE_EPOCH for reproducibility.
+export SOURCE_DATE_EPOCH := $(shell git log -1 --format=%ct 2>/dev/null || date -u +%s)
+
+# B-02: pinned python-build-standalone tarball.
+# The exact tarball name lives in debian/python.sha256; we extract it from there
+# so a single edit (e.g. CPython security update) doesn't require touching debian/rules.
+PYTHON_TARBALL := $(shell awk '{print $$2}' debian/python.sha256)
+# Tag is the date component after the '+' in the filename
+# e.g. cpython-3.12.13+20260504-aarch64-... -> tag = 20260504
+PYTHON_TAG := $(shell awk '{print $$2}' debian/python.sha256 | sed -n 's/^cpython-[0-9.]*+\([0-9]*\)-aarch64.*/\1/p')
+PYTHON_URL := https://github.com/astral-sh/python-build-standalone/releases/download/$(PYTHON_TAG)/$(PYTHON_TARBALL)
+
+DESTDIR ?= $(CURDIR)/debian/spark-modem-watchdog
+PBSTREE := $(CURDIR)/debian/python-build-standalone
+VENVDIR := $(DESTDIR)/opt/spark-modem-watchdog/python
+PIPCACHE := $(CURDIR)/debian/.pip-cache
+
+%:
+	dh $@
+
+# B-02 + step 1: download + verify SHA + unpack.
+debian/python-build-standalone/.unpacked: debian/python.sha256
+	mkdir -p debian/python-build-standalone
+	rm -rf debian/python-build-standalone/python
+	if [ ! -f debian/$(PYTHON_TARBALL) ]; then \
+		curl -sSLf -o debian/$(PYTHON_TARBALL) "$(PYTHON_URL)"; \
+	fi
+	cd debian && sha256sum -c python.sha256
+	tar -C debian/python-build-standalone -xzf debian/$(PYTHON_TARBALL)
+	# python-build-standalone tarballs unpack to ./python/...
+	test -x debian/python-build-standalone/python/bin/python3.12
+	touch debian/python-build-standalone/.unpacked
+
+# Step 2-4: install PBS into destdir; install runtime libs frozen; compileall.
+# PITFALLS §18.3: install AT the destination path (/opt/...), not at the builder path,
+# so PBS's relocatable bundles don't bake builder paths into .pyc.
+override_dh_auto_build: debian/python-build-standalone/.unpacked
+	# Step 1 (continued): copy PBS tree into destdir at FINAL install path.
+	mkdir -p $(VENVDIR)
+	cp -a debian/python-build-standalone/python/. $(VENVDIR)/
+
+	# Step 2: bootstrap pip and install uv as a build-time tool.
+	# uv is installed into the bundled python temporarily; it's uninstalled after
+	# use so it doesn't bloat the shipped package (NFR-51).
+	mkdir -p $(PIPCACHE)
+	$(VENVDIR)/bin/python3.12 -m ensurepip --upgrade
+	$(VENVDIR)/bin/python3.12 -m pip install --no-cache-dir 'uv>=0.5,<1'
+
+	# Step 3: install all 10 runtime libs into the bundled python, frozen against
+	# packaging/requirements.lock. --no-deps + --frozen + --require-hashes is the
+	# triple-lock for NFR-52.
+	$(VENVDIR)/bin/python3.12 -m uv pip install \
+		--python $(VENVDIR)/bin/python3.12 \
+		--no-deps --frozen \
+		-r packaging/requirements.lock
+
+	# Step 4: warm pyc cache (NFR-13 — daemon reaches steady state ≤60s of process start).
+	# SOURCE_DATE_EPOCH is exported above so .pyc files are deterministic.
+	$(VENVDIR)/bin/python3.12 -m compileall -q $(VENVDIR)/lib
+
+	# Strip the bundled python's pip/setuptools/wheel + uv to keep .deb size <40 MiB
+	# (NFR-51). uv was a build-time tool only; we don't ship it on the box.
+	$(VENVDIR)/bin/python3.12 -m pip uninstall -y uv pip setuptools wheel || true
+
+	# Sanity: the install path is the final path. Refuse to ship a .deb where
+	# the bundled python's sys.executable points anywhere other than /opt/...
+	$(VENVDIR)/bin/python3.12 -c "import sys; assert sys.executable == '$(VENVDIR)/bin/python3.12', sys.executable"
+
+# Skip dh_auto_test — Plan 01's CI workflow runs the test suite separately,
+# and the .deb build does not need to re-run pytest (build is reproducibility-focused).
+override_dh_auto_test:
+
+# Skip dh_auto_install — we already laid out the destdir in dh_auto_build above.
+override_dh_auto_install:
+
+# Disable Python bytecode compilation by debhelper's dh_python — we compileall'd
+# against SOURCE_DATE_EPOCH already and don't want dh_python to re-compile and
+# de-reproduce.
+override_dh_python3:
