@@ -107,3 +107,10 @@ override_dh_strip:
 override_dh_makeshlibs:
 override_dh_shlibdeps:
 	dh_shlibdeps --exclude=opt/spark-modem-watchdog/python
+
+# Use xz at level 9 for the .deb data archive. Default gzip puts the .deb
+# at ~46 MiB (over NFR-51's 40 MiB ceiling); xz -9 brings the compressed
+# python-build-standalone tree + 10 runtime libs comfortably under the
+# ceiling. dpkg has supported xz natively since wheezy (2013).
+override_dh_builddeb:
+	dh_builddeb -- -Zxz -z9
