@@ -47,9 +47,7 @@ def parse_duration(s: str) -> int:
     """Parse '2h' / '30m' / '300s' → seconds. Raises ValueError on bad input."""
     m = _DURATION_RE.match(s.strip().lower())
     if not m:
-        raise ValueError(
-            f"invalid duration: {s!r} (expected like '2h', '30m', '300s')"
-        )
+        raise ValueError(f"invalid duration: {s!r} (expected like '2h', '30m', '300s')")
     n = int(m.group(1))
     unit = m.group(2)
     if unit == "h":
@@ -124,13 +122,25 @@ async def run_status(args: argparse.Namespace) -> int:
         print(json.dumps({"active": False}))
         return 0
     # Dual-clock check: either wall OR monotonic past expiry → expired.
+    # WR-02: parse expires_iso through datetime.fromisoformat so timezone-
+    # offset normalization happens before comparison.  Lexicographic ISO
+    # ordering is correct only when both sides are in the same canonical
+    # form (e.g. UTC '+00:00').  A hand-edited globals.json or a future
+    # writer that emits '+02:00' would produce wrong ordering against a
+    # '+00:00' string even though the instants compare correctly as
+    # datetimes.
     clock = _CliClock()
     now_mono = clock.monotonic()
-    now_wall_iso = datetime.now(UTC).isoformat()
-    expired = (
-        now_mono >= m.expires_monotonic
-        or now_wall_iso >= m.expires_iso
-    )
+    now_wall = datetime.now(UTC)
+    try:
+        expires_wall = datetime.fromisoformat(m.expires_iso)
+    except ValueError:
+        # Unparseable expires_iso: fall back to monotonic-only check.
+        # This is conservative (the monotonic clock is local to this
+        # process; if the daemon restarted between window-set and -check,
+        # expires_monotonic would already be in the past).
+        expires_wall = now_wall
+    expired = now_mono >= m.expires_monotonic or now_wall >= expires_wall
     print(
         json.dumps(
             {

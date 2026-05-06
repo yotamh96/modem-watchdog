@@ -134,13 +134,28 @@ def filter_events(
     Events without a modem field (DaemonStarted, DaemonStopped) are
     excluded when ``modem`` is set.
     """
-    cutoff_iso: str | None = None
+    # WR-02: compare cutoff and event timestamps as datetimes (NOT
+    # lexicographic strings).  Lexicographic ISO ordering only works when
+    # both sides are in the same canonical form (UTC '+00:00').  Events
+    # written by a future writer with a different timezone offset would
+    # sort incorrectly as strings even though the instants compare
+    # correctly as datetimes.
+    cutoff_dt: datetime | None = None
     if since_seconds is not None:
-        cutoff_iso = (datetime.now(UTC) - timedelta(seconds=since_seconds)).isoformat()
+        cutoff_dt = datetime.now(UTC) - timedelta(seconds=since_seconds)
     out: list[Event] = []
     for event in events:
-        if cutoff_iso is not None and event.ts_iso < cutoff_iso:
-            continue
+        if cutoff_dt is not None:
+            try:
+                event_dt = datetime.fromisoformat(event.ts_iso)
+            except ValueError:
+                # Skip events with an unparseable ts_iso rather than
+                # silently include or exclude them.  Defensive: events.jsonl
+                # is pydantic-validated upstream, so this is unreachable
+                # in normal operation.
+                continue
+            if event_dt < cutoff_dt:
+                continue
         if modem is not None:
             event_modem_id = _event_modem_id(event)
             if event_modem_id is None or event_modem_id != modem:
