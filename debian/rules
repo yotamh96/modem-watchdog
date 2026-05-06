@@ -47,12 +47,12 @@ override_dh_auto_build: debian/python-build-standalone/.unpacked
 	$(VENVDIR)/bin/python3.12 -m ensurepip --upgrade
 	$(VENVDIR)/bin/python3.12 -m pip install --no-cache-dir 'uv>=0.5,<1'
 
-	# Step 3: install all 10 runtime libs into the bundled python, frozen against
-	# packaging/requirements.lock. --no-deps + --frozen + --require-hashes is the
-	# triple-lock for NFR-52.
+	# Step 3: install all 10 runtime libs into the bundled python, locked against
+	# packaging/requirements.lock. --no-deps prevents resolver expansion;
+	# --require-hashes enforces the SHA256 hashes from the lock for NFR-52.
 	$(VENVDIR)/bin/python3.12 -m uv pip install \
 		--python $(VENVDIR)/bin/python3.12 \
-		--no-deps --frozen \
+		--no-deps --require-hashes \
 		-r packaging/requirements.lock
 
 	# Step 4: warm pyc cache (NFR-13 — daemon reaches steady state ≤60s of process start).
