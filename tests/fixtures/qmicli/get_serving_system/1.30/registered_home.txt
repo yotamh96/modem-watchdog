@@ -1,0 +1,15 @@
+# libqmi_version: 1.30
+[/dev/cdc-wdm0] Successfully got serving system:
+	Registration state: 'registered'
+	CS: 'detached'
+	PS: 'attached'
+	Selected network: '3gpp'
+	Radio interfaces: '1'
+		[0]: 'lte'
+	Roaming status: 'off'
+	Data service capabilities: '1'
+		[0]: 'lte'
+	Current PLMN:
+		MCC: '425'
+		MNC: '03'
+		Description: 'Pelephone'

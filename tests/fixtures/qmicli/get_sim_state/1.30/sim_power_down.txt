@@ -1,0 +1,5 @@
+# libqmi_version: 1.30
+[/dev/cdc-wdm0] Successfully got card status
+Slot [1]:
+	Card state: 'power_down'
+	Applications: '0'

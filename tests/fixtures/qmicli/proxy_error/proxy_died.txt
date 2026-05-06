@@ -1,0 +1,2 @@
+# libqmi_version: 1.30
+error: couldn't open the QMI device: proxy unavailable

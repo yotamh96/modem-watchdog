@@ -1,0 +1,6 @@
+# libqmi_version: 1.30
+[/dev/cdc-wdm0] Profile settings retrieved:
+	Profile index: '1'
+	APN: 'internet'
+	IP family: 'ipv4'
+	Authentication: 'none'

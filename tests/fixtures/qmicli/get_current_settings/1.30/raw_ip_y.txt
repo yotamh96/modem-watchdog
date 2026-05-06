@@ -1,0 +1,7 @@
+# libqmi_version: 1.30
+[/dev/cdc-wdm0] Current settings retrieved:
+	IP Family: 'ipv4'
+	IPv4 address: '10.69.92.156'
+	IPv4 subnet mask: '255.255.255.248'
+	IPv4 gateway address: '10.69.92.150'
+	Raw IP: 'Y'

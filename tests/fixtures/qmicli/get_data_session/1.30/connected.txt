@@ -1,0 +1,2 @@
+# libqmi_version: 1.30
+[/dev/cdc-wdm0] Connection status: 'connected'

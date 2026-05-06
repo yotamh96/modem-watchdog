@@ -1,0 +1,4 @@
+# libqmi_version: 1.30
+[/dev/cdc-wdm0] Operating mode retrieved:
+	Mode: 'online'
+	HW restricted: 'no'

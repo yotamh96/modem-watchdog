@@ -1,0 +1,11 @@
+# libqmi_version: 1.32
+[/dev/cdc-wdm0] Successfully got signal info
+NR5G:
+	RSRP: '-72 dBm'
+	RSRQ: '-12 dB'
+	SNR: '15.0 dB'
+LTE:
+	RSSI: '-65 dBm'
+	RSRQ: '-9 dB'
+	RSRP: '-94 dBm'
+	SNR: '8.4 dB'

@@ -1,0 +1,7 @@
+# libqmi_version: 1.30
+[/dev/cdc-wdm0] Successfully got serving system:
+	Registration state: 'not-registered-searching'
+	CS: 'detached'
+	PS: 'detached'
+	Selected network: '3gpp'
+	Roaming status: 'off'

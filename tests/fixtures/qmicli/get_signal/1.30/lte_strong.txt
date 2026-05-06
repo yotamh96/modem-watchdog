@@ -1,0 +1,7 @@
+# libqmi_version: 1.30
+[/dev/cdc-wdm0] Successfully got signal info
+LTE:
+	RSSI: '-65 dBm'
+	RSRQ: '-9 dB'
+	RSRP: '-94 dBm'
+	SNR: '8.4 dB'
