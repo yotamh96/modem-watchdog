@@ -85,15 +85,21 @@ def _validate_argv(argv: object) -> list[str]:
 def _build_env(caller_env: dict[str, str] | None) -> dict[str, str]:
     """Merge caller env over the locale baseline.
 
-    If the caller did not pass an env=, we inherit os.environ and overlay the
-    locale baseline (so non-locale env vars like PATH and HOME come from the
-    parent process, and locale is forced to C).
+    If the caller did not pass an env=, we inherit os.environ and FORCE the
+    locale baseline on top — non-locale env vars (PATH, HOME, …) come from
+    the parent process, but LC_ALL/LANG are forced to C regardless of the
+    parent's locale (CLAUDE.md SP-03 invariant 2). This is the path the
+    daemon actually takes.
 
     If the caller DID pass an env=, we treat it as authoritative for the keys
     it sets, but still inject LC_ALL=C and LANG=C for any key the caller did
     not explicitly set. An explicit ``env={"LC_ALL": "en_US.UTF-8"}`` wins.
     """
-    merged = dict(os.environ) if caller_env is None else dict(caller_env)
+    if caller_env is None:
+        merged = dict(os.environ)
+        merged.update(_LOCALE_BASELINE)
+        return merged
+    merged = dict(caller_env)
     for k, v in _LOCALE_BASELINE.items():
         merged.setdefault(k, v)
     return merged
