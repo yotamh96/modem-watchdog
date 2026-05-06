@@ -11,10 +11,13 @@ is YAML-shape-agnostic.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any
 
 import yaml
+
+_logger = logging.getLogger(__name__)
 
 
 def deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -44,12 +47,17 @@ def load_yaml_layer(conf_d_dir: Path | str) -> dict[str, Any]:
             continue
         try:
             content = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
-        except (OSError, yaml.YAMLError):
-            # FR-63: invalid input is logged error, not crash. Plan 06 doesn't
-            # have access to the event_logger from this module to avoid an
-            # import cycle; we surface the error by skipping the file.
-            # Phase 3 wires a structured "config_invalid" event via the daemon
-            # boot path. For Phase 1, skipping is the right default.
+        except (OSError, yaml.YAMLError) as e:
+            # FR-63: invalid input is a logged error, not a crash. Phase 3 will
+            # wire a structured "config_invalid" event via the daemon boot path.
+            # For now, log to the stdlib logger so the failure is always visible
+            # in systemd journal and on the operator's terminal.
+            _logger.warning(
+                "spark_modem.config: failed to parse %s: %s: %s",
+                f,
+                type(e).__name__,
+                e,
+            )
             continue
         if isinstance(content, dict):
             result = deep_merge(result, content)
