@@ -84,6 +84,8 @@ override_dh_auto_install: debian/python-build-standalone/.unpacked
 	# only uses asyncio, json, pathlib, time, os, signal, fcntl, etc. plus
 	# the 10 third-party libs. The lists below are conservative: anything
 	# imported by the runtime libs is kept (e.g. ssl, hashlib, decimal).
+	# The post-trim smoke import is the safety net — if we strip too much,
+	# the build fails before the .deb is sealed.
 	rm -rf $(VENVDIR)/lib/python3.12/test
 	rm -rf $(VENVDIR)/lib/python3.12/idlelib
 	rm -rf $(VENVDIR)/lib/python3.12/lib2to3
@@ -91,14 +93,25 @@ override_dh_auto_install: debian/python-build-standalone/.unpacked
 	rm -rf $(VENVDIR)/lib/python3.12/tkinter
 	rm -rf $(VENVDIR)/lib/python3.12/ensurepip
 	rm -rf $(VENVDIR)/lib/python3.12/pydoc_data
+	rm -rf $(VENVDIR)/lib/python3.12/sqlite3
+	rm -rf $(VENVDIR)/lib/python3.12/multiprocessing
+	rm -rf $(VENVDIR)/lib/python3.12/xmlrpc
+	rm -rf $(VENVDIR)/lib/python3.12/dbm
+	rm -rf $(VENVDIR)/lib/python3.12/curses
+	rm -rf $(VENVDIR)/lib/python3.12/wsgiref
 	rm -f  $(VENVDIR)/lib/python3.12/turtle.py
 	rm -rf $(VENVDIR)/share/man
 	rm -rf $(VENVDIR)/share/doc
-	# Drop the matching .pyc cache for everything we just removed.
+	# Drop the matching .pyc caches for everything we just removed (the ones
+	# inside the deleted dirs went with them; this catches sibling __pycache__
+	# entries — there shouldn't be any but rm is idempotent).
 	find $(VENVDIR)/lib/python3.12 -type d -name __pycache__ \
 		\( -path '*/test/*' -o -path '*/idlelib/*' -o -path '*/lib2to3/*' \
 		   -o -path '*/turtledemo/*' -o -path '*/tkinter/*' \
-		   -o -path '*/ensurepip/*' -o -path '*/pydoc_data/*' \) \
+		   -o -path '*/ensurepip/*' -o -path '*/pydoc_data/*' \
+		   -o -path '*/sqlite3/*' -o -path '*/multiprocessing/*' \
+		   -o -path '*/xmlrpc/*' -o -path '*/dbm/*' \
+		   -o -path '*/curses/*' -o -path '*/wsgiref/*' \) \
 		-exec rm -rf {} + 2>/dev/null || true
 
 	# Sanity: the install path is the final path. Refuse to ship a .deb where
