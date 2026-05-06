@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 1 context gathered
-last_updated: "2026-05-06T07:32:44.113Z"
-last_activity: 2026-05-06 -- Phase 01 execution started
+stopped_at: Completed 01-01-repo-lint-ci-PLAN.md
+last_updated: "2026-05-06T08:04:27.069Z"
+last_activity: 2026-05-06
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 7
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 14
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 01 (foundations-adrs) — EXECUTING
-Plan: 1 of 7
-Status: Executing Phase 01
-Last activity: 2026-05-06 -- Phase 01 execution started
+Plan: 2 of 7
+Status: Ready to execute
+Last activity: 2026-05-06
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 14%
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 01-foundations-adrs P01 | 10 minutes | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -66,6 +67,8 @@ Recent decisions affecting current work:
 - Init: HMAC v2.0 webhook signing promoted from v2.1 (closes Q5); ADR-0011
 - Init: Per-modem `asyncio.Lock` + globals lock + cross-process `flock`s separate from PID lock; ADR-0012
 - Init: Integer-encoded `modem_state_value{modem}` Prom metric (NOT one-hot); ADR-0013
+- requirements.lock compiled with --python-platform linux to exclude win-inet-pton and target aarch64/Linux deployment
+- pydantic-settings upstreamed to Plan 01 requirements.in so Plan 02 .deb smoke test and Plan 06 Settings class both consume from same lockfile
 
 ### Pending Todos
 
@@ -83,8 +86,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: --stopped-at
-Stopped at: Phase 1 context gathered
-Resume file: --resume-file
+Last session: 2026-05-06T08:04:27.035Z
+Stopped at: Completed 01-01-repo-lint-ci-PLAN.md
+Resume file: None
 
 **Planned Phase:** 1 (Foundations & ADRs) — 7 plans — 2026-05-06T07:27:10.298Z

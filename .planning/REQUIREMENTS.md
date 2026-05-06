@@ -94,8 +94,10 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 
 - [ ] **FR-70**: Single-process asyncio daemon; per-modem probes via `asyncio.TaskGroup` + per-task `asyncio.timeout` (default 8 s) — not `gather` + `wait_for` (research §4.1 #1)
 - [ ] **FR-71**: State-store concurrency uses per-modem `asyncio.Lock` plus a globals lock; in-process locks separate from the cross-process flocks of FR-61.1 (research §4.1 #2; ADR-0012)
-- [ ] **FR-72**: External-IO seams behind `Protocol` types: `QmiClient`, `SubprocessRunner`, `Clock`, `ZaoLogTailer`, `StateStore`, `FileWriter`, plus research-added `WebhookPoster`, `MetricRegistry`, `PIDLock`, `SignalHandler`
-- [ ] **FR-73**: Policy engine is a pure function `Diag × {ModemState, Globals, Config, Clock} → PlannedAction[]` — no subprocess, no I/O, no env reads (RECOVERY_SPEC §1)
+- [x] **FR-72
+**: External-IO seams behind `Protocol` types: `QmiClient`, `SubprocessRunner`, `Clock`, `ZaoLogTailer`, `StateStore`, `FileWriter`, plus research-added `WebhookPoster`, `MetricRegistry`, `PIDLock`, `SignalHandler`
+- [x] **FR-73
+**: Policy engine is a pure function `Diag × {ModemState, Globals, Config, Clock} → PlannedAction[]` — no subprocess, no I/O, no env reads (RECOVERY_SPEC §1)
 - [ ] **FR-74**: qmi-proxy is owned by Zao; daemon refuses to start in qmicli-direct mode if proxy is unavailable (closes PRD Q2 — research §8 #3)
 - [ ] **FR-75**: Daemon emits `READY=1` via `sd_notify` after first full cycle; emits `STATUS=` keepalive each cycle; optional `WatchdogSec=90s` cadence (research §4.2)
 
@@ -136,10 +138,13 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 
 ### Maintainability
 
-- [ ] **NFR-40**: Codebase passes `mypy --strict`, `ruff check`, `ruff format --check` in CI (drop `black`)
-- [ ] **NFR-41**: Unit tests run hardware-free on a developer laptop using fixtures only
+- [x] **NFR-40
+**: Codebase passes `mypy --strict`, `ruff check`, `ruff format --check` in CI (drop `black`)
+- [x] **NFR-41
+**: Unit tests run hardware-free on a developer laptop using fixtures only
 - [ ] **NFR-42**: New MCC/MNC entries addable in a single YAML edit + reload, without a release
-- [ ] **NFR-43**: Schema versions are integers (v1, v2); daemon refuses to load forward-version files; downgrade is non-destructive (shadow as `.from-v<N>.json`, log `schema_downgrade_pending`); `ctl migrate-state` and `ctl reset-state --all` available (closes ARCHITECTURE Q15 / PITFALLS §3.4 — research §8 #14)
+- [x] **NFR-43
+**: Schema versions are integers (v1, v2); daemon refuses to load forward-version files; downgrade is non-destructive (shadow as `.from-v<N>.json`, log `schema_downgrade_pending`); `ctl migrate-state` and `ctl reset-state --all` available (closes ARCHITECTURE Q15 / PITFALLS §3.4 — research §8 #14)
 
 ### Packaging & deployment (research-derived)
 
