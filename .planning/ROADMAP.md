@@ -187,7 +187,7 @@ Plans:
 - [x] 02-04-PLAN.md — inventory/ + observer/ TaskGroup orchestrator with per-task asyncio.timeout(8s) + Diag builder + Issue extractor (FR-2, FR-13, FR-70, FR-71, NFR-4, NFR-10)
 - [ ] 02-05-PLAN.md — policy/ pure engine: transitions + decision_table + gates + engine + spec-as-tests (FR-12, FR-20, FR-21, FR-22, FR-25, FR-25.1, FR-26, FR-26.1, FR-26.2, NFR-11, NFR-20)
 - [x] 02-06-PLAN.md — actions/ cheap set + dispatcher + verify (set_apn / fix_raw_ip / sim_power_on / soft_reset / set_operating_mode / fix_autosuspend) (FR-22, FR-28, FR-28.1, FR-30..FR-33, FR-40, NFR-42)
-- [ ] 02-07-PLAN.md — status_reporter/ status.json + Prom UDS + MetricRegistry + maintenance window in globals.json (FR-41, FR-41.1, FR-42, NFR-3, NFR-5, NFR-21, NFR-21.1)
+- [x] 02-07-PLAN.md — status_reporter/ status.json + Prom UDS + MetricRegistry + maintenance window in globals.json (FR-41, FR-41.1, FR-42, NFR-3, NFR-5, NFR-21, NFR-21.1)
 - [x] 02-08-PLAN.md — webhook/ poster + DNS pre-resolve + HMAC sign + dedup + retry queue + drain (FR-44, FR-44.3..FR-44.8)
 - [ ] 02-09-PLAN.md — cli/ all subcommands (diag/recovery/provision/reset/status/explain/ctl) with PII redaction in support-bundle (FR-50, FR-50.1, FR-50.2, FR-50.3, FR-51, FR-52, NFR-22, NFR-22.1)
 - [ ] 02-10-PLAN.md — daemon/main.py cycle driver + replay harness + ≥1000 fixtures + ≥95% fault-cycle agreement gate (NFR-1, NFR-2, FR-26.1)

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-08-PLAN.md
-last_updated: "2026-05-06T17:50:00.000Z"
+stopped_at: Completed 02-07-PLAN.md
+last_updated: "2026-05-06T17:57:56.957Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 17
-  completed_plans: 14
-  percent: 82
+  completed_plans: 15
+  percent: 88
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 02 (core-daemon-laptop-testable) — EXECUTING
-Plan: 9 of 10
+Plan: 10 of 10
 Status: Ready to execute
 Last activity: 2026-05-06
 
-Progress: [████████░░] 82%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Progress: [████████░░] 82%
 | Phase 02 P02-04 | 25min | 2 tasks tasks | 16 files files |
 | Phase 02 P06 | 12m 30s | 2 tasks tasks | 22 files files |
 | Phase 02 P08 | ~30m | 2 tasks tasks | 13 files files |
+| Phase 02 P07 | 12 minutes | 2 tasks tasks | 11 files files |
 
 ## Accumulated Context
 
@@ -148,6 +149,14 @@ Recent decisions affecting current work:
 - Plan 02-08: BaseEventLoop.getaddrinfo patched (NOT AbstractEventLoop) -- AbstractEventLoop only stubs the abstract method; concrete SelectorEventLoop / ProactorEventLoop both inherit getaddrinfo from BaseEventLoop; one patch covers Linux + Windows dev hosts
 - Plan 02-08: WebhookPoster.stop() public method added (Rule 2 deviation) -- Phase 3 SIGTERM wiring needs to stop the poster WITHOUT forcing drain (e.g. SIGKILL-imminent / OOM paths); drain() also calls stop() internally
 - Plan 02-08: _StepClock pattern in test_drain_budget_exhausted_drops_remaining -- hand-rolled clock that handler advances per call replaces real-time asyncio.sleep; keeps test under 1s (M7 budget) AND lets drain's deadline check actually trip
+- Plan 02-07: status_reporter ships StatusReport + MaintenanceWindow wire types + write_status_json wraps Phase 1 atomic_write_bytes (FR-41/FR-41.1/C-02)
+- Plan 02-07: MetricRegistry single chokepoint enforces ADR-0013 (modem_state_value{modem} as integer-valued single Gauge, never one-hot); state label permitted only on state_duration_seconds histogram
+- Plan 02-07: _UnixWSGIServer MRO (UnixStreamServer + WSGIServer) skips SO_REUSEADDR setsockopt for AF_UNIX; 0o660 socket mode + stale-socket unlink (PITFALLS §13.3)
+- Plan 02-07: prom.py POSIX-guarded import (sys.platform != win32) so mypy --strict + pytest collection succeed on Windows dev hosts; UDS scrape tests skipif(win32)
+- Plan 02-07: cycle_duration_seconds buckets (0.5,1,2,4,8,16,32) for M5 10s P99 budget; state_duration_seconds buckets [1,5,15,60,300,1800,7200,86400] verbatim per O-02
+- Plan 02-07: GlobalsState.maintenance: MaintenanceWindow|None=None preserves Phase 1 backward-compat (Phase 1-shape globals.json without maintenance key parses cleanly)
+- Plan 02-07: MetricRegistry takes registry: CollectorRegistry|None=None for test isolation (per-test isolated registry); production passes None and uses global REGISTRY for make_wsgi_app exposure
+- Plan 02-07: RSS tripwire is event-only in Phase 2 (NFR-3); MetricRegistry.record_rss_tripwire increments daemon_self_health{kind=rss} but never raises/exits — Phase 3 sd_notify watchdog owns restart decision
 
 ### Pending Todos
 
@@ -165,8 +174,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-06T17:50:00.000Z
-Stopped at: Completed 02-08-PLAN.md
+Last session: 2026-05-06T17:57:56.942Z
+Stopped at: Completed 02-07-PLAN.md
 Resume file: None
 
 **Planned Phase:** 2 (Core Daemon (laptop-testable)) — 10 plans — 2026-05-06T15:16:01.546Z

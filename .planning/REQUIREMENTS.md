@@ -79,9 +79,12 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 
 - [x] **FR-40
 **: Structured event log (JSON Lines) at `/var/log/spark-modem-watchdog/events.jsonl`
-- [ ] **FR-41**: `status.json` at `/var/lib/spark-modem-watchdog/status.json` with current per-modem state, last cycle ts, aggregate health
-- [ ] **FR-41.1**: `status.json` includes `cycle.actions_executed` and `cycle.transitions` counters and `carrier_table_sha256` (M-11/M-17)
-- [ ] **FR-42**: Prometheus scrape endpoint on Unix socket (default `/run/spark-modem-watchdog/metrics.sock`)
+- [x] **FR-41
+**: `status.json` at `/var/lib/spark-modem-watchdog/status.json` with current per-modem state, last cycle ts, aggregate health
+- [x] **FR-41
+.1**: `status.json` includes `cycle.actions_executed` and `cycle.transitions` counters and `carrier_table_sha256` (M-11/M-17)
+- [x] **FR-42
+**: Prometheus scrape endpoint on Unix socket (default `/run/spark-modem-watchdog/metrics.sock`)
 - [ ] **FR-43**: Event log rotated via `logrotate` with 7-day, 100 MiB retention default
 - [ ] **FR-43.1**: inotify tail tolerates both `create`-mode rotation (MOVE_SELF/DELETE_SELF) **and** `copytruncate` mode (st_size truncation check) (PITFALLS §8.1)
 - [x] **FR-44**: Webhook POST on `Healthy → Degraded` and `Recovering → Exhausted` transitions, with typed payload
@@ -146,10 +149,12 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 - [ ] **NFR-1**: A full diag cycle completes in ≤10 s on the target Jetson when no modems are unresponsive (cold-start first cycle exempt, see startup_delay_seconds)
 - [x] **NFR-2
 **: Daemon consumes ≤1 % CPU averaged over a 10-min window in steady state
-- [ ] **NFR-3**: RSS ≤80 MiB; psutil-based tripwire fires at >200 MiB
+- [x] **NFR-3
+**: RSS ≤80 MiB; psutil-based tripwire fires at >200 MiB
 - [x] **NFR-4
 **: Per-modem QMI probes run in parallel via `asyncio.TaskGroup`
-- [ ] **NFR-5**: Disk write rate ≤1 MiB/min in steady state
+- [x] **NFR-5
+**: Disk write rate ≤1 MiB/min in steady state
 
 ### Reliability
 
