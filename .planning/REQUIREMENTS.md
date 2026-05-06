@@ -84,17 +84,17 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 - [ ] **FR-42**: Prometheus scrape endpoint on Unix socket (default `/run/spark-modem-watchdog/metrics.sock`)
 - [ ] **FR-43**: Event log rotated via `logrotate` with 7-day, 100 MiB retention default
 - [ ] **FR-43.1**: inotify tail tolerates both `create`-mode rotation (MOVE_SELF/DELETE_SELF) **and** `copytruncate` mode (st_size truncation check) (PITFALLS §8.1)
-- [ ] **FR-44**: Webhook POST on `Healthy → Degraded` and `Recovering → Exhausted` transitions, with typed payload
+- [x] **FR-44**: Webhook POST on `Healthy → Degraded` and `Recovering → Exhausted` transitions, with typed payload
 - [x] **FR-44.1
 **: HMAC-SHA256 webhook signing in v2.0 (header `X-Spark-Signature: sha256=<hex>` over raw body bytes), promoted from v2.1 (closes PRD Q5 — research §4.3)
 - [x] **FR-44.2
 **: Replay-protection header `X-Spark-Timestamp: <unix>` on every webhook (M-4)
-- [ ] **FR-44.3**: Webhook delivery retry with bounded queue (3 attempts, exponential backoff) before drop (M-1)
-- [ ] **FR-44.4**: Webhook payload deduplication / coalescing per `(modem, transition)` with default 60 s cooldown; `dedup_count` field on next emission (M-2)
-- [ ] **FR-44.5**: Daemon-restart event with reason enum (`sigterm` / `crash` / `config_invalid` / `oom` / `kill`) (M-6)
-- [ ] **FR-44.6**: `action_failed` event variant with structured failure reason (M-15)
-- [ ] **FR-44.7**: Pre-exit best-effort webhook on schema-version refusal (M-25)
-- [ ] **FR-44.8**: Webhook delivery runs in a separate task with explicit httpx timeouts; URL DNS pre-resolved at config-load and cached 60 s; never blocks the cycle (PITFALLS §10.1)
+- [x] **FR-44.3**: Webhook delivery retry with bounded queue (3 attempts, exponential backoff) before drop (M-1)
+- [x] **FR-44.4**: Webhook payload deduplication / coalescing per `(modem, transition)` with default 60 s cooldown; `dedup_count` field on next emission (M-2)
+- [x] **FR-44.5**: Daemon-restart event with reason enum (`sigterm` / `crash` / `config_invalid` / `oom` / `kill`) (M-6)
+- [x] **FR-44.6**: `action_failed` event variant with structured failure reason (M-15)
+- [x] **FR-44.7**: Pre-exit best-effort webhook on schema-version refusal (M-25)
+- [x] **FR-44.8**: Webhook delivery runs in a separate task with explicit httpx timeouts; URL DNS pre-resolved at config-load and cached 60 s; never blocks the cycle (PITFALLS §10.1)
 
 ### Operability
 
@@ -301,15 +301,15 @@ Mapped during ROADMAP creation 2026-05-06. Every v1 REQ-ID maps to exactly one p
 | FR-42 | Phase 2 | Pending |
 | FR-43 | Phase 3 | Pending |
 | FR-43.1 | Phase 3 | Pending |
-| FR-44 | Phase 2 | Pending |
-| FR-44.1 | Phase 1 | Pending |
-| FR-44.2 | Phase 1 | Pending |
-| FR-44.3 | Phase 2 | Pending |
-| FR-44.4 | Phase 2 | Pending |
-| FR-44.5 | Phase 2 | Pending |
-| FR-44.6 | Phase 2 | Pending |
-| FR-44.7 | Phase 2 | Pending |
-| FR-44.8 | Phase 2 | Pending |
+| FR-44 | Phase 2 | Done (Plan 02-08) |
+| FR-44.1 | Phase 1 | Done (Plan 02-08 wires sign_envelope; wire shape from Phase 1) |
+| FR-44.2 | Phase 1 | Done (Plan 02-08 sets X-Spark-Timestamp; wire shape from Phase 1) |
+| FR-44.3 | Phase 2 | Done (Plan 02-08) |
+| FR-44.4 | Phase 2 | Done (Plan 02-08) |
+| FR-44.5 | Phase 2 | Done (Plan 02-08) |
+| FR-44.6 | Phase 2 | Done (Plan 02-08) |
+| FR-44.7 | Phase 2 | Done (Plan 02-08) |
+| FR-44.8 | Phase 2 | Done (Plan 02-08) |
 | FR-50 | Phase 2 | Pending |
 | FR-50.1 | Phase 2 | Pending |
 | FR-50.2 | Phase 2 | Pending |

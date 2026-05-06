@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-06-PLAN.md
-last_updated: "2026-05-06T17:20:55.984Z"
+stopped_at: Completed 02-08-PLAN.md
+last_updated: "2026-05-06T17:50:00.000Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 17
-  completed_plans: 13
-  percent: 76
+  completed_plans: 14
+  percent: 82
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 02 (core-daemon-laptop-testable) — EXECUTING
-Plan: 7 of 10
+Plan: 9 of 10
 Status: Ready to execute
 Last activity: 2026-05-06
 
-Progress: [████████░░] 76%
+Progress: [████████░░] 82%
 
 ## Performance Metrics
 
@@ -65,6 +65,7 @@ Progress: [████████░░] 76%
 | Phase 02 P02-05 | 25 minutes | 2 tasks tasks | 15 files files |
 | Phase 02 P02-04 | 25min | 2 tasks tasks | 16 files files |
 | Phase 02 P06 | 12m 30s | 2 tasks tasks | 22 files files |
+| Phase 02 P08 | ~30m | 2 tasks tasks | 13 files files |
 
 ## Accumulated Context
 
@@ -136,6 +137,17 @@ Recent decisions affecting current work:
 - Plan 02-06: fix_autosuspend uses Path.write_text('on') against sysfs_root -- no qmicli, no subprocess; tmp_path tests work cross-platform on Windows dev hosts
 - Plan 02-06: per-action test files share tests/unit/actions/_helpers.py (RecordingEventLogger + make_ctx + canned ok/fail builders); each per-action file stays focused on argv-shape + outcome assertions
 - Plan 02-06: test_registered_kinds_has_exactly_six_cheap_actions catches the deliberate duplicate-SET_APN bug planted in PLAN text -- frozenset comparison fails on silent-overwrite (which would otherwise still produce len==6)
+- Plan 02-08: webhook/ subsystem (sign + dedup + dns + poster) ships HMAC over RAW PAYLOAD BYTES (PITFALLS §10.5) — sign_envelope returns (body_bytes, sig_header, ts_header) tuple so callers can NEVER re-serialise after signing
+- Plan 02-08: Host-header DNS trick — URL embeds cached IP, Host header carries hostname for TLS SNI (W-02 / ADR-0011); spike-before-Phase-5 caveat documented in SUMMARY (httpx SNI derivation behaviour)
+- Plan 02-08: WebhookPoster runs in a SEPARATE asyncio task (FR-44.8); enqueue is non-blocking (queue.put_nowait + counter increment); cycle driver never awaits delivery
+- Plan 02-08: Bounded asyncio.Queue (default 100); 3-attempt retry with [1, 4, 16]s backoff; on exhaustion → webhook_delivery_total{result=dropped} + WebhookDropped(reason=retry_exhausted) event
+- Plan 02-08: Drain (W-01) — pre-exit best-effort flush bounded at 3s default; failed-but-attempted items emit WebhookDropped(reason=drain_timeout); remainders post-budget emit reason=drain_budget_exhausted
+- Plan 02-08: WebhookDropped Event variant added to events.jsonl union with kind="webhook_dropped"; reason is open string ({queue_full, retry_exhausted, drain_timeout, drain_budget_exhausted, no_dns, no_url}) — extensible without enum churn
+- Plan 02-08: ClockProto + DnsCacheProto + EventLogWriterProto + MetricRegistryProto seams co-located in poster.py; FakeClock + FakeDNSResolver + RecordingEventLogger + RecordingMetrics satisfy all four without monkey-patching production code
+- Plan 02-08: Test pattern -- _install_mock_transport(poster, handler) monkey-patches WebhookPoster._make_client to return AsyncClient(transport=httpx.MockTransport(handler)); avoids adding pytest-httpx dev dep (httpx ships MockTransport)
+- Plan 02-08: BaseEventLoop.getaddrinfo patched (NOT AbstractEventLoop) -- AbstractEventLoop only stubs the abstract method; concrete SelectorEventLoop / ProactorEventLoop both inherit getaddrinfo from BaseEventLoop; one patch covers Linux + Windows dev hosts
+- Plan 02-08: WebhookPoster.stop() public method added (Rule 2 deviation) -- Phase 3 SIGTERM wiring needs to stop the poster WITHOUT forcing drain (e.g. SIGKILL-imminent / OOM paths); drain() also calls stop() internally
+- Plan 02-08: _StepClock pattern in test_drain_budget_exhausted_drops_remaining -- hand-rolled clock that handler advances per call replaces real-time asyncio.sleep; keeps test under 1s (M7 budget) AND lets drain's deadline check actually trip
 
 ### Pending Todos
 
@@ -153,8 +165,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-06T17:20:55.963Z
-Stopped at: Completed 02-06-PLAN.md
+Last session: 2026-05-06T17:50:00.000Z
+Stopped at: Completed 02-08-PLAN.md
 Resume file: None
 
 **Planned Phase:** 2 (Core Daemon (laptop-testable)) — 10 plans — 2026-05-06T15:16:01.546Z
