@@ -3,13 +3,12 @@ set -euo pipefail
 
 case "$1" in
   configure)
-    # B-03 belt-and-suspenders A: fail-the-install if smoke test fails.
-    if ! /opt/spark-modem-watchdog/libexec/postinst_smoke_test.sh; then
-      echo "ERROR: spark-modem-watchdog postinst smoke test failed." >&2
-      echo "       The bundled Python or one of the 10 runtime libs is broken." >&2
-      echo "       Refusing to complete install (FR-60 / B-03)." >&2
-      exit 1
-    fi
+    # Set up user, directories, and ModemManager mask FIRST so that a
+    # smoke-test failure leaves the system in a "configured-but-broken" state
+    # that dpkg can cleanly re-run on retry. If these steps run after the
+    # smoke test and the test fails, the package is left in half-configured
+    # state with no user or directories — making dpkg --configure -a unable
+    # to recover without hand-editing dpkg's status file (WR-010).
 
     # Create system user if it does not exist.
     if ! id -u spark-modem-watchdog >/dev/null 2>&1; then
@@ -31,6 +30,17 @@ case "$1" in
     if command -v systemctl >/dev/null 2>&1 && [[ -d /run/systemd/system ]]; then
       systemctl mask ModemManager.service >/dev/null 2>&1 || true
       systemctl --system daemon-reload >/dev/null || true
+    fi
+
+    # B-03 belt-and-suspenders A: smoke test LAST — fail the install if the
+    # bundled Python or runtime libs are broken. Running last means user/dirs/mask
+    # are already in place, so a retry (dpkg --configure -a) reaches this point
+    # cleanly without re-creating them.
+    if ! /opt/spark-modem-watchdog/libexec/postinst_smoke_test.sh; then
+      echo "ERROR: spark-modem-watchdog postinst smoke test failed." >&2
+      echo "       The bundled Python or one of the 10 runtime libs is broken." >&2
+      echo "       Refusing to complete install (FR-60 / B-03)." >&2
+      exit 1
     fi
     ;;
   abort-upgrade|abort-remove|abort-deconfigure)
