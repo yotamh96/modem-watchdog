@@ -170,9 +170,14 @@ def _enter_flock_for_async(
 
     Called from a worker thread via asyncio.to_thread so the event loop
     is not blocked by the potentially-waiting flock syscall.
+
+    On non-POSIX systems (Windows dev host), returns a no-op handle.
+    The daemon never runs on Windows; this is a dev-host accommodation
+    so unit tests that exercise the asyncio.Lock layer work without fcntl.
     """
     if not _FCNTL_AVAILABLE:
-        raise ImportError("fcntl is not available on this platform (POSIX only)")
+        # No-op on Windows; sentinel fd=-1 skipped by _release_flock_fd.
+        return AsyncFlockHandle(-1, Path(path))
 
     path_p = Path(path)
     path_p.parent.mkdir(parents=True, exist_ok=True)
@@ -201,7 +206,12 @@ def _enter_flock_for_async(
 
 
 def _release_flock_fd(fd: int) -> None:
-    """Unlock and close an fd (run from a worker thread)."""
+    """Unlock and close an fd (run from a worker thread).
+
+    fd=-1 is the no-op sentinel used on non-POSIX systems.
+    """
+    if fd < 0:
+        return  # no-op sentinel (Windows dev host)
     with contextlib.suppress(OSError):
         fcntl.flock(fd, fcntl.LOCK_UN)  # type: ignore[name-defined]
     with contextlib.suppress(OSError):
@@ -220,7 +230,11 @@ class AsyncFlockHandle:
         self._path = path
 
     async def release(self) -> None:
-        """Release the flock and close the fd."""
+        """Release the flock and close the fd.
+
+        fd=-1 is the no-op sentinel (Windows dev host); _release_flock_fd
+        returns immediately for negative fds.
+        """
         fd = self._fd
         self._fd = None
         if fd is not None:
