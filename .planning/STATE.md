@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-01-repo-lint-ci-PLAN.md
-last_updated: "2026-05-06T08:04:27.069Z"
+stopped_at: Completed 01-07-adr-set-PLAN.md
+last_updated: "2026-05-06T08:23:29.955Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 7
-  completed_plans: 1
-  percent: 14
+  completed_plans: 2
+  percent: 29
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 01 (foundations-adrs) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-05-06
 
-Progress: [█░░░░░░░░░] 14%
+Progress: [███░░░░░░░] 29%
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Progress: [█░░░░░░░░░] 14%
 
 *Updated after each plan completion*
 | Phase 01-foundations-adrs P01 | 10 minutes | 2 tasks | 15 files |
+| Phase 01 P07 | 14 | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,13 @@ Recent decisions affecting current work:
 - Init: Integer-encoded `modem_state_value{modem}` Prom metric (NOT one-hot); ADR-0013
 - requirements.lock compiled with --python-platform linux to exclude win-inet-pton and target aarch64/Linux deployment
 - pydantic-settings upstreamed to Plan 01 requirements.in so Plan 02 .deb smoke test and Plan 06 Settings class both consume from same lockfile
+- ADR-0008 supersedes ADR-0005: 5 top-level states + 2 orthogonal flags (present, rf_blocked) replaces 7-state flat enum
+- ADR-0009: state files keyed by usb_path at state/by-usb/<usb_path>.json; daemon refuses to start on topology mismatch
+- ADR-0010: CPython 3.12 via python-build-standalone + uv + custom debhelper; closes Q8
+- ADR-0011: HMAC-SHA256 promoted to v2.0 (closes Q5); X-Spark-Signature over raw body bytes; pre-resolved DNS prevents event-loop block
+- ADR-0012: 3-layer locking — per-modem asyncio.Lock + globals lock + per-modem flock + state-store flock + separate PID lock
+- ADR-0013: integer-encoded modem_state_value{modem} (0-4 stable mapping) replaces one-hot state label; 16 series per box
+- All 8 PROJECT.md open questions Q1-Q8 closed in writing as of Phase 1 (2026-05-06)
 
 ### Pending Todos
 
@@ -86,8 +94,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-06T08:04:27.035Z
-Stopped at: Completed 01-01-repo-lint-ci-PLAN.md
+Last session: 2026-05-06T08:23:29.924Z
+Stopped at: Completed 01-07-adr-set-PLAN.md
 Resume file: None
 
 **Planned Phase:** 1 (Foundations & ADRs) — 7 plans — 2026-05-06T07:27:10.298Z
