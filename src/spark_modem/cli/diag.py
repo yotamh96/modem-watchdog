@@ -25,7 +25,15 @@ from spark_modem.observer.orchestrator import observe_all
 from spark_modem.qmi.wrapper import QmiWrapper
 from spark_modem.zao_log.snapshot import ZaoSnapshot
 
-_DEFAULT_INVENTORY = Path("tests/fixtures/inventory/four_modems.json")
+# WR-08 (Phase 2 review): anchor the default inventory path to the repo
+# root, NOT the operator's CWD.  Path layout (repo-root/...):
+#   src/spark_modem/cli/diag.py
+#   tests/fixtures/inventory/four_modems.json
+# parents[3] of __file__ is the repo root regardless of where the
+# operator invokes ``spark-modem diag`` from.
+_DEFAULT_INVENTORY = (
+    Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "inventory" / "four_modems.json"
+)
 
 
 async def run(args: argparse.Namespace) -> int:
@@ -38,10 +46,18 @@ async def run(args: argparse.Namespace) -> int:
 
     fixture_dir = Path(args.qmi_fixture_dir)
     inventory_path = (
-        Path(args.inventory_fixture)
-        if args.inventory_fixture is not None
-        else _DEFAULT_INVENTORY
+        Path(args.inventory_fixture) if args.inventory_fixture is not None else _DEFAULT_INVENTORY
     )
+
+    # WR-08: fail fast on a missing inventory file rather than silently
+    # producing 'per_modem: {}' (the descriptor scan returns no modems
+    # when the file is absent, masking the configuration error).
+    if not inventory_path.is_file():
+        print(
+            f"diag: inventory file not found: {inventory_path}",
+            file=sys.stderr,
+        )
+        return 2
 
     inventory = _InventoryFromFile(inventory_path)
     modems = await inventory.scan()

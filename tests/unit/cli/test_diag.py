@@ -88,6 +88,26 @@ async def test_diag_default_inventory_fixture_used_when_unspecified(
     assert len(parsed["per_modem"]) == 4
 
 
+async def test_diag_with_missing_inventory_fails_fast(
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    """WR-08: a missing --inventory-fixture file returns 2 with a clear error.
+
+    Before the fix the descriptor scan would silently produce
+    ``per_modem: {}`` when the inventory file was absent, masking the
+    configuration error.  ``diag`` now returns 2 and prints
+    ``inventory file not found: <path>`` to stderr.
+    """
+    missing = tmp_path / "does-not-exist.json"
+    args = _make_args(json=True, inventory_fixture=str(missing))
+    rc = await diag_cmd.run(args)
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "inventory file not found" in err
+    assert str(missing) in err
+
+
 async def test_diag_uses_inventory_fixture_with_two_modems(
     capsys: pytest.CaptureFixture[str],
     tmp_path: Path,

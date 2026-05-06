@@ -35,6 +35,15 @@ from spark_modem.wire.webhook import DaemonRestart, WebhookEnvelope
 
 logger = logging.getLogger(__name__)
 
+# WR-08: anchor the laptop integration inventory path to the repo root
+# (parents[3] of this file) so 'python -m spark_modem.daemon.main' works
+# from any CWD.  Production Phase 3 wires the production inventory via
+# Settings; this is the laptop-only fallback.  Resolved at import time so
+# the async main() body stays free of pathlib.Path I/O (ASYNC240).
+_LAPTOP_INVENTORY_PATH = (
+    Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "inventory" / "four_modems.json"
+)
+
 
 def _ensure_dirs(*paths: Path) -> None:
     """Synchronously create the listed directories (idempotent).
@@ -70,9 +79,7 @@ async def main(argv: list[str] | None = None) -> int:
     )
     event_logger = EventLogWriter(settings.events_log_path)
     metrics = MetricRegistry()
-    inventory = _InventoryFromFile(
-        Path("tests/fixtures/inventory/four_modems.json"),
-    )
+    inventory = _InventoryFromFile(_LAPTOP_INVENTORY_PATH)
     zao = _NoZaoTailer()
     # Empty carrier table is acceptable for the laptop integration path
     # (Phase 2 production loads YAML; the daemon tolerates an empty table
