@@ -1,0 +1,9 @@
+2026-05-06T10:00:00+00:00 ZaoInfraCtrl RASCOW_STAT line=1 status=active
+2026-05-06T10:00:00+00:00 ZaoInfraCtrl RASCOW_STAT line=2 status=active
+2026-05-06T10:00:00+00:00 ZaoInfraCtrl RASCOW_STAT line=3 status=active
+2026-05-06T10:00:00+00:00 ZaoInfraCtrl RASCOW_STAT line=4 status=active
+2026-05-06T10:00:30+00:00 ZaoInfraCtrl Reconfiguring
+2026-05-06T10:00:31+00:00 ZaoInfraCtrl RASCOW_STAT line=1 status=inactive
+2026-05-06T10:00:31+00:00 ZaoInfraCtrl RASCOW_STAT line=2 status=active
+2026-05-06T10:00:31+00:00 ZaoInfraCtrl RASCOW_STAT line=3 status=active
+2026-05-06T10:00:31+00:00 ZaoInfraCtrl RASCOW_STAT line=4 status=inactive
