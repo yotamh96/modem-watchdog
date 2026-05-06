@@ -1,0 +1,10 @@
+pydantic>=2.13,<3                # ADR-0004 wire formats
+pydantic-settings>=2.5,<3        # FR-54 Settings (env+flag layer; Plan 06)
+PyYAML>=6.0.2,<7                 # FR-54 layered config
+prometheus-client>=0.25,<1       # NFR-21 metrics over UDS
+pyudev>=0.24.4,<1                # FR-1 USB add/remove
+pyroute2>=0.9.6,<1               # FR-1 rtnetlink (use AsyncIPRoute)
+asyncinotify>=4.0.10,<5          # FR-43.1 inotify watcher
+httpx>=0.27,<1                   # FR-44 webhook POST
+sdnotify>=0.3.2,<1               # FR-53 systemd Type=notify
+psutil>=5.9,<7                   # NFR-3 RSS tripwire

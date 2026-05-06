@@ -1,0 +1,74 @@
+[project]
+name = "spark-modem-watchdog"
+version = "2.0.0"
+description = "Sierra EM7421 modem watchdog daemon for Soliton Zao bonded uplinks on NVIDIA Jetson Orin NX"
+readme = "README.md"
+license = {text = "Proprietary"}
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.6,<1",
+    "mypy>=1.13,<2",
+    "pytest>=8.3,<9",
+    "pytest-asyncio>=0.24,<1",
+    "hypothesis>=6.110,<7",
+    "pytest-cov>=5,<7",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["spark_modem*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+extend-exclude = ["debian/", "packaging/"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "S", "ASYNC", "ANN", "RET", "SIM", "PTH", "PL", "RUF"]
+ignore = ["S101", "PLR0913", "ANN401"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["ANN", "S", "PLR2004"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_any_generics = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+extra_checks = true
+mypy_path = "src"
+packages = ["spark_modem"]
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = ["sdnotify", "asyncinotify"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "8.3"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importlib"]
+markers = [
+    "unit: hardware-free unit tests",
+    "integration: laptop-runnable integration tests",
+    "hil: hardware-in-the-loop tests requiring real Jetson",
+]

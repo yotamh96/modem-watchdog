@@ -21,6 +21,7 @@ env/
 htmlcov/
 build/
 dist/
+debian/python-build-standalone/
 
 # Debian build artifacts
 debian/spark-modem-watchdog/
