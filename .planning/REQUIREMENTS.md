@@ -24,22 +24,31 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 **: System consults Zao `RASCOW_STAT` before probing; if Zao reports the line as `active`, no QMI probe is run
 - [x] **FR-11
 **: Per-inactive-modem snapshot includes USB speed, QMI responsiveness, operating mode, SIM card/app state, registration, serving carrier (MCC/MNC/desc), signal (RSSI/RSRP/RSRQ/SNR), profile-1 APN, data session, current IPv4
-- [ ] **FR-12**: System classifies each modem with state-machine v2 (post-research refactor): top-level `unknown` / `healthy` / `degraded` / `recovering(level)` / `exhausted` plus orthogonal flags `present` and `rf_blocked` (supersedes PRD FR-12's 7-state shape; ADR-0008)
+- [x] **FR-12**: System classifies each modem with state-machine v2 (post-research refactor): top-level `unknown` / `healthy` / `degraded` / `recovering(level)` / `exhausted` plus orthogonal flags `present` and `rf_blocked` (supersedes PRD FR-12
+'s 7-state shape; ADR-0008)
 - [ ] **FR-13**: System emits a typed `Diag` snapshot every cycle conforming to SCHEMA § Diag
 - [ ] **FR-14**: System detects host-level issues (USB overcurrent, "device not accepting address", thermal events) from `dmesg` and treats them as global issues
 
 ### Recovery
 
-- [ ] **FR-20**: At most one recovery action per modem per cycle
-- [ ] **FR-21**: Action selection follows category priority `config > sim > datapath > registration > qmi`
-- [ ] **FR-22**: Per-modem escalation ladder: `set_apn` / `fix_raw_ip` / `sim_power_on` / `soft_reset → modem_reset → usb_reset → exhausted`
+- [x] **FR-20
+**: At most one recovery action per modem per cycle
+- [x] **FR-21
+**: Action selection follows category priority `config > sim > datapath > registration > qmi`
+- [x] **FR-22
+**: Per-modem escalation ladder: `set_apn` / `fix_raw_ip` / `sim_power_on` / `soft_reset → modem_reset → usb_reset → exhausted`
 - [ ] **FR-23**: System gates `modem_reset` and `usb_reset` when signal is measurably below thresholds (RECOVERY_SPEC § 6.1)
 - [ ] **FR-24**: Global `driver_reset` fires only when ≥75 % of modems are simultaneously QMI-hung **and** at least one has actionable signal
-- [ ] **FR-25**: Same-action backoff suppresses repeating an action on the same modem within `BACKOFF_SECONDS` (default 300 s)
-- [ ] **FR-25.1**: Cross-action ladder backoff: no destructive action runs more than once every `ladder_min_interval` seconds (default 90 s) — RECOVERY_SPEC § 6.3 (new in v2 spec)
-- [ ] **FR-26**: Per-action escalation counters decay to zero after K consecutive `Healthy` cycles for that modem (default K=10) — ADR-0006
-- [ ] **FR-26.1**: `_healthy_streak` is persisted in the per-modem state file every cycle and reloaded on daemon start; mid-streak restart does not reset progress (closes PITFALLS §9.2 regression risk)
-- [ ] **FR-26.2**: Streak update + decay check + counter reset + state-write are one atomic write per cycle; ordering pinned in RECOVERY_SPEC § 8 (closes PITFALLS §9.1)
+- [x] **FR-25
+**: Same-action backoff suppresses repeating an action on the same modem within `BACKOFF_SECONDS` (default 300 s)
+- [x] **FR-25
+.1**: Cross-action ladder backoff: no destructive action runs more than once every `ladder_min_interval` seconds (default 90 s) — RECOVERY_SPEC § 6.3 (new in v2 spec)
+- [x] **FR-26
+**: Per-action escalation counters decay to zero after K consecutive `Healthy` cycles for that modem (default K=10) — ADR-0006
+- [x] **FR-26
+.1**: `_healthy_streak` is persisted in the per-modem state file every cycle and reloaded on daemon start; mid-streak restart does not reset progress (closes PITFALLS §9.2 regression risk)
+- [x] **FR-26
+.2**: Streak update + decay check + counter reset + state-write are one atomic write per cycle; ordering pinned in RECOVERY_SPEC § 8 (closes PITFALLS §9.1)
 - [ ] **FR-27**: All recovery actions are separate idempotent functions, runnable individually via the CLI
 - [ ] **FR-28**: `--dry-run` everywhere a real action would mutate state
 - [ ] **FR-28.1**: Per-modem dry-run: config accepts `dry_run: bool | list[str]`; gate at action-execution time; surfaced in `status.json` and on each `action_planned` event (research §4.5)
@@ -132,16 +141,22 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 **: Daemon recovers from any single transient error (parse failure, qmicli timeout, partial fixture) within one cycle
 - [x] **NFR-11
 **: Uncaught exception in policy engine MUST NOT terminate the daemon; logged and cycle skipped
-- [ ] **NFR-12**: Daemon tolerates `qmi_wwan` driver reload during operation: `driver_reset` is observable as a clean state transition, not a daemon crash
+- [x] **NFR-12
+**: Daemon tolerates `qmi_wwan` driver reload during operation: `driver_reset` is observable as a clean state transition, not a daemon crash
 - [ ] **NFR-13**: Daemon reaches steady-state operation within 60 s of process start, given Zao is already running
 
 ### Observability
 
-- [ ] **NFR-20**: Every state transition logged as a single JSON line with `ts, modem, from, to, cause, action, dry_run`
-- [ ] **NFR-21**: Prometheus exporter exposes: `actions_total{kind,modem,result}`, `signal_dbm{modem,kind}`, `cycle_duration_seconds`, **`modem_state_value{modem}` integer-encoded** (replaces PRD's one-hot `modem_state{modem,state}` to avoid cardinality explosion — research §5.1; ADR-0013)
-- [ ] **NFR-21.1**: Additional metrics: `state_duration_seconds{modem,state}` histogram (M-5), `cycle_drift_seconds` self-health gauge (M-8), `webhook_delivery_total{result}` counter
-- [ ] **NFR-22**: Snapshot of `status.json` plus last 200 events retrievable via `spark-modem ctl support-bundle` for offline analysis
-- [ ] **NFR-22.1**: Support bundle includes last 24 h of webhook delivery results (success/fail + http_status) so NOC can verify "did the alert fire?" (research §3 §4.2)
+- [x] **NFR-20
+**: Every state transition logged as a single JSON line with `ts, modem, from, to, cause, action, dry_run`
+- [x] **NFR-21
+**: Prometheus exporter exposes: `actions_total{kind,modem,result}`, `signal_dbm{modem,kind}`, `cycle_duration_seconds`, **`modem_state_value{modem}` integer-encoded** (replaces PRD's one-hot `modem_state{modem,state}` to avoid cardinality explosion — research §5.1; ADR-0013)
+- [x] **NFR-21
+.1**: Additional metrics: `state_duration_seconds{modem,state}` histogram (M-5), `cycle_drift_seconds` self-health gauge (M-8), `webhook_delivery_total{result}` counter
+- [x] **NFR-22
+**: Snapshot of `status.json` plus last 200 events retrievable via `spark-modem ctl support-bundle` for offline analysis
+- [x] **NFR-22
+.1**: Support bundle includes last 24 h of webhook delivery results (success/fail + http_status) so NOC can verify "did the alert fire?" (research §3 §4.2)
 
 ### Security
 

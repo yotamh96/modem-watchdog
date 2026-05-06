@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-05-06T16:25:14.464Z"
+stopped_at: Completed 02-05-PLAN.md
+last_updated: "2026-05-06T16:45:35.547Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 17
-  completed_plans: 10
-  percent: 59
+  completed_plans: 11
+  percent: 65
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 02 (core-daemon-laptop-testable) — EXECUTING
-Plan: 4 of 10
+Plan: 5 of 10
 Status: Ready to execute
 Last activity: 2026-05-06
 
-Progress: [██████░░░░] 59%
+Progress: [███████░░░] 65%
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Progress: [██████░░░░] 59%
 | Phase 02 P01 | 5min | 2 tasks | 20 files |
 | Phase 02 P02 | 9min | 2 tasks | 31 files |
 | Phase 02 P02-03 | 4min | 2 tasks tasks | 12 files files |
+| Phase 02 P02-05 | 25 minutes | 2 tasks tasks | 15 files files |
 
 ## Accumulated Context
 
@@ -115,6 +116,10 @@ Recent decisions affecting current work:
 - Plan 02-03: ZaoSnapshot.unknown(reason=...) classmethod factory uses canonical reason strings (zao_log_missing | zao_log_io_error:<errno> | zao_log_no_rascow_stat); never embeds raw log content (T-02-03-03)
 - Plan 02-03: FixtureZaoTailer.snapshot() added (Rule 2) so test fake satisfies new ZaoLogTailer Protocol; observer/ in plan 02-04 can swap parser<->fake without divergent call surfaces
 - Plan 02-03: active_lines stored as frozenset[int] (not set) -- consistent with BaseWire frozen=True; observer must read snapshot().unknown_reason defensively for FR-10 safe direction (T-02-03-04)
+- Plan 02-05: policy/ pure-function package -- transitions/decision_table/gates/engine; CLAUDE.md §1 verified by import grep + lint_no_subprocess; match-on-state enforced (anti-pattern)
+- Plan 02-05: ClockProto Protocol shared between context.py and gates.py so policy/ never imports production clock module (purity boundary)
+- Plan 02-05: Decision table is dict[(IssueCategory,IssueDetail), ActionKind|str] -- skip-reasons are open str literals (extensible without enum churn); 20 rows cover the 5 IssueCategory enum values' RECOVERY_SPEC §4 rows
+- Plan 02-05: tools/check_spec.py uses substring-match against tests/test_recovery_spec.py 'Coverage manifest' docstring; parametrize ids alone don't appear as text -- the manifest is the auditable contract
 
 ### Pending Todos
 
@@ -132,8 +137,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-06T16:25:14.447Z
-Stopped at: Completed 02-03-PLAN.md
+Last session: 2026-05-06T16:45:35.532Z
+Stopped at: Completed 02-05-PLAN.md
 Resume file: None
 
 **Planned Phase:** 2 (Core Daemon (laptop-testable)) — 10 plans — 2026-05-06T15:16:01.546Z
