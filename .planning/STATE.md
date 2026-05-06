@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-07-PLAN.md
-last_updated: "2026-05-06T17:57:56.957Z"
+stopped_at: Completed 02-09-PLAN.md
+last_updated: "2026-05-06T18:18:10Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 17
-  completed_plans: 15
-  percent: 88
+  completed_plans: 16
+  percent: 94
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 
 Phase: 02 (core-daemon-laptop-testable) — EXECUTING
 Plan: 10 of 10
-Status: Ready to execute
+Status: Ready to execute (final plan: replay harness)
 Last activity: 2026-05-06
 
-Progress: [█████████░] 88%
+Progress: [█████████▌] 94%
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Progress: [█████████░] 88%
 | Phase 02 P06 | 12m 30s | 2 tasks tasks | 22 files files |
 | Phase 02 P08 | ~30m | 2 tasks tasks | 13 files files |
 | Phase 02 P07 | 12 minutes | 2 tasks tasks | 11 files files |
+| Phase 02 P09 | ~30m | 2 tasks tasks | 27 files files |
 
 ## Accumulated Context
 
@@ -157,6 +158,15 @@ Recent decisions affecting current work:
 - Plan 02-07: GlobalsState.maintenance: MaintenanceWindow|None=None preserves Phase 1 backward-compat (Phase 1-shape globals.json without maintenance key parses cleanly)
 - Plan 02-07: MetricRegistry takes registry: CollectorRegistry|None=None for test isolation (per-test isolated registry); production passes None and uses global REGISTRY for make_wsgi_app exposure
 - Plan 02-07: RSS tripwire is event-only in Phase 2 (NFR-3); MetricRegistry.record_rss_tripwire increments daemon_self_health{kind=rss} but never raises/exits — Phase 3 sd_notify watchdog owns restart decision
+- Plan 02-09: spark-modem CLI entry point in pyproject.toml [project.scripts]; six subcommands + ctl{history,maintenance,support-bundle}; argparse subparser dispatch keeps Phase 2 dependency-free
+- Plan 02-09: cli/clients.py hosts FixtureRunner + _CliClock + _InventoryFromFile + _NoZaoTailer + build_default_settings — production code under src/ NEVER imports from tests/fakes/* (boundary discipline)
+- Plan 02-09: ctl maintenance dual-clock expiry stored in globals.json (started/expires both monotonic AND ISO); status check uses now_mono >= expires_mono OR now_wall_iso >= expires_iso so NTP step in either direction cannot extend or prematurely expire the window (ADR-0007 spirit)
+- Plan 02-09: 8h hard cap (MAX_DURATION_SECONDS=28800) enforced at the CLI BEFORE any state mutation; MaintenanceWindow.max_duration_seconds=Field(le=28800) catches hand-edited globals.json at load time
+- Plan 02-09: ctl maintenance writes through StateStore.save_globals which acquires globals_lock (asyncio.Lock) + state_store_lockfile flock — no new lock surface (Claude's Discretion); daemon and CLI mutator serialize on the same flock per CLAUDE.md §12 + ADR-0012
+- Plan 02-09: ctl support-bundle Phase 2 limitation — omits journalctl + dmesg outputs (subprocess required, would fail SP-04 lint gate); Phase 3 wires through subproc.run. Bundle still ships events + state + status + conf + metadata, sufficient for Phase 2 NOC use
+- Plan 02-09: PII redaction is one-way and consistent (sha256[:8]) — same ICCID/IMSI → same <redacted:<8 hex>> across the bundle for cross-file identity correlation without exporting PII; HMAC secret never copied; webhook URL host-only
+- Plan 02-09: ctl history reader handles plain rotated siblings (.1, .2, ...) AND gzipped (.1.gz, ...); oldest-first chronological output; corrupt JSONL lines skipped not raised — events.jsonl integrity is the writer's responsibility
+- Plan 02-09: provision and reset CLI subcommands print Phase-2 stub messages — full execution requires daemon-style runner injection landing with cycle driver in plan 02-10 + Phase 3 production sysfs/zao. reset still validates action-kind correctness and rejects destructive actions before any dispatcher call
 
 ### Pending Todos
 
@@ -174,8 +184,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-06T17:57:56.942Z
-Stopped at: Completed 02-07-PLAN.md
+Last session: 2026-05-06T18:18:10Z
+Stopped at: Completed 02-09-PLAN.md
 Resume file: None
 
 **Planned Phase:** 2 (Core Daemon (laptop-testable)) — 10 plans — 2026-05-06T15:16:01.546Z

@@ -101,12 +101,12 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 
 ### Operability
 
-- [ ] **FR-50**: Single `spark-modem` CLI with subcommands `diag`, `recovery`, `provision`, `reset`, `status`, `ctl`
-- [ ] **FR-50.1**: `spark-modem ctl history --modem=cdc-wdmN --since=DURATION` first-class subcommand for per-modem timeline (M-9)
-- [ ] **FR-50.2**: `spark-modem ctl maintenance on --duration=DURATION` (max 8 h, mandatory `--duration`, auto-expiry); suppresses webhooks while observing continues (M-10; PITFALLS §16.2)
-- [ ] **FR-50.3**: `--explain` flag on `diag` surfaces decision rationale (PRD UC3, RUNBOOK reference)
-- [ ] **FR-51**: CLI accepts `--qmi-fixture-dir=PATH` to read recorded `qmicli` output instead of executing
-- [ ] **FR-52**: CLI accepts `--diag-fixture=PATH` for `recovery` to replay a captured snapshot
+- [x] **FR-50**: Single `spark-modem` CLI with subcommands `diag`, `recovery`, `provision`, `reset`, `status`, `ctl`
+- [x] **FR-50.1**: `spark-modem ctl history --modem=cdc-wdmN --since=DURATION` first-class subcommand for per-modem timeline (M-9)
+- [x] **FR-50.2**: `spark-modem ctl maintenance on --duration=DURATION` (max 8 h, mandatory `--duration`, auto-expiry); suppresses webhooks while observing continues (M-10; PITFALLS §16.2)
+- [x] **FR-50.3**: `--explain` flag on `diag` surfaces decision rationale (PRD UC3, RUNBOOK reference)
+- [x] **FR-51**: CLI accepts `--qmi-fixture-dir=PATH` to read recorded `qmicli` output instead of executing
+- [x] **FR-52**: CLI accepts `--diag-fixture=PATH` for `recovery` to replay a captured snapshot
 - [ ] **FR-53**: Daemon runs as a systemd `Type=notify` unit; graceful SIGTERM within 5 s
 - [x] **FR-54
 **: Configuration precedence: CLI flags > env vars > `/etc/spark-modem-watchdog/conf.d/*.yaml` > baked-in defaults; SIGHUP transactional reload for data-only fields (closes PRD Q6 — research §8 #7)
@@ -315,12 +315,12 @@ Mapped during ROADMAP creation 2026-05-06. Every v1 REQ-ID maps to exactly one p
 | FR-44.6 | Phase 2 | Done (Plan 02-08) |
 | FR-44.7 | Phase 2 | Done (Plan 02-08) |
 | FR-44.8 | Phase 2 | Done (Plan 02-08) |
-| FR-50 | Phase 2 | Pending |
-| FR-50.1 | Phase 2 | Pending |
-| FR-50.2 | Phase 2 | Pending |
-| FR-50.3 | Phase 2 | Pending |
-| FR-51 | Phase 2 | Pending |
-| FR-52 | Phase 2 | Pending |
+| FR-50 | Phase 2 | Done (Plan 02-09) |
+| FR-50.1 | Phase 2 | Done (Plan 02-09) |
+| FR-50.2 | Phase 2 | Done (Plan 02-09) |
+| FR-50.3 | Phase 2 | Done (Plan 02-09) |
+| FR-51 | Phase 2 | Done (Plan 02-09) |
+| FR-52 | Phase 2 | Done (Plan 02-09) |
 | FR-53 | Phase 3 | Pending |
 | FR-54 | Phase 1 | Pending |
 | FR-60 | Phase 1 | Pending |
@@ -353,8 +353,8 @@ Mapped during ROADMAP creation 2026-05-06. Every v1 REQ-ID maps to exactly one p
 | NFR-20 | Phase 2 | Pending |
 | NFR-21 | Phase 2 | Pending |
 | NFR-21.1 | Phase 2 | Pending |
-| NFR-22 | Phase 2 | Pending |
-| NFR-22.1 | Phase 2 | Pending |
+| NFR-22 | Phase 2 | Done (Plan 02-09) |
+| NFR-22.1 | Phase 2 | Done (Plan 02-09) |
 | NFR-30 | Phase 3 | Pending |
 | NFR-31 | Phase 1 | Pending |
 | NFR-32 | Phase 1 | Pending |
