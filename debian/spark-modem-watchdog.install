@@ -1,4 +1,8 @@
-debian/python-build-standalone/python/* /opt/spark-modem-watchdog/python/
+# NOTE: the bundled CPython tree at /opt/spark-modem-watchdog/python/ is laid
+# out by override_dh_auto_install in debian/rules (PBS unpack + ensurepip + uv
+# pip install + compileall). It is NOT shipped via this .install file because
+# dh_install would copy a *fresh* PBS tree on top, clobbering the site-packages
+# we populated.
 src/spark_modem /opt/spark-modem-watchdog/lib/
 scripts/postinst_smoke_test.sh /opt/spark-modem-watchdog/libexec/
 debian/spark-modem-watchdog.service /lib/systemd/system/

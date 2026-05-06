@@ -36,12 +36,12 @@ jobs:
           DEB=$(ls dist/spark-modem-watchdog_*_arm64.deb | head -n1)
           echo "Built: $DEB"
           dpkg-deb -I "$DEB"
-          echo "--- top-level layout ---"
-          dpkg-deb -c "$DEB" | awk '{print $6}' | grep -E "^\./[^/]+/$|^\./[^/]+/[^/]+/$" | sort -u | head -30
-          echo "--- site-packages presence (must list pydantic, httpx, etc.) ---"
-          dpkg-deb -c "$DEB" | awk '{print $6}' | grep "site-packages/" | awk -F/ '{print $9}' | sort -u | head -40 || true
-          echo "--- file count by tree ---"
-          dpkg-deb -c "$DEB" | awk '{print $6}' | awk -F/ '{print $2"/"$3"/"$4}' | sort | uniq -c | sort -rn | head -10
+          echo "--- site-packages contents (must include the 10 runtime libs) ---"
+          dpkg-deb -c "$DEB" \
+            | awk '{print $6}' \
+            | grep -E '/site-packages/[^/]+/?$' \
+            | awk -F/ '{print $(NF-1)}' \
+            | sort -u
           SIZE_BYTES=$(stat -c %s "$DEB")
           SIZE_MIB=$((SIZE_BYTES / 1048576))
           echo "Size: ${SIZE_MIB} MiB"

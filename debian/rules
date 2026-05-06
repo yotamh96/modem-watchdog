@@ -32,11 +32,27 @@ debian/python-build-standalone/.unpacked: debian/python.sha256
 	test -x debian/python-build-standalone/python/bin/python3.12
 	touch debian/python-build-standalone/.unpacked
 
-# Step 2-4: install PBS into destdir; install runtime libs frozen; compileall.
-# PITFALLS §18.3: install AT the destination path (/opt/...), not at the builder path,
-# so PBS's relocatable bundles don't bake builder paths into .pyc.
+# override_dh_auto_build: nothing to compile — our "build artifact" is the
+# unpacked PBS tree (handled by the .unpacked target below). The actual
+# population of the destdir happens in override_dh_auto_install, AFTER
+# dh_prep wipes debian/spark-modem-watchdog/. Doing it earlier would just
+# get deleted.
 override_dh_auto_build: debian/python-build-standalone/.unpacked
-	# Step 1 (continued): copy PBS tree into destdir at FINAL install path.
+
+# Skip dh_auto_test — Plan 01's CI workflow runs the test suite separately,
+# and the .deb build does not need to re-run pytest (build is reproducibility-focused).
+override_dh_auto_test:
+
+# Steps 2-4: install PBS into destdir; install runtime libs locked; compileall.
+# PITFALLS §18.3: install AT the destination path (/opt/...), not at the builder
+# path, so PBS's relocatable bundles don't bake builder paths into .pyc.
+#
+# This MUST run in override_dh_auto_install (not override_dh_auto_build):
+# dh_prep wipes debian/spark-modem-watchdog/ at the start of the binary stage,
+# so anything we put there during dh_auto_build gets deleted before dh_install
+# runs. dh_auto_install is the canonical hook that runs AFTER dh_prep.
+override_dh_auto_install: debian/python-build-standalone/.unpacked
+	# Step 1: copy PBS tree into destdir at FINAL install path.
 	mkdir -p $(VENVDIR)
 	cp -a debian/python-build-standalone/python/. $(VENVDIR)/
 
@@ -66,13 +82,6 @@ override_dh_auto_build: debian/python-build-standalone/.unpacked
 	# Sanity: the install path is the final path. Refuse to ship a .deb where
 	# the bundled python's sys.executable points anywhere other than /opt/...
 	$(VENVDIR)/bin/python3.12 -c "import sys; assert sys.executable == '$(VENVDIR)/bin/python3.12', sys.executable"
-
-# Skip dh_auto_test — Plan 01's CI workflow runs the test suite separately,
-# and the .deb build does not need to re-run pytest (build is reproducibility-focused).
-override_dh_auto_test:
-
-# Skip dh_auto_install — we already laid out the destdir in dh_auto_build above.
-override_dh_auto_install:
 
 # Disable Python bytecode compilation by debhelper's dh_python — we compileall'd
 # against SOURCE_DATE_EPOCH already and don't want dh_python to re-compile and
