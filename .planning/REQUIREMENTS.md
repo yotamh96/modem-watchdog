@@ -91,7 +91,8 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 .1**: Per-modem state files keyed by `usb_path` (`state/by-usb/<usb_path>.json`), not `cdc-wdmN`; startup cross-checks file usb_path vs sysfs vs current cdc-wdm — mismatch is an error (closes ARCHITECTURE Q14 / PITFALLS §3.1; ADR-0009)
 - [x] **FR-63
 **: Validate every external input (qmicli output, JSON, Zao log) before acting; invalid input is logged error, not a crash
-- [ ] **FR-64**: Never `exec` a string built from external data; all subprocess calls use list-form `argv`
+- [x] **FR-64
+**: Never `exec` a string built from external data; all subprocess calls use list-form `argv`
 
 ### Daemon design (research-derived)
 
