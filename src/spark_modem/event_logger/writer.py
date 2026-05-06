@@ -22,7 +22,6 @@ from types import TracebackType
 from typing import Self
 
 from spark_modem.state_store.atomic import _fsync_directory
-
 from spark_modem.wire.events import (
     ActionExecuted,
     ActionFailed,

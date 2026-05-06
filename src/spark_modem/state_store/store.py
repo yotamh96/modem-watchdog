@@ -38,7 +38,6 @@ Phase 2 carry-forward:
 from __future__ import annotations
 
 import json
-import os
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -48,7 +47,6 @@ from spark_modem.state_store.atomic import _fsync_directory, atomic_write_bytes
 from spark_modem.state_store.errors import (
     StateFileCorrupt,
     StateFileIOError,
-    UsbPathMismatch,
 )
 from spark_modem.state_store.inventory import cross_check_inventory
 from spark_modem.state_store.locks import (
@@ -236,7 +234,7 @@ class StateStore:
                     shadow = shadow_filename(target, from_version=file_version)
                     # os.replace: atomically clobbers any existing stale shadow
                     # (e.g. from a previously crashed downgrade attempt).
-                    os.replace(target, shadow)
+                    target.replace(shadow)
                     # Persist the rename across crash before writing the fresh default.
                     _fsync_directory(target.parent, target)
                     fresh = _fresh_modem_state(usb_path)
@@ -328,7 +326,7 @@ class StateStore:
                 if decision == "downgrade":
                     shadow = shadow_filename(target, from_version=file_version)
                     # os.replace: atomically clobbers any existing stale shadow.
-                    os.replace(target, shadow)
+                    target.replace(shadow)
                     # Persist the rename across crash before writing the fresh default.
                     _fsync_directory(target.parent, target)
                     fresh = GlobalsState()

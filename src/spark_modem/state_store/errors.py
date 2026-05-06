@@ -84,7 +84,7 @@ class StateFileCorrupt(StateStoreError):  # noqa: N818
         super().__init__(f"State file corrupt: {file_path!r}: {reason}")
 
 
-class StateFileIOError(StateStoreError):  # noqa: N818
+class StateFileIOError(StateStoreError):
     """OS-level I/O error reading or writing a state file.
 
     Distinct from UsbPathMismatch (inventory mismatch) and StateFileCorrupt

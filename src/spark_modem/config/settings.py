@@ -136,9 +136,7 @@ class Settings(BaseSettings):
             return None
         parts = urlsplit(v)
         if parts.scheme not in ("http", "https"):
-            raise ValueError(
-                f"webhook_url must use http or https scheme; got {parts.scheme!r}"
-            )
+            raise ValueError(f"webhook_url must use http or https scheme; got {parts.scheme!r}")
         if not parts.netloc:
             raise ValueError("webhook_url must include a host (netloc is empty)")
         if not parts.hostname:
