@@ -94,11 +94,13 @@ override_dh_auto_install: debian/python-build-standalone/.unpacked
 	rm -rf $(VENVDIR)/lib/python3.12/ensurepip
 	rm -rf $(VENVDIR)/lib/python3.12/pydoc_data
 	rm -rf $(VENVDIR)/lib/python3.12/sqlite3
-	rm -rf $(VENVDIR)/lib/python3.12/multiprocessing
 	rm -rf $(VENVDIR)/lib/python3.12/xmlrpc
 	rm -rf $(VENVDIR)/lib/python3.12/dbm
 	rm -rf $(VENVDIR)/lib/python3.12/curses
-	rm -rf $(VENVDIR)/lib/python3.12/wsgiref
+	# multiprocessing is imported by pyroute2 (control-plane queues)
+	# wsgiref is imported by prometheus_client (HTTP exporter wiring,
+	#   even when we only scrape over UDS; module-init pulls it in)
+	# Both are KEPT — flagged by the post-trim smoke test on 2026-05-06.
 	rm -f  $(VENVDIR)/lib/python3.12/turtle.py
 	rm -rf $(VENVDIR)/share/man
 	rm -rf $(VENVDIR)/share/doc
@@ -109,9 +111,9 @@ override_dh_auto_install: debian/python-build-standalone/.unpacked
 		\( -path '*/test/*' -o -path '*/idlelib/*' -o -path '*/lib2to3/*' \
 		   -o -path '*/turtledemo/*' -o -path '*/tkinter/*' \
 		   -o -path '*/ensurepip/*' -o -path '*/pydoc_data/*' \
-		   -o -path '*/sqlite3/*' -o -path '*/multiprocessing/*' \
+		   -o -path '*/sqlite3/*' \
 		   -o -path '*/xmlrpc/*' -o -path '*/dbm/*' \
-		   -o -path '*/curses/*' -o -path '*/wsgiref/*' \) \
+		   -o -path '*/curses/*' \) \
 		-exec rm -rf {} + 2>/dev/null || true
 
 	# Sanity: the install path is the final path. Refuse to ship a .deb where
