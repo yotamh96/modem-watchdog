@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-05-subproc-runner-PLAN.md
-last_updated: "2026-05-06T09:41:30.204Z"
+stopped_at: Completed 01-06-clock-config-event-logger-carriers-PLAN.md
+last_updated: "2026-05-06T09:58:14.869Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 7
-  completed_plans: 5
-  percent: 71
+  completed_plans: 6
+  percent: 86
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 01 (foundations-adrs) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 Status: Ready to execute
 Last activity: 2026-05-06
 
-Progress: [███████░░░] 71%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Progress: [███████░░░] 71%
 | Phase 01 P01-03-wire-package | 18 | 3 tasks | 30 files |
 | Phase 01-foundations-adrs P04 | 240 | 4 tasks | 15 files |
 | Phase 01 P01-05-subproc-runner | 10 | 2 tasks | 11 files |
+| Phase 01-foundations-adrs P01-06-clock-config-event-logger-carriers | 11 | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,10 @@ Recent decisions affecting current work:
 - signal.SIGKILL replaced with integer literal 9 -- POSIX-only, absent from Windows stubs under mypy --strict
 - os.killpg/os.getpgid guarded by sys.platform != win32 -- POSIX-only attributes absent from typeshed Windows stubs
 - All 24 runner tests marked skipif(win32) -- Windows dev host lacks POSIX binaries; production Jetson is Linux/aarch64
+- EventLogClosedError (ruff N818 rename from EventLogClosed); alias kept for compat
+- Settings model_validator enforces NFR-33 http-only block cross-field
+- clock uses datetime.UTC alias (Python 3.12 UP017) instead of timezone.utc
+- types-PyYAML installed as dev dep for mypy --strict on yaml_merge.py
 
 ### Pending Todos
 
@@ -107,8 +112,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-06T09:41:30.190Z
-Stopped at: Completed 01-05-subproc-runner-PLAN.md
+Last session: 2026-05-06T09:58:14.856Z
+Stopped at: Completed 01-06-clock-config-event-logger-carriers-PLAN.md
 Resume file: None
 
 **Planned Phase:** 1 (Foundations & ADRs) — 7 plans — 2026-05-06T07:27:10.298Z

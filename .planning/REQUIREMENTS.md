@@ -45,11 +45,13 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 ### Provisioning
 
 - [ ] **FR-30**: APN selection by `(MCC, MNC)` lookup in config-file carrier table
-- [ ] **FR-30.1**: Day-one carrier coverage includes Israel (authoritative) plus minimal US (310/410, 311/480, 312/530), UK (234/10, 234/15, 234/30), DE (262/01, 262/02, 262/03) marked `unverified: true` (research §4.6)
+- [x] **FR-30.1
+**: Day-one carrier coverage includes Israel (authoritative) plus minimal US (310/410, 311/480, 312/530), UK (234/10, 234/15, 234/30), DE (262/01, 262/02, 262/03) marked `unverified: true` (research §4.6)
 - [ ] **FR-31**: Profile #1 written only when desired APN differs from currently programmed value
 - [ ] **FR-32**: Post-write APN verification (read profile back); fail loudly on mismatch
 - [ ] **FR-33**: New MCC/MNC entries addable without code release (config reload)
-- [ ] **FR-33.1**: Carrier-table entries fixture-validated against hostile inputs (YAML "Norway problem", leading-zero MCC/MNC); `mnc: str` regex `r"^\d{2,3}$"` (PITFALLS §11.2)
+- [x] **FR-33.1
+**: Carrier-table entries fixture-validated against hostile inputs (YAML "Norway problem", leading-zero MCC/MNC); `mnc: str` regex `r"^\d{2,3}$"` (PITFALLS §11.2)
 
 ### Observability
 
@@ -60,8 +62,10 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 - [ ] **FR-43**: Event log rotated via `logrotate` with 7-day, 100 MiB retention default
 - [ ] **FR-43.1**: inotify tail tolerates both `create`-mode rotation (MOVE_SELF/DELETE_SELF) **and** `copytruncate` mode (st_size truncation check) (PITFALLS §8.1)
 - [ ] **FR-44**: Webhook POST on `Healthy → Degraded` and `Recovering → Exhausted` transitions, with typed payload
-- [ ] **FR-44.1**: HMAC-SHA256 webhook signing in v2.0 (header `X-Spark-Signature: sha256=<hex>` over raw body bytes), promoted from v2.1 (closes PRD Q5 — research §4.3)
-- [ ] **FR-44.2**: Replay-protection header `X-Spark-Timestamp: <unix>` on every webhook (M-4)
+- [x] **FR-44.1
+**: HMAC-SHA256 webhook signing in v2.0 (header `X-Spark-Signature: sha256=<hex>` over raw body bytes), promoted from v2.1 (closes PRD Q5 — research §4.3)
+- [x] **FR-44.2
+**: Replay-protection header `X-Spark-Timestamp: <unix>` on every webhook (M-4)
 - [ ] **FR-44.3**: Webhook delivery retry with bounded queue (3 attempts, exponential backoff) before drop (M-1)
 - [ ] **FR-44.4**: Webhook payload deduplication / coalescing per `(modem, transition)` with default 60 s cooldown; `dedup_count` field on next emission (M-2)
 - [ ] **FR-44.5**: Daemon-restart event with reason enum (`sigterm` / `crash` / `config_invalid` / `oom` / `kill`) (M-6)
@@ -78,7 +82,8 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 - [ ] **FR-51**: CLI accepts `--qmi-fixture-dir=PATH` to read recorded `qmicli` output instead of executing
 - [ ] **FR-52**: CLI accepts `--diag-fixture=PATH` for `recovery` to replay a captured snapshot
 - [ ] **FR-53**: Daemon runs as a systemd `Type=notify` unit; graceful SIGTERM within 5 s
-- [ ] **FR-54**: Configuration precedence: CLI flags > env vars > `/etc/spark-modem-watchdog/conf.d/*.yaml` > baked-in defaults; SIGHUP transactional reload for data-only fields (closes PRD Q6 — research §8 #7)
+- [x] **FR-54
+**: Configuration precedence: CLI flags > env vars > `/etc/spark-modem-watchdog/conf.d/*.yaml` > baked-in defaults; SIGHUP transactional reload for data-only fields (closes PRD Q6 — research §8 #7)
 
 ### Safety
 
