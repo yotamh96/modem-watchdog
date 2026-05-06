@@ -50,7 +50,8 @@ def _validate_argv(argv: object) -> list[str]:
 
     Raises:
         TypeError: if argv is not a list[str] (includes str, tuple, etc.)
-        ValueError: if argv is an empty list
+        ValueError: if argv is an empty list, argv[0] is empty, or any
+                    element contains a NUL byte (POSIX execve rejects NUL).
     """
     if not isinstance(argv, list):
         raise TypeError(
@@ -63,6 +64,16 @@ def _validate_argv(argv: object) -> list[str]:
     for i, a in enumerate(argv):
         if not isinstance(a, str):
             raise TypeError(f"subproc.run: argv[{i}] must be str; got {type(a).__name__} ({a!r}).")
+        if "\x00" in a:
+            raise ValueError(
+                f"subproc.run: argv[{i}] contains a NUL byte; "
+                "POSIX execve(2) rejects NUL in arguments."
+            )
+    if not argv[0]:
+        raise ValueError(
+            "subproc.run: argv[0] (the executable) must be a non-empty string; "
+            "an empty string produces a confusing ENOENT from the kernel."
+        )
     return list(argv)  # defensive copy
 
 
