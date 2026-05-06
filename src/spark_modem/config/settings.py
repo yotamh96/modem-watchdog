@@ -18,6 +18,7 @@ available in the dev venv by the time this plan executes (wave 3).
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urlsplit
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -130,11 +131,18 @@ class Settings(BaseSettings):
     @field_validator("webhook_url")
     @classmethod
     def _validate_webhook_url_scheme(cls, v: str | None) -> str | None:
-        """NFR-33: must start with http:// or https://."""
+        """NFR-33: must be a valid http/https URL with a non-empty host."""
         if v is None:
             return None
-        if not (v.startswith("http://") or v.startswith("https://")):
-            raise ValueError("webhook_url must start with http:// or https://")
+        parts = urlsplit(v)
+        if parts.scheme not in ("http", "https"):
+            raise ValueError(
+                f"webhook_url must use http or https scheme; got {parts.scheme!r}"
+            )
+        if not parts.netloc:
+            raise ValueError("webhook_url must include a host (netloc is empty)")
+        if not parts.hostname:
+            raise ValueError("webhook_url has an empty hostname")
         return v
 
     @model_validator(mode="after")
