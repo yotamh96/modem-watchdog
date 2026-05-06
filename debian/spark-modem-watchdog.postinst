@@ -11,11 +11,13 @@ case "$1" in
     # to recover without hand-editing dpkg's status file (WR-010).
 
     # Create system user if it does not exist.
+    # Use --gecos (Debian/Ubuntu adduser standard) for the user description.
+    # Ubuntu 20.04's adduser does not accept --comment.
     if ! id -u spark-modem-watchdog >/dev/null 2>&1; then
       adduser --system --group --no-create-home \
         --home /var/lib/spark-modem-watchdog \
         --shell /usr/sbin/nologin \
-        --comment "spark-modem-watchdog daemon" \
+        --gecos "spark-modem-watchdog daemon" \
         spark-modem-watchdog
     fi
 
