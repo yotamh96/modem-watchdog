@@ -288,6 +288,18 @@ class WebhookPoster:
         ``budget_seconds``. Items that fail their single attempt or that
         remain when the budget expires emit ``WebhookDropped`` events with
         ``reason="drain_timeout"`` / ``"drain_budget_exhausted"``.
+
+        WR-03 (Phase 2 review) — drain INTENTIONALLY ignores
+        ``next_retry_monotonic`` on each item.  W-01 promises ONE attempt
+        per queued item within budget; honouring per-item backoff would
+        either (a) waste the budget on ``asyncio.sleep`` when the daemon
+        is already shutting down, or (b) requeue items that would then
+        fail the budget check on their second pop.  The drain is a
+        best-effort flush, not a retry loop — the receiver is expected to
+        be idempotent across post-shutdown deliveries (NFR-22 §"webhook
+        receiver idempotency contract").  If the receiver rejects an
+        in-backoff retry inside its anti-spam window, the item still
+        emits a ``WebhookDropped`` event so post-mortem replay sees it.
         """
         self._stopped.set()
         deadline = self._clock.monotonic() + budget_seconds
