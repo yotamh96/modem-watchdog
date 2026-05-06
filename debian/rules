@@ -78,3 +78,23 @@ override_dh_auto_install:
 # against SOURCE_DATE_EPOCH already and don't want dh_python to re-compile and
 # de-reproduce.
 override_dh_python3:
+
+# python-build-standalone ships pre-built relocatable binaries with their own
+# debug info, symbol tables, and bundled glibc dependencies. They are not OUR
+# build artifacts — debhelper must not re-process them or it will break PBS's
+# self-contained guarantees:
+#
+#   - dh_dwz: PBS uses .debug_line_str (newer DWARF 5) that focal's dwz can't
+#     parse: "Unknown debugging section .debug_line_str". Skip entirely.
+#   - dh_strip: PBS is already optimised for distribution; re-stripping risks
+#     breaking the extension modules' --strip-debug compatibility.
+#   - dh_makeshlibs: we ship libpython3.12.so PRIVATELY for our daemon; it
+#     must NOT be advertised in /etc/ld.so.conf.d via shlibs metadata.
+#   - dh_shlibdeps: the bundled python's links are resolved against PBS's own
+#     interpreter, not the system's. Excluding the bundled tree prevents
+#     spurious system-package dependencies leaking into ${shlibs:Depends}.
+override_dh_dwz:
+override_dh_strip:
+override_dh_makeshlibs:
+override_dh_shlibdeps:
+	dh_shlibdeps --exclude=opt/spark-modem-watchdog/python
