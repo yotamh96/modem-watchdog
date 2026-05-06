@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 2 plans authored (10 plans, waves 1-6)
-last_updated: "2026-05-06T15:16:01.561Z"
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-05-06T15:59:20.089Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 17
-  completed_plans: 7
-  percent: 41
+  completed_plans: 8
+  percent: 47
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-05)
 
 **Core value:** Maximize end-user uplink availability across the four bonded modems by applying minimum-impact recovery actions — and never running a destructive recovery that has zero chance of fixing the observed issue.
-**Current focus:** Phase 2 — core-daemon (laptop-testable) — ready to plan
+**Current focus:** Phase 02 — core-daemon-laptop-testable
 
 ## Current Position
 
-Phase: 2
-Plan: Not started (10 plans authored)
+Phase: 02 (core-daemon-laptop-testable) — EXECUTING
+Plan: 2 of 10
 Status: Ready to execute
 Last activity: 2026-05-06
 
-Progress: [██████████] 100%
+Progress: [█████░░░░░] 47%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [██████████] 100%
 | Phase 01 P01-05-subproc-runner | 10 | 2 tasks | 11 files |
 | Phase 01-foundations-adrs P01-06-clock-config-event-logger-carriers | 11 | 3 tasks | 18 files |
 | Phase 01-foundations-adrs P01-02-deb-build-pipeline | 10 | 2 tasks | 15 files |
+| Phase 02 P01 | 5min | 2 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,10 @@ Recent decisions affecting current work:
 - Pin cpython-3.12.13+20260504-aarch64-unknown-linux-gnu-install_only.tar.gz (SHA256 8a27d68c0dec7573c269e16da61fed358e4bb9f986ae976549ca87ed49fe1506) as bundled CPython for .deb
 - postinst masks ModemManager.service (hardware constraint: Zao requires exclusive modem access)
 - LoadCredential= in systemd unit for HMAC secret (ADR-0011); credential path /etc/spark-modem-watchdog/hmac-secret
+- Plan 02-01: tests/fakes/ houses six hardware-free fakes (Runner/Clock/ZaoTailer/WebhookPoster/Inventory/DNSResolver) — single import surface for all Phase 2 unit tests
+- Plan 02-01: FixtureInventory carries a local _FixtureModemDescriptor pydantic shape; Plan 02-04 will promote to production InventorySource Protocol type and update the fake
+- Plan 02-01: tests/fixtures/{qmicli,zao_log,inventory,diag,replay}/.gitkeep tracks empty fixture roots; Wave 2-6 plans populate them
+- Plan 02-01: FakeRunner raises KeyError on unregistered argv — tests must declare every expected command, no silent passthrough
 
 ### Pending Todos
 
@@ -116,8 +121,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: --stopped-at
-Stopped at: Phase 2 plans authored (10 plans, waves 1-6)
-Resume file: --resume-file
+Last session: 2026-05-06T15:59:20.073Z
+Stopped at: Completed 02-01-PLAN.md
+Resume file: None
 
 **Planned Phase:** 2 (Core Daemon (laptop-testable)) — 10 plans — 2026-05-06T15:16:01.546Z
