@@ -1,0 +1,55 @@
+{
+  "diag": {
+    "cycle_id": 0,
+    "host_issues": [],
+    "per_modem": {
+      "2-3.1.1": {
+        "cdc_wdm": "cdc-wdm0",
+        "issues": [
+          {
+            "category": "datapath",
+            "description": "",
+            "detail": "raw_ip_off",
+            "who": {
+              "cdc_wdm": "cdc-wdm0",
+              "kind": "modem",
+              "usb_path": "2-3.1.1"
+            }
+          }
+        ],
+        "mcc": null,
+        "mnc": null,
+        "operating_mode": null,
+        "registration": null,
+        "signal": {
+          "rsrp_dbm": -90,
+          "rsrq_db": -10.0,
+          "rssi_dbm": null,
+          "snr_db": 8.0
+        },
+        "sim_state": null,
+        "usb_path": "2-3.1.1",
+        "usb_speed": null
+      }
+    },
+    "schema_version": 1,
+    "ts_iso": "2026-01-01T00:00:00+00:00"
+  },
+  "expected_v1_actions": [
+    "fix_raw_ip"
+  ],
+  "fault_cycle": true,
+  "prior_state": {
+    "_healthy_streak": 0,
+    "counters": {},
+    "last_action_monotonic": null,
+    "last_state_transition_iso": null,
+    "present": true,
+    "recovering_level": null,
+    "rf_blocked": false,
+    "schema_version": 1,
+    "state": "unknown"
+  },
+  "scenario": "raw_ip_off",
+  "v1_succeeded": true
+}

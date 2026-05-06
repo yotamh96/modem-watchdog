@@ -38,3 +38,7 @@ debian/debhelper-build-stamp
 .DS_Store
 Thumbs.db
 uv.lock
+
+# Phase 2 replay-harness output (artifacts/.gitkeep is committed; the
+# generated summary file is not).
+artifacts/replay-summary.json

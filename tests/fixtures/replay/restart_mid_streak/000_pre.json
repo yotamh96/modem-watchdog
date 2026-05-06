@@ -1,0 +1,44 @@
+{
+  "scenario": "restart_mid_streak_pre",
+  "fault_cycle": false,
+  "v1_succeeded": true,
+  "diag": {
+    "schema_version": 1,
+    "ts_iso": "2026-01-01T00:00:00+00:00",
+    "cycle_id": 4,
+    "per_modem": {
+      "2-3.1.1": {
+        "usb_path": "2-3.1.1",
+        "cdc_wdm": "cdc-wdm0",
+        "usb_speed": null,
+        "operating_mode": null,
+        "sim_state": null,
+        "registration": null,
+        "mcc": null,
+        "mnc": null,
+        "signal": {
+          "rssi_dbm": null,
+          "rsrp_dbm": -90,
+          "rsrq_db": -10.0,
+          "snr_db": 8.0
+        },
+        "issues": []
+      }
+    },
+    "host_issues": []
+  },
+  "prior_state": {
+    "schema_version": 1,
+    "state": "healthy",
+    "present": true,
+    "rf_blocked": false,
+    "recovering_level": null,
+    "_healthy_streak": 5,
+    "counters": {"soft_reset": 1},
+    "last_action_monotonic": 1000.0,
+    "last_state_transition_iso": null
+  },
+  "expected_v1_actions": [],
+  "expected_post_cycle_streak": 6,
+  "expected_post_cycle_counters": {"soft_reset": 1}
+}
