@@ -182,7 +182,7 @@ NFR-21.1, NFR-22, NFR-22.1, NFR-42
 
 Plans:
 - [x] 02-01-PLAN.md — Test fakes + Wave 0 fixture directories (FakeRunner, FakeClock, FakeWebhookPoster, FixtureInventory, FakeDNSResolver, FixtureZaoTailer)
-- [ ] 02-02-PLAN.md — qmi/ wrapper + parsers + per-libqmi-version fixtures (FR-11, FR-74; --device-open-proxy always; extra='ignore' boundary)
+- [x] 02-02-PLAN.md — qmi/ wrapper + parsers + per-libqmi-version fixtures (FR-11, FR-74; --device-open-proxy always; extra='ignore' boundary)
 - [ ] 02-03-PLAN.md — zao_log/ parser + ZaoLogTailer Protocol + RASCOW_STAT fixtures (FR-10)
 - [ ] 02-04-PLAN.md — inventory/ + observer/ TaskGroup orchestrator with per-task asyncio.timeout(8s) + Diag builder + Issue extractor (FR-2, FR-13, FR-70, FR-71, NFR-4, NFR-10)
 - [ ] 02-05-PLAN.md — policy/ pure engine: transitions + decision_table + gates + engine + spec-as-tests (FR-12, FR-20, FR-21, FR-22, FR-25, FR-25.1, FR-26, FR-26.1, FR-26.2, NFR-11, NFR-20)

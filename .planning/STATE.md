@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-05-06T15:59:20.089Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-05-06T16:15:53.520Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 17
-  completed_plans: 8
-  percent: 47
+  completed_plans: 9
+  percent: 53
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 02 (core-daemon-laptop-testable) — EXECUTING
-Plan: 2 of 10
+Plan: 3 of 10
 Status: Ready to execute
 Last activity: 2026-05-06
 
-Progress: [█████░░░░░] 47%
+Progress: [█████░░░░░] 53%
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Progress: [█████░░░░░] 47%
 | Phase 01-foundations-adrs P01-06-clock-config-event-logger-carriers | 11 | 3 tasks | 18 files |
 | Phase 01-foundations-adrs P01-02-deb-build-pipeline | 10 | 2 tasks | 15 files |
 | Phase 02 P01 | 5min | 2 tasks | 20 files |
+| Phase 02 P02 | 9min | 2 tasks | 31 files |
 
 ## Accumulated Context
 
@@ -104,6 +105,11 @@ Recent decisions affecting current work:
 - Plan 02-01: FixtureInventory carries a local _FixtureModemDescriptor pydantic shape; Plan 02-04 will promote to production InventorySource Protocol type and update the fake
 - Plan 02-01: tests/fixtures/{qmicli,zao_log,inventory,diag,replay}/.gitkeep tracks empty fixture roots; Wave 2-6 plans populate them
 - Plan 02-01: FakeRunner raises KeyError on unregistered argv — tests must declare every expected command, no silent passthrough
+- Plan 02-02: QmiWrapper centralizes qmicli (always with --device-open-proxy / FR-74); 11 methods routed through subproc.runner.run; SP-04 lint enforces no bypass
+- Plan 02-02: _in_critical_section flag set on 4 state-changing methods (dms_set_operating_mode, uim_sim_power_on, wds_modify_profile, wds_set_ip_family); cleared in finally so Phase 3 SIGTERM handler can wait for cleanup
+- Plan 02-02: classify() short-circuits on PROXY_DIED stderr signatures (PITFALLS §1.1) so policy/ chooses driver_reset (RECOVERY_SPEC §6.4); timeout wins over proxy-died when both present
+- Plan 02-02: parsers use ConfigDict(extra='ignore', frozen=True) absorbing libqmi version drift; required fields surface as QmiError(MISSING_FIELD, field=<name>) not silent None
+- Plan 02-02: per-libqmi-version fixture tree at tests/fixtures/qmicli/<intent>/<version>/<scenario>.txt with  line-1 comment; 16 fixtures across 1.30 + 1.32; new libqmi release = new directory + new fixtures, no parser code change
 
 ### Pending Todos
 
@@ -121,8 +127,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-06T15:59:20.073Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-05-06T16:15:33.514Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None
 
 **Planned Phase:** 2 (Core Daemon (laptop-testable)) — 10 plans — 2026-05-06T15:16:01.546Z
