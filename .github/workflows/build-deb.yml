@@ -25,12 +25,8 @@ jobs:
         with:
           fetch-depth: 0  # need git history for SOURCE_DATE_EPOCH
 
-      - name: Install build tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            debhelper devscripts fakeroot dpkg-dev \
-            curl ca-certificates
+      # Build tools (debhelper devscripts fakeroot dpkg-dev curl ca-certificates)
+      # are pre-installed on the self-hosted runner host. See docs/RUNBOOK.md.
 
       - name: Build .deb
         run: bash scripts/build_deb.sh ${{ inputs.mode || 'dev' }}

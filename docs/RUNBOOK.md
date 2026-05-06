@@ -5,7 +5,7 @@
 | Status        | Draft                  |
 | Owner         | TBD (modem platform)   |
 | Audience      | Site technicians, NOC, on-call engineers |
-| Last updated  | 2026-05-05             |
+| Last updated  | 2026-05-06             |
 
 This runbook covers daily operations: install, observe, diagnose,
 recover. It assumes a Jetson Orin NX with the `.deb` package installed
@@ -336,3 +336,65 @@ on every cycle.
 - **`signal.sufficient = null`.** Means the modem was not on a serving
   cell at probe time. The daemon proceeds without RF gating; that is
   intentional.
+
+## 10. Self-hosted CI runner setup (`spark`)
+
+The `Build .deb (aarch64)` workflow runs on a self-hosted GitHub
+Actions runner installed on a Jetson box (`runner name: spark`,
+unprivileged user `nvidia`). The workflow assumes the build toolchain
+is already on the host — it does **not** call `sudo apt-get install`
+at job time, because the runner user has no passwordless sudo and a
+non-interactive `sudo` will hard-fail with:
+
+```
+sudo: a terminal is required to read the password
+```
+
+### One-time host setup
+
+Run these once per runner host, as a user with sudo:
+
+```bash
+# Build deps for the .deb pipeline
+sudo apt-get update
+sudo apt-get install -y --no-install-recommends \
+  debhelper devscripts fakeroot dpkg-dev \
+  curl ca-certificates
+
+# Smoke-install step uses Docker. Make sure the runner user can
+# run docker without sudo:
+sudo usermod -aG docker nvidia
+# Log the runner user out + back in (or restart the runner service)
+# for the group change to take effect.
+```
+
+Verify:
+
+```bash
+dpkg -l debhelper devscripts fakeroot dpkg-dev curl ca-certificates \
+  | tail -n +6   # every row should start with `ii`
+sudo -u nvidia docker info >/dev/null && echo "docker ok"
+```
+
+### What the runner needs *besides* build tools
+
+- `uv` — installed per-job by the workflow (`curl https://astral.sh/uv/install.sh | sh`).
+  Lives under `~nvidia/.local/bin/`. No host action needed.
+- Python 3.12 — `uv python install 3.12` per job. Cached under `~nvidia/.local/share/uv/`.
+- The GitHub Actions runner agent itself, registered against
+  `yotamh96/modem-watchdog` with labels `self-hosted, linux, ARM64`.
+
+### When to re-do this
+
+- New runner host (replacement Jetson, second runner for capacity).
+- After a fresh OS reinstall on the existing host.
+- When `build-deb.yml` adds a new host-level dependency (record it
+  here at the same time as the workflow change).
+
+### What this runner intentionally does *not* have
+
+- No NOPASSWD sudo. Workflows that need root must either run inside
+  a container (see the `Smoke-install in clean container` step in
+  `build-deb.yml`) or be redesigned. We deliberately keep the runner
+  user unprivileged so a compromised workflow cannot reconfigure
+  the production Jetson.
