@@ -85,9 +85,12 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 - [ ] **FR-60**: Refuse to start if `qmicli`, `ip`, and bundled `python3` (>=3.12 from `python-build-standalone`) are not present (closes PROJECT.md Q8 — research §2)
 - [ ] **FR-61**: Single PID lock on `/run/spark-modem-watchdog/lock` for the daemon
 - [ ] **FR-61.1**: Per-modem and state-store advisory `flock`s separate from PID lock; CLI mutating commands acquire the same locks the daemon does (M-21; PITFALLS §3.2/§16.1)
-- [ ] **FR-62**: All persistent file writes are atomic (temp + rename + directory fsync)
-- [ ] **FR-62.1**: Per-modem state files keyed by `usb_path` (`state/by-usb/<usb_path>.json`), not `cdc-wdmN`; startup cross-checks file usb_path vs sysfs vs current cdc-wdm — mismatch is an error (closes ARCHITECTURE Q14 / PITFALLS §3.1; ADR-0009)
-- [ ] **FR-63**: Validate every external input (qmicli output, JSON, Zao log) before acting; invalid input is logged error, not a crash
+- [x] **FR-62
+**: All persistent file writes are atomic (temp + rename + directory fsync)
+- [x] **FR-62
+.1**: Per-modem state files keyed by `usb_path` (`state/by-usb/<usb_path>.json`), not `cdc-wdmN`; startup cross-checks file usb_path vs sysfs vs current cdc-wdm — mismatch is an error (closes ARCHITECTURE Q14 / PITFALLS §3.1; ADR-0009)
+- [x] **FR-63
+**: Validate every external input (qmicli output, JSON, Zao log) before acting; invalid input is logged error, not a crash
 - [ ] **FR-64**: Never `exec` a string built from external data; all subprocess calls use list-form `argv`
 
 ### Daemon design (research-derived)
@@ -131,10 +134,14 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 ### Security
 
 - [ ] **NFR-30**: Daemon runs as root; no other process granted suid bits
-- [ ] **NFR-31**: All subprocess calls pass arguments as a list, never a shell string
-- [ ] **NFR-32**: External text inputs parsed by validators that reject unexpected types/shapes
-- [ ] **NFR-33**: Webhook URLs validated as `https://` only by default; `http://` allowed only with explicit `webhook_allow_http=true`
-- [ ] **NFR-34**: HMAC signing secret loaded from systemd `LoadCredential=`; never on disk
+- [x] **NFR-31
+**: All subprocess calls pass arguments as a list, never a shell string
+- [x] **NFR-32
+**: External text inputs parsed by validators that reject unexpected types/shapes
+- [x] **NFR-33
+**: Webhook URLs validated as `https://` only by default; `http://` allowed only with explicit `webhook_allow_http=true`
+- [x] **NFR-34
+**: HMAC signing secret loaded from systemd `LoadCredential=`; never on disk
 
 ### Maintainability
 

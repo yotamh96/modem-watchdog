@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-07-adr-set-PLAN.md
-last_updated: "2026-05-06T08:23:29.955Z"
+stopped_at: Completed 01-03-wire-package-PLAN.md
+last_updated: "2026-05-06T08:49:04.339Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 7
-  completed_plans: 2
-  percent: 29
+  completed_plans: 3
+  percent: 43
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 01 (foundations-adrs) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Last activity: 2026-05-06
 
-Progress: [███░░░░░░░] 29%
+Progress: [████░░░░░░] 43%
 
 ## Performance Metrics
 
@@ -54,6 +54,7 @@ Progress: [███░░░░░░░] 29%
 *Updated after each plan completion*
 | Phase 01-foundations-adrs P01 | 10 minutes | 2 tasks | 15 files |
 | Phase 01 P07 | 14 | 3 tasks | 12 files |
+| Phase 01 P01-03-wire-package | 18 | 3 tasks | 30 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,9 @@ Recent decisions affecting current work:
 - ADR-0012: 3-layer locking — per-modem asyncio.Lock + globals lock + per-modem flock + state-store flock + separate PID lock
 - ADR-0013: integer-encoded modem_state_value{modem} (0-4 stable mapping) replaces one-hot state label; 16 series per box
 - All 8 PROJECT.md open questions Q1-Q8 closed in writing as of Phase 1 (2026-05-06)
+- Pydantic v2 BaseWire: frozen=True, extra=forbid, populate_by_name=True — strict wire boundary (CONTEXT.md W-02)
+- ModemState 5+2 ADR-0008: state Literal + recovering_level + present + rf_blocked; state_to_int() stable 0-4 encoding for ADR-0013 metric
+- CarrierTable uses StrictStr to reject YAML type coercions including Norway problem (NO->False) and MNC-as-int
 
 ### Pending Todos
 
@@ -94,8 +98,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-06T08:23:29.924Z
-Stopped at: Completed 01-07-adr-set-PLAN.md
+Last session: 2026-05-06T08:49:04.291Z
+Stopped at: Completed 01-03-wire-package-PLAN.md
 Resume file: None
 
 **Planned Phase:** 1 (Foundations & ADRs) — 7 plans — 2026-05-06T07:27:10.298Z
