@@ -35,6 +35,7 @@ from spark_modem.wire.events import (
     SchemaDowngradePending,
     StateTransition,
     UsbPathMismatch,
+    WebhookDropped,
 )
 
 _MODE = 0o640
@@ -53,6 +54,7 @@ _EVENT_TYPES: tuple[type, ...] = (
     SchemaDowngradePending,
     StateTransition,
     UsbPathMismatch,
+    WebhookDropped,
 )
 
 

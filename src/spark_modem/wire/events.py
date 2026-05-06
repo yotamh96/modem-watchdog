@@ -134,6 +134,26 @@ class MaintenanceWindowEnded(_EventBase):
     reason: Literal["expired", "operator_off"] = "expired"
 
 
+class WebhookDropped(_EventBase):
+    """A webhook envelope was dropped (W-01 / FR-44.3 / ADR-0011).
+
+    Captures enough state for post-mortem reconstruction. The in-memory
+    poster queue is lost on crash by design; every drop emits a
+    corresponding event line via this variant so events.jsonl remains the
+    authoritative replay log.
+
+    `reason` is an open string so the poster can distinguish ``queue_full`` /
+    ``retry_exhausted`` / ``drain_timeout`` / ``drain_budget_exhausted`` /
+    ``no_dns`` / ``no_url`` without a closed enum churn.
+    """
+
+    kind: Literal["webhook_dropped"] = "webhook_dropped"
+    modem_usb_path: str | None = None
+    payload_kind: str = ""
+    attempts: int = Field(default=0, ge=0)
+    reason: str = ""
+
+
 Event = Annotated[
     ActionPlanned
     | ActionExecuted
@@ -144,7 +164,8 @@ Event = Annotated[
     | SchemaDowngradePending
     | UsbPathMismatch
     | MaintenanceWindowStarted
-    | MaintenanceWindowEnded,
+    | MaintenanceWindowEnded
+    | WebhookDropped,
     Field(discriminator="kind"),
 ]
 """One discriminated-union type for parsing events.jsonl back."""
