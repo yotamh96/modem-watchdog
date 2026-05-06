@@ -1,0 +1,38 @@
+# Local IDE / editor settings
+.claude/settings.local.json
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+build/
+dist/
+
+# Debian build artifacts
+debian/spark-modem-watchdog/
+debian/.debhelper/
+debian/files
+debian/*.substvars
+debian/*.debhelper.log
+debian/debhelper-build-stamp
+*.deb
+*.buildinfo
+*.changes
+
+# OS
+.DS_Store
+Thumbs.db
