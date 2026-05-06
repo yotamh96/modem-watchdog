@@ -34,7 +34,7 @@ import contextlib
 import errno
 import os
 import sys
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 
 from spark_modem.state_store.errors import StateStoreLocked
@@ -234,11 +234,17 @@ class AsyncFlockHandle:
 
         fd=-1 is the no-op sentinel (Windows dev host); _release_flock_fd
         returns immediately for negative fds.
+
+        Idempotent: a second call is a no-op. This prevents a double-close
+        race if release() is called concurrently or __aexit__ races with an
+        explicit release() call (the "public API owns the lifetime" pattern
+        documented in the class docstring).
         """
         fd = self._fd
+        if fd is None:
+            return  # already released — no-op
         self._fd = None
-        if fd is not None:
-            await asyncio.to_thread(_release_flock_fd, fd)
+        await asyncio.to_thread(_release_flock_fd, fd)
 
     async def __aenter__(self) -> AsyncFlockHandle:
         return self
@@ -247,18 +253,25 @@ class AsyncFlockHandle:
         await self.release()
 
 
+@contextlib.asynccontextmanager
 async def acquire_flock_async(
     path: Path | str,
     *,
     blocking: bool = False,
     write_pid: bool = True,
-) -> AsyncFlockHandle:
+) -> AsyncIterator[AsyncFlockHandle]:
     """Asyncio-friendly exclusive flock — wraps the blocking acquire in to_thread.
 
-    Returns an :class:`AsyncFlockHandle` usable as an async context manager::
+    Use as an async context manager::
 
-        async with await acquire_flock_async(path):
+        async with acquire_flock_async(path) as handle:
             ...  # flock held here; released on exit
+
+    Converting to @asynccontextmanager eliminates the cancellation-leak window
+    that existed with the old ``async with await acquire_flock_async(path)``
+    pattern: if the caller is cancelled between the to_thread call returning and
+    the coroutine resuming, the finally block in the context manager guarantees
+    the handle is released regardless.
 
     Args:
         path:      Lock file path.
@@ -268,4 +281,8 @@ async def acquire_flock_async(
     Lock acquisition order (mandatory — see module docstring):
       asyncio.Lock first, flock second.
     """
-    return await asyncio.to_thread(_enter_flock_for_async, path, blocking, write_pid)
+    handle = await asyncio.to_thread(_enter_flock_for_async, path, blocking, write_pid)
+    try:
+        yield handle
+    finally:
+        await handle.release()

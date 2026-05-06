@@ -146,7 +146,7 @@ class StateStore:
             # Layer 2: per-modem flock (cross-process; daemon-vs-CLI guard).
             # Lock acquisition order: asyncio.Lock acquired above, flock here.
             lock_path = lockfile_for_modem(usb_path, run=self._run_dir)
-            async with await acquire_flock_async(lock_path, blocking=wait_for_flock):
+            async with acquire_flock_async(lock_path, blocking=wait_for_flock):
                 await self._save_modem_state_locked(usb_path, state)
 
     async def _save_modem_state_locked(
@@ -200,7 +200,7 @@ class StateStore:
         # in a multi-context `async with A, await B():` statement.
         async with self._modem_locks.get(usb_path):  # noqa: SIM117
             # Lock acquisition order: asyncio.Lock acquired above, flock here.
-            async with await acquire_flock_async(lock_path, blocking=True):
+            async with acquire_flock_async(lock_path, blocking=True):
                 if not target.exists():
                     return LoadResult(
                         state=_fresh_modem_state(usb_path),
@@ -289,7 +289,7 @@ class StateStore:
             # Layer 2: state-store flock (cross-process; daemon-vs-CLI guard).
             # Lock acquisition order: asyncio.Lock acquired above, flock here.
             lock_path = state_store_lockfile(run=self._run_dir)
-            async with await acquire_flock_async(lock_path, blocking=wait_for_flock):
+            async with acquire_flock_async(lock_path, blocking=wait_for_flock):
                 await self._save_globals_locked(state)
 
     async def _save_globals_locked(self, state: GlobalsState) -> None:
@@ -316,7 +316,7 @@ class StateStore:
         # in a multi-context `async with A, await B():` statement.
         async with globals_lock():  # noqa: SIM117
             # Lock acquisition order: asyncio.Lock acquired above, flock here.
-            async with await acquire_flock_async(lock_path, blocking=True):
+            async with acquire_flock_async(lock_path, blocking=True):
                 if not target.exists():
                     return GlobalsLoadResult(state=GlobalsState(), downgrade_event=None)
 
@@ -361,7 +361,7 @@ class StateStore:
         async with globals_lock():
             # Lock acquisition order: asyncio.Lock acquired above, flock here.
             lock_path = state_store_lockfile(run=self._run_dir)
-            async with await acquire_flock_async(lock_path, blocking=wait_for_flock):
+            async with acquire_flock_async(lock_path, blocking=wait_for_flock):
                 target = identity_map_path(root=self._state_root)
                 envelope = {
                     "schema_version": CURRENT_SCHEMA_VERSION,
@@ -378,7 +378,7 @@ class StateStore:
         async with globals_lock():
             # Lock acquisition order: asyncio.Lock acquired above, flock here.
             lock_path = state_store_lockfile(run=self._run_dir)
-            async with await acquire_flock_async(lock_path, blocking=True):
+            async with acquire_flock_async(lock_path, blocking=True):
                 target = identity_map_path(root=self._state_root)
                 if not target.exists():
                     return {}

@@ -11,7 +11,7 @@ Tests cover:
   - globals_lock(): singleton across calls.
   - acquire_flock(): exclusive lock, PID write, contention raises StateStoreLocked,
     release lets second acquire succeed, blocking acquire waits.
-  - acquire_flock_async: asyncio-friendly wrapper returning AsyncFlockHandle.
+  - acquire_flock_async: asyncio context manager yielding AsyncFlockHandle.
 """
 
 from __future__ import annotations
@@ -206,21 +206,22 @@ def test_acquire_flock_blocking_waits_for_release(tmp_path: Path) -> None:
 
 @pytest.mark.skipif(not IS_POSIX, reason="fcntl / flock is POSIX-only")
 async def test_acquire_flock_async_returns_handle(tmp_path: Path) -> None:
-    """acquire_flock_async wraps flock in asyncio.to_thread; returns AsyncFlockHandle."""
+    """acquire_flock_async is a context manager that yields AsyncFlockHandle."""
     lock_path = tmp_path / "async.lock"
-    handle = await acquire_flock_async(lock_path)
-    assert isinstance(handle, AsyncFlockHandle)
-    await handle.release()
+    async with acquire_flock_async(lock_path) as handle:
+        assert isinstance(handle, AsyncFlockHandle)
+    # After exit the lock file should exist and be re-acquirable.
+    assert lock_path.exists()
 
 
 @pytest.mark.skipif(not IS_POSIX, reason="fcntl / flock is POSIX-only")
 async def test_acquire_flock_async_context_manager(tmp_path: Path) -> None:
-    """AsyncFlockHandle supports async with."""
+    """acquire_flock_async releases the flock on context-manager exit."""
     lock_path = tmp_path / "async.lock"
-    async with await acquire_flock_async(lock_path):
+    async with acquire_flock_async(lock_path):
         assert lock_path.exists()
     # After exit, a second acquire should succeed.
-    async with await acquire_flock_async(lock_path):
+    async with acquire_flock_async(lock_path):
         pass
 
 
@@ -228,6 +229,7 @@ async def test_acquire_flock_async_context_manager(tmp_path: Path) -> None:
 async def test_acquire_flock_async_contention_raises(tmp_path: Path) -> None:
     """async non-blocking acquire raises StateStoreLocked when flock is held."""
     lock_path = tmp_path / "async.lock"
-    async with await acquire_flock_async(lock_path, blocking=False):
+    async with acquire_flock_async(lock_path, blocking=False):
         with pytest.raises(StateStoreLocked):
-            await acquire_flock_async(lock_path, blocking=False)
+            async with acquire_flock_async(lock_path, blocking=False):
+                pass
