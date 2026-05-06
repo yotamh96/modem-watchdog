@@ -48,6 +48,14 @@ class FakeClock:
         target = self._wall if tz is None else self._wall.astimezone(tz)
         return target.isoformat()
 
+    def unix_seconds(self) -> int:
+        """Return Unix wall-clock seconds derived from the fake wall clock.
+
+        Tracks ``advance(seconds)`` so tests that exercise the
+        ``X-Spark-Timestamp`` header (CR-01 fix) see deterministic values.
+        """
+        return int(self._wall.timestamp())
+
     def advance(self, seconds: float) -> None:
         """Move both clocks forward by `seconds`. Negative values raise ValueError."""
         if seconds < 0:

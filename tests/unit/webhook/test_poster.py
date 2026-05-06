@@ -369,3 +369,38 @@ async def test_url_https_default_port_round_trip() -> None:
     assert poster._host == "noc.example.test"
     assert poster._port == 443
     assert poster._path == "/v2/webhook"
+
+
+async def test_x_spark_timestamp_is_unix_wall_clock_seconds() -> None:
+    """CR-01: ``X-Spark-Timestamp`` must be ``int(time.time())``-shaped.
+
+    Per FR-44.2 / ADR-0011 the receiver compares the header against
+    ``time.time()`` to enforce a replay window.  ``time.monotonic()`` is
+    forbidden here (CLAUDE.md invariant #4 — durations only).
+
+    FakeClock starts wall=2026-01-01T00:00:00+00:00 (Unix 1767225600).
+    The header MUST equal that exact value for a deterministic FakeClock.
+    """
+    poster, _, _, clock, _ = _build_poster()
+    capture = _RequestCapture()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        capture.requests.append(request)
+        return httpx.Response(status_code=200)
+
+    _install_mock_transport(poster, handler)
+    await poster.enqueue(_make_envelope())
+    await poster.drain(budget_seconds=10.0)
+
+    assert len(capture.requests) == 1
+    ts = int(capture.requests[0].headers["X-Spark-Timestamp"])
+    # FakeClock default wall-clock = 2026-01-01T00:00:00+00:00.
+    expected_unix = clock.unix_seconds()
+    assert ts == expected_unix
+    # Sanity: a valid Unix wall-clock seconds value sits well above the
+    # monotonic-since-boot range we'd see if the bug regressed.
+    # FakeClock.monotonic() starts at 0.0; if the bug came back, ts would
+    # be 0 or a tiny positive integer.
+    assert ts > 1_700_000_000, (
+        "X-Spark-Timestamp regressed to monotonic-shaped value; see CR-01 / ADR-0011 / FR-44.2"
+    )

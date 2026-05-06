@@ -148,6 +148,12 @@ async def test_drain_budget_exhausted_drops_remaining() -> None:
         def wall_clock_iso(self) -> str:
             return "2026-05-06T12:00:00+00:00"
 
+        def unix_seconds(self) -> int:
+            # Fixed wall stamp matching wall_clock_iso() above (1746547200 =
+            # 2026-05-06T12:00:00Z).  Tests do not assert on the value; the
+            # method exists to satisfy ClockProto after the CR-01 fix.
+            return 1_746_547_200
+
         def advance(self, seconds: float) -> None:
             self._t += seconds
 

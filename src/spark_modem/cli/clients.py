@@ -49,6 +49,16 @@ class _CliClock:
     def wall_clock_iso(self) -> str:
         return datetime.now(UTC).isoformat()
 
+    def unix_seconds(self) -> int:
+        """Unix wall-clock seconds for wire-format replay timestamps.
+
+        Used by webhook/poster for the ``X-Spark-Timestamp`` header
+        (FR-44.2 / ADR-0011).  CLAUDE.md invariant #4 requires
+        ``time.time()`` (NOT ``time.monotonic()``) for any wall-clock
+        stamp that crosses the wire.
+        """
+        return int(_time.time())
+
 
 class _InventoryFromFile:
     """InventorySource that reads modem descriptors from a JSON fixture file.

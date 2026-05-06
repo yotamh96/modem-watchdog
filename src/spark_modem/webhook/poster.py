@@ -48,10 +48,17 @@ _HTTP_OK_HIGH = 300
 
 
 class ClockProto(Protocol):
-    """Monotonic + wall-clock surface (matches FakeClock and clock module)."""
+    """Monotonic + wall-clock surface (matches FakeClock and clock module).
+
+    ``unix_seconds()`` returns Unix wall-clock seconds (``int(time.time())``)
+    for the ``X-Spark-Timestamp`` replay-protection header (ADR-0011 /
+    FR-44.2).  ``monotonic()`` is reserved for durations and backoffs per
+    CLAUDE.md invariant #4 — never used for a wire-format timestamp.
+    """
 
     def monotonic(self) -> float: ...
     def wall_clock_iso(self) -> str: ...
+    def unix_seconds(self) -> int: ...
 
 
 class EventLogWriterProto(Protocol):
@@ -238,7 +245,11 @@ class WebhookPoster:
         if ip is None:
             self._metrics.record_webhook_delivery("skipped_no_dns")
             return False
-        ts_unix = int(self._clock.monotonic())
+        # FR-44.2 / ADR-0011: X-Spark-Timestamp is Unix wall-clock seconds
+        # (the receiver compares it against time.time() to enforce a replay
+        # window).  CLAUDE.md invariant #4: monotonic() is for durations,
+        # NOT wire-format timestamps — use unix_seconds() here.
+        ts_unix = self._clock.unix_seconds()
         body, sig_header, ts_header = sign_envelope(
             envelope,
             self._secret,
