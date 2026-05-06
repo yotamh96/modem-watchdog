@@ -38,6 +38,20 @@ def _fresh_state() -> ModemState:
     )
 
 
+def _load_diag_fixture_sync(diag_path: Path) -> Diag:
+    """Synchronously read + parse a Diag fixture JSON file.
+
+    Pulled out of ``run`` so the async function does not perform sync
+    file I/O in its own body (ASYNC240).  Matches the pattern in
+    ``daemon/main.py:_ensure_dirs``.  Callers handle ``OSError`` /
+    ``ValueError`` for missing or malformed fixtures.
+
+    WR-07 (Phase 2 review): replaces the inline ``# noqa: ASYNC240``
+    suppression with a sync helper so the async surface stays clean.
+    """
+    return Diag.model_validate_json(diag_path.read_bytes())
+
+
 async def run(args: argparse.Namespace) -> int:
     if args.diag_fixture is None:
         print(
@@ -48,8 +62,7 @@ async def run(args: argparse.Namespace) -> int:
 
     diag_path = Path(args.diag_fixture)
     try:
-        # CLI is short-lived; sync read is intentional and bounded (M7 ≤30s budget).
-        diag = Diag.model_validate_json(diag_path.read_bytes())  # noqa: ASYNC240
+        diag = _load_diag_fixture_sync(diag_path)
     except OSError as exc:
         print(f"recovery: failed to read {diag_path}: {exc}", file=sys.stderr)
         return 2
@@ -57,9 +70,7 @@ async def run(args: argparse.Namespace) -> int:
         print(f"recovery: failed to parse {diag_path}: {exc}", file=sys.stderr)
         return 2
 
-    prior_states: dict[str, ModemState] = {
-        usb_path: _fresh_state() for usb_path in diag.per_modem
-    }
+    prior_states: dict[str, ModemState] = {usb_path: _fresh_state() for usb_path in diag.per_modem}
 
     settings = build_default_settings()
     if args.dry_run:
