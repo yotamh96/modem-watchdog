@@ -34,6 +34,11 @@ _LOCALE_BASELINE: Final[dict[str, str]] = {"LC_ALL": "C", "LANG": "C"}
 # SP-03 step 4 -- wait this long after SIGTERM before escalating to SIGKILL.
 _SIGTERM_GRACE_SECONDS: Final[float] = 2.0
 
+# Hard upper bound on the post-SIGKILL communicate() drain (WR-004).
+# Worst-case run() duration is timeout_s + _SIGTERM_GRACE_SECONDS + _SIGKILL_DRAIN_SECONDS.
+# Matches _SIGTERM_GRACE_SECONDS so M5 (P99 cycle ≤10s) has a deterministic budget.
+_SIGKILL_DRAIN_SECONDS: Final[float] = 2.0
+
 # STACK §"qmicli subprocess" -- chatty 5G output; stdout buffer ~1 MiB.
 _STDOUT_LIMIT: Final[int] = 1024 * 1024
 
@@ -215,9 +220,12 @@ async def _two_stage_shutdown(
     # recovery: whatever the child flushed before death is now in the pipe
     # buffer; communicate() drains it without passing stdin again (the original
     # communicate already wrote stdin to the (now closed) pipe end).
+    # Bounded by _SIGKILL_DRAIN_SECONDS so M5 (P99 cycle ≤10s) has a hard
+    # upper bound: timeout_s + _SIGTERM_GRACE_SECONDS + _SIGKILL_DRAIN_SECONDS.
     try:
-        drained_out, drained_err = await proc.communicate()
-    except (BrokenPipeError, ConnectionResetError):
+        async with asyncio.timeout(_SIGKILL_DRAIN_SECONDS):
+            drained_out, drained_err = await proc.communicate()
+    except (BrokenPipeError, ConnectionResetError, TimeoutError):
         drained_out, drained_err = b"", b""
     return drained_out or b"", drained_err or b""
 
