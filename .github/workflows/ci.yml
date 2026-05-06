@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-types:
+    name: Lint + type-check (aarch64 self-hosted)
+    runs-on: [self-hosted, linux, ARM64]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+
+      - name: Create venv and install dev deps
+        run: |
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/bin/python -e ".[dev]"
+          uv pip install --python .venv/bin/python --no-deps --frozen -r packaging/requirements.lock
+
+      - name: ruff format --check
+        run: .venv/bin/ruff format --check src/ tests/
+
+      - name: ruff check
+        run: .venv/bin/ruff check src/ tests/
+
+      - name: mypy --strict
+        run: .venv/bin/mypy --strict src/spark_modem/
+
+      - name: SP-04 — no subprocess outside subproc/
+        run: bash scripts/lint_no_subprocess.sh
+
+      - name: pytest --collect-only (smoke)
+        run: .venv/bin/pytest --collect-only -q
+
+  tests:
+    name: pytest (aarch64 self-hosted)
+    runs-on: [self-hosted, linux, ARM64]
+    needs: lint-and-types
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Set up Python 3.12 + venv
+        run: |
+          uv python install 3.12
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/bin/python -e ".[dev]"
+          uv pip install --python .venv/bin/python --no-deps --frozen -r packaging/requirements.lock
+
+      - name: pytest
+        run: .venv/bin/pytest -m "unit or integration" -ra

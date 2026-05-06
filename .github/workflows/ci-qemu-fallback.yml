@@ -1,0 +1,36 @@
+name: CI (QEMU fallback)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    types: [labeled]
+
+jobs:
+  lint-qemu:
+    if: github.event.label.name == 'ci-qemu' || github.event_name == 'workflow_dispatch'
+    name: Lint + types (QEMU aarch64)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Run lint inside arm64 container
+        run: |
+          docker run --rm --platform linux/arm64 \
+            -v "$PWD":/work -w /work \
+            python:3.12-bookworm \
+            bash -lc "
+              pip install --no-cache-dir uv &&
+              uv venv --python 3.12 .venv &&
+              uv pip install --python .venv/bin/python -e .[dev] &&
+              uv pip install --python .venv/bin/python --no-deps --frozen -r packaging/requirements.lock &&
+              .venv/bin/ruff format --check src/ tests/ &&
+              .venv/bin/ruff check src/ tests/ &&
+              .venv/bin/mypy --strict src/spark_modem/ &&
+              bash scripts/lint_no_subprocess.sh
+            "
