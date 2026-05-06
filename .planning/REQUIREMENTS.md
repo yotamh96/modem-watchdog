@@ -87,7 +87,8 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 
 ### Safety
 
-- [ ] **FR-60**: Refuse to start if `qmicli`, `ip`, and bundled `python3` (>=3.12 from `python-build-standalone`) are not present (closes PROJECT.md Q8 — research §2)
+- [x] **FR-60
+**: Refuse to start if `qmicli`, `ip`, and bundled `python3` (>=3.12 from `python-build-standalone`) are not present (closes PROJECT.md Q8 — research §2)
 - [ ] **FR-61**: Single PID lock on `/run/spark-modem-watchdog/lock` for the daemon
 - [ ] **FR-61.1**: Per-modem and state-store advisory `flock`s separate from PID lock; CLI mutating commands acquire the same locks the daemon does (M-21; PITFALLS §3.2/§16.1)
 - [x] **FR-62
@@ -161,9 +162,12 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 
 ### Packaging & deployment (research-derived)
 
-- [ ] **NFR-50**: Distributed as a Debian `.deb` for `arm64` containing a self-contained venv at `/opt/spark-modem-watchdog/python/`, built from `astral-sh/python-build-standalone` CPython 3.12.x (closes PROJECT.md Q8; ADR-0010)
-- [ ] **NFR-51**: `.deb` size ≤40 MiB; security-update story: rebuild on each CPython security release
-- [ ] **NFR-52**: Build pipeline produces a `requirements.lock` from `uv pip compile` and commits it for reproducibility
+- [x] **NFR-50
+**: Distributed as a Debian `.deb` for `arm64` containing a self-contained venv at `/opt/spark-modem-watchdog/python/`, built from `astral-sh/python-build-standalone` CPython 3.12.x (closes PROJECT.md Q8; ADR-0010)
+- [x] **NFR-51
+**: `.deb` size ≤40 MiB; security-update story: rebuild on each CPython security release
+- [x] **NFR-52
+**: Build pipeline produces a `requirements.lock` from `uv pip compile` and commits it for reproducibility
 
 ---
 

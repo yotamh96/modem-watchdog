@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 01-06-clock-config-event-logger-carriers-PLAN.md
-last_updated: "2026-05-06T09:58:14.869Z"
+status: verifying
+stopped_at: Completed 01-02-deb-build-pipeline-PLAN.md
+last_updated: "2026-05-06T10:09:45.251Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 7
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 7
-  completed_plans: 6
-  percent: 86
+  completed_plans: 7
+  percent: 100
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 
 Phase: 01 (foundations-adrs) — EXECUTING
 Plan: 7 of 7
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-06
 
-Progress: [█████████░] 86%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [█████████░] 86%
 | Phase 01-foundations-adrs P04 | 240 | 4 tasks | 15 files |
 | Phase 01 P01-05-subproc-runner | 10 | 2 tasks | 11 files |
 | Phase 01-foundations-adrs P01-06-clock-config-event-logger-carriers | 11 | 3 tasks | 18 files |
+| Phase 01-foundations-adrs P01-02-deb-build-pipeline | 10 | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,9 @@ Recent decisions affecting current work:
 - Settings model_validator enforces NFR-33 http-only block cross-field
 - clock uses datetime.UTC alias (Python 3.12 UP017) instead of timezone.utc
 - types-PyYAML installed as dev dep for mypy --strict on yaml_merge.py
+- Pin cpython-3.12.13+20260504-aarch64-unknown-linux-gnu-install_only.tar.gz (SHA256 8a27d68c0dec7573c269e16da61fed358e4bb9f986ae976549ca87ed49fe1506) as bundled CPython for .deb
+- postinst masks ModemManager.service (hardware constraint: Zao requires exclusive modem access)
+- LoadCredential= in systemd unit for HMAC secret (ADR-0011); credential path /etc/spark-modem-watchdog/hmac-secret
 
 ### Pending Todos
 
@@ -112,8 +116,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-06T09:58:14.856Z
-Stopped at: Completed 01-06-clock-config-event-logger-carriers-PLAN.md
+Last session: 2026-05-06T10:09:45.237Z
+Stopped at: Completed 01-02-deb-build-pipeline-PLAN.md
 Resume file: None
 
 **Planned Phase:** 1 (Foundations & ADRs) — 7 plans — 2026-05-06T07:27:10.298Z
