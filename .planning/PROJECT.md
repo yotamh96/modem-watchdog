@@ -34,6 +34,17 @@ operational invariants v2 must preserve, not capabilities to re-prove. -->
 - ✓ Idempotent action implementations — v1 carry-over
 - ✓ Atomic file writes (temp + rename) — v1 carry-over
 
+**Phase 1 (Foundations & ADRs) — validated 2026-05-06:**
+
+- ✓ ADR set closes Q1–Q8: 0001/0003/0004/0005/0006 amended + 0008–0013 authored
+- ✓ Wire-type contracts locked: `wire/` package (Pydantic v2, BaseWire, schema_version, 5+2 ModemState, integer-encoded Prometheus state)
+- ✓ State store atomic-write + 3-layer locking + non-destructive schema downgrade + inventory cross-check (`state/by-usb/<usb_path>.json`)
+- ✓ Single async subprocess wrapper with list-form argv + locale baseline + process-group kill + cpython#127049/#139373 mitigations (SP-04 lint enforces no `subprocess.run` outside `subproc/`)
+- ✓ Plumbing skeletons: `clock/` (monotonic), `config/` (Pydantic Settings + reload markers), `event_logger/` (O_APPEND JSONL)
+- ✓ `.deb` build pipeline: PBS-bundled CPython 3.12 + 10 runtime libs (locked + hash-verified) + systemd Type=notify unit + B-03 belt-and-suspenders smoke import; CI builds on aarch64 self-hosted runner; smoke-install in clean Ubuntu 20.04 arm64 container is green; size ≤40 MiB (NFR-51)
+- ✓ Day-one carrier table: 12 entries (IL/US/GB/DE) with hostile-input fixtures (Norway problem + leading-zero MNCs)
+- ✓ CI gates green on aarch64: `mypy --strict`, `ruff check`, `ruff format --check`, `pytest -m "unit or integration"` (302 tests)
+
 ### Active
 
 <!-- v2.0 scope. All hypotheses until shipped against the live fleet
@@ -194,17 +205,18 @@ slice).
 
 ## Open questions (carried from PRD § 10)
 
-These are tracked, not blocked. Each is addressed during the relevant phase
-or explicitly deferred.
+All eight original open questions are CLOSED in writing as of Phase 1
+(2026-05-06). Each is now backed by an ADR; the ADR is authoritative —
+the bullet here is a one-line summary of the resolution, not the spec.
 
-- **Q1**: HTTP API on Unix socket vs CLI-only ctl? — deferred to v2.1
-- **Q2**: Daemon owns `qmi-proxy` or assumes Zao does? — Eng lead
-- **Q3**: Minimum-supported Zao SDK version? — 2.1.0 confirmed; older may fail Zao-log parsing
-- **Q4**: Feature parity with v1 `--watch` mode, or replace with `journalctl -fu` + Prometheus? — Product
-- **Q5**: HMAC-SHA256 webhook payload signing in v2.0 or v2.1? — Security; deferred to v2.1 default
-- **Q6**: Config-change communication: SIGHUP reload, file-watcher, restart-only? — Eng lead
-- **Q7**: Carrier-table ownership post-launch? — Product
-- **Q8** *(new, raised at init)*: Jetson system Python is **3.8.10**, not 3.11+. Resolve runtime target: bundle 3.11 in the `.deb` venv (ADR-0001's original plan), write 3.8-compatible code, or upgrade Jetson runtime. Affects pydantic v2 (works on 3.7+), `match` statements (3.10+), `asyncio.TaskGroup` (3.11+), `tomllib` (3.11+), parameterized type aliases (3.10+) — needs explicit code-survey decision before Phase 0.
+- **Q1** ✓ HTTP API on Unix socket vs CLI-only ctl? — **CLI-only for v2.0**, no inbound IPC; ADR-0011 + amendments to 0001/0004
+- **Q2** ✓ Daemon owns `qmi-proxy` or assumes Zao does? — **Zao owns it**; ADR-0003 amendment, ADR-0011
+- **Q3** ✓ Minimum-supported Zao SDK version? — **2.1.0+ confirmed**; ADR-0003 amendment binds parser to `RASCOW_STAT`
+- **Q4** ✓ Feature parity with v1 `--watch` mode? — **Replace with `journalctl -fu` + Prometheus UDS scrape**; ADR-0011, ADR-0013
+- **Q5** ✓ HMAC-SHA256 webhook signing in v2.0 or v2.1? — **v2.0**; ADR-0011 (`X-Spark-Signature: sha256=<hex>` over raw body, `X-Spark-Timestamp` for replay protection)
+- **Q6** ✓ Config-change communication? — **SIGHUP reload via `json_schema_extra={'reload': '...'}` markers**; ADR-0006 amendment, `config/reload_marker.py`
+- **Q7** ✓ Carrier-table ownership post-launch? — **Config file at `/etc/spark-modem-watchdog/conf.d/00-carriers.yaml`**, day-one IL/US/GB/DE table shipped with .deb; addable without code release
+- **Q8** ✓ Jetson system Python is 3.8.10. — **Bundle CPython 3.12 via `python-build-standalone` in the `.deb` venv**; ADR-0010 ratified the recipe, ADR-0001 amended
 
 ## Evolution
 
@@ -224,4 +236,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-05 after initialization (synthesized from `docs/`)*
+*Last updated: 2026-05-06 after Phase 1 (Foundations & ADRs) completion*
