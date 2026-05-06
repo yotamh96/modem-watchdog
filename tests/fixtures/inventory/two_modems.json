@@ -1,0 +1,6 @@
+{
+  "modems": [
+    {"line": 1, "cdc_wdm": "cdc-wdm0", "usb_path": "2-3.1.1", "ns": "line1", "iface": "wwan0"},
+    {"line": 2, "cdc_wdm": "cdc-wdm1", "usb_path": "2-3.1.2", "ns": "line2", "iface": "wwan0"}
+  ]
+}
