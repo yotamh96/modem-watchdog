@@ -348,6 +348,40 @@ def test_extract_issues_raw_ip_off_produces_datapath_issue() -> None:
     assert dp_issues[0].detail == IssueDetail.RAW_IP_OFF
 
 
+def test_extract_issues_disconnected_session_produces_datapath_issue() -> None:
+    """WR-06: literal 'disconnected' status surfaces SESSION_DISCONNECTED."""
+    data = GetDataSessionResult(connection_status="disconnected")
+    issues = _extract(data=data)
+    dp_issues = [i for i in issues if i.category == IssueCategory.DATAPATH]
+    assert len(dp_issues) == 1
+    assert dp_issues[0].detail == IssueDetail.SESSION_DISCONNECTED
+
+
+@pytest.mark.parametrize(
+    "intermediate_status",
+    ["limited", "flow-controlled", "connecting", "disconnecting"],
+)
+def test_extract_issues_intermediate_data_states_do_not_surface(
+    intermediate_status: str,
+) -> None:
+    """WR-06: libqmi intermediate states must NOT surface SESSION_DISCONNECTED.
+
+    The policy decision-table has no actionable response to transient
+    states such as 'limited' / 'flow-controlled' / 'connecting'; they
+    self-clear within a cycle or two.  This parametrised test pins the
+    'disconnected only' behaviour so a future libqmi schema change that
+    adds yet another intermediate state does not silently drift into the
+    issue stream and trigger a spurious datapath recovery action.
+    """
+    data = GetDataSessionResult(connection_status=intermediate_status)
+    issues = _extract(data=data)
+    dp_issues = [i for i in issues if i.category == IssueCategory.DATAPATH]
+    assert dp_issues == [], (
+        f"intermediate connection_status={intermediate_status!r} unexpectedly "
+        f"surfaced a DATAPATH issue: {dp_issues}"
+    )
+
+
 def test_extract_issues_not_registered_searching_produces_registration_issue() -> None:
     issues = _extract(registration=RegistrationState.NOT_REGISTERED_SEARCHING)
     reg_issues = [i for i in issues if i.category == IssueCategory.REGISTRATION]

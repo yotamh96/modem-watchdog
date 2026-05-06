@@ -267,6 +267,15 @@ def extract_issues(  # noqa: PLR0912 - one branch per RECOVERY_SPEC §4 row by d
         issues.append(
             Issue(category=IssueCategory.DATAPATH, detail=IssueDetail.RAW_IP_OFF, who=who)
         )
+    # WR-06 (Phase 2 review): only the literal "disconnected" status surfaces
+    # SESSION_DISCONNECTED.  libqmi has emitted intermediate states such as
+    # "limited" or "flow-controlled" since 1.30, but the policy decision-table
+    # has no actionable response to those (they are transient and self-clear
+    # within a cycle or two).  The behaviour is pinned by
+    # tests/unit/observer/test_orchestrator.py
+    # ::test_extract_issues_intermediate_data_states_do_not_surface so a
+    # future libqmi change that introduces yet another intermediate state
+    # does not silently drift into / out of the issue stream.
     if isinstance(data, GetDataSessionResult) and data.connection_status == "disconnected":
         issues.append(
             Issue(
