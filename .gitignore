@@ -37,3 +37,4 @@ debian/debhelper-build-stamp
 # OS
 .DS_Store
 Thumbs.db
+uv.lock
