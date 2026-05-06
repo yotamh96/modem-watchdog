@@ -1,0 +1,8 @@
+schema_version: 1
+carriers:
+  - country: IL
+    mcc: "425"
+    mnc: "1234"  # 4 digits — exceeds max of 3
+    apn: internetg
+    carrier_name: Partner
+    unverified: false

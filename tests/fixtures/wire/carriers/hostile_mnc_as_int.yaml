@@ -1,0 +1,8 @@
+schema_version: 1
+carriers:
+  - country: IL
+    mcc: "425"
+    mnc: 1    # int, not string — should be rejected
+    apn: internetg
+    carrier_name: Partner
+    unverified: false

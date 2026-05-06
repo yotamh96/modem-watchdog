@@ -1,0 +1,8 @@
+schema_version: 1
+carriers:
+  - country: il  # lowercase — must be uppercase ISO 3166-1 alpha-2
+    mcc: "425"
+    mnc: "01"
+    apn: internetg
+    carrier_name: Partner
+    unverified: false

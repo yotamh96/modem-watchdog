@@ -1,0 +1,14 @@
+schema_version: 1
+carriers:
+  - country: IL
+    mcc: "425"
+    mnc: "01"
+    apn: internetg
+    carrier_name: Partner
+    unverified: false
+  - country: NO          # YAML 1.1 parses bare NO as boolean False — Norway problem.
+    mcc: "242"
+    mnc: "01"
+    apn: internet
+    carrier_name: Telenor
+    unverified: true

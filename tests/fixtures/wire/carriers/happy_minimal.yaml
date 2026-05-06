@@ -1,0 +1,14 @@
+schema_version: 1
+carriers:
+  - {country: IL, mcc: "425", mnc: "01", apn: internetg, carrier_name: Partner, unverified: false}
+  - {country: IL, mcc: "425", mnc: "02", apn: internetg, carrier_name: Cellcom, unverified: false}
+  - {country: IL, mcc: "425", mnc: "03", apn: internetg, carrier_name: Pelephone, unverified: false}
+  - {country: US, mcc: "310", mnc: "410", apn: vzwinternet, carrier_name: AT&T, unverified: true}
+  - {country: US, mcc: "311", mnc: "480", apn: vzwinternet, carrier_name: Verizon, unverified: true}
+  - {country: US, mcc: "312", mnc: "530", apn: vzwinternet, carrier_name: SprintTMobile, unverified: true}
+  - {country: GB, mcc: "234", mnc: "10", apn: internet, carrier_name: O2, unverified: true}
+  - {country: GB, mcc: "234", mnc: "15", apn: internet, carrier_name: Vodafone, unverified: true}
+  - {country: GB, mcc: "234", mnc: "30", apn: internet, carrier_name: EE, unverified: true}
+  - {country: DE, mcc: "262", mnc: "01", apn: internet, carrier_name: Telekom, unverified: true}
+  - {country: DE, mcc: "262", mnc: "02", apn: internet, carrier_name: Vodafone-DE, unverified: true}
+  - {country: DE, mcc: "262", mnc: "03", apn: internet, carrier_name: O2-DE, unverified: true}

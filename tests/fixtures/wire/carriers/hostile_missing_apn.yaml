@@ -1,0 +1,8 @@
+schema_version: 1
+carriers:
+  - country: IL
+    mcc: "425"
+    mnc: "01"
+    carrier_name: Partner
+    unverified: false
+    # apn field omitted — should fail with "Field required"
