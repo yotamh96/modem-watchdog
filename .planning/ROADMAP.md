@@ -35,7 +35,7 @@ Granularity is `standard`. Phase 1 corresponds to MIGRATION.md Phase 0 (build
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundations & ADRs** - Resolve open questions, land 6 new + 5 amended ADRs, ship `.deb` pipeline, lock wire types (build A "plumbing")
+- [x] **Phase 1: Foundations & ADRs** ✅ 2026-05-06 - Resolve open questions, land 6 new + 5 amended ADRs, ship `.deb` pipeline, lock wire types (build A "plumbing")
 - [ ] **Phase 2: Core Daemon** - Laptop-testable asyncio cycle, policy engine, status/Prom/webhook surface (build B "minimal cycle" + C "status+metrics")
 - [ ] **Phase 3: Linux Event Sources & Lifecycle** - udev/rtnetlink/inotify/dmesg, sd_notify, signal handling, PID-lock, per-modem flocks (build D + E)
 - [ ] **Phase 4: Destructive Actions & HIL** - soft/modem/usb/driver_reset wired up, signal-gate end-to-end, qmi-proxy crash recovery, HIL CI lane (build F)
@@ -426,7 +426,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundations & ADRs | 2/7 | Executing | 2026-05-06 (plans 01, 07 done) |
+| 1. Foundations & ADRs | 7/7 | Complete | 2026-05-06 |
 | 2. Core Daemon | 0/TBD | Not started | - |
 | 3. Linux Event Sources & Lifecycle | 0/TBD | Not started | - |
 | 4. Destructive Actions & HIL | 0/TBD | Not started | - |
