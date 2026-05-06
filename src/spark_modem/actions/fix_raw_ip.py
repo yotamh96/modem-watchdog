@@ -3,7 +3,8 @@
 Reads ``wds-get-current-settings`` first; if raw_ip is already 'Y' the
 action is a no-op (FR-31 idempotency). Otherwise writes via the typed
 ``QmiWrapper.wds_set_ip_family(family=4)`` method, which preserves the
-typed boundary so actions/ never reaches into ``ctx.qmi._runner``.
+typed boundary so actions/ never reaches into the wrapper's private
+runner attribute.
 """
 
 from __future__ import annotations
