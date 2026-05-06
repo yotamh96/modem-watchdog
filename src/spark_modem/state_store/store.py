@@ -38,12 +38,13 @@ Phase 2 carry-forward:
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
-from spark_modem.state_store.atomic import atomic_write_bytes
+from spark_modem.state_store.atomic import _fsync_directory, atomic_write_bytes
 from spark_modem.state_store.errors import UsbPathMismatch
 from spark_modem.state_store.inventory import cross_check_inventory
 from spark_modem.state_store.locks import (
@@ -231,7 +232,11 @@ class StateStore:
 
                 if decision == "downgrade":
                     shadow = shadow_filename(target, from_version=file_version)
-                    target.rename(shadow)
+                    # os.replace: atomically clobbers any existing stale shadow
+                    # (e.g. from a previously crashed downgrade attempt).
+                    os.replace(target, shadow)
+                    # Persist the rename across crash before writing the fresh default.
+                    _fsync_directory(target.parent, target)
                     fresh = _fresh_modem_state(usb_path)
                     # PRIVATE helper — per-modem asyncio.Lock + flock already held.
                     # Do NOT call self.save_modem_state here (asyncio.Lock is not
@@ -320,7 +325,10 @@ class StateStore:
                 decision = validate_schema_version(file_version=file_version, where=str(target))
                 if decision == "downgrade":
                     shadow = shadow_filename(target, from_version=file_version)
-                    target.rename(shadow)
+                    # os.replace: atomically clobbers any existing stale shadow.
+                    os.replace(target, shadow)
+                    # Persist the rename across crash before writing the fresh default.
+                    _fsync_directory(target.parent, target)
                     fresh = GlobalsState()
                     # PRIVATE helper — globals asyncio.Lock + state-store flock already held.
                     await self._save_globals_locked(fresh)
