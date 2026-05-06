@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+case "$1" in
+  configure)
+    # B-03 belt-and-suspenders A: fail-the-install if smoke test fails.
+    if ! /opt/spark-modem-watchdog/libexec/postinst_smoke_test.sh; then
+      echo "ERROR: spark-modem-watchdog postinst smoke test failed." >&2
+      echo "       The bundled Python or one of the 10 runtime libs is broken." >&2
+      echo "       Refusing to complete install (FR-60 / B-03)." >&2
+      exit 1
+    fi
+
+    # Create system user if it does not exist.
+    if ! id -u spark-modem-watchdog >/dev/null 2>&1; then
+      adduser --system --group --no-create-home \
+        --home /var/lib/spark-modem-watchdog \
+        --shell /usr/sbin/nologin \
+        --comment "spark-modem-watchdog daemon" \
+        spark-modem-watchdog
+    fi
+
+    # Ensure state/log directories exist with correct ownership.
+    install -d -m 0750 -o spark-modem-watchdog -g spark-modem-watchdog \
+      /var/lib/spark-modem-watchdog \
+      /var/lib/spark-modem-watchdog/state \
+      /var/lib/spark-modem-watchdog/state/by-usb \
+      /var/log/spark-modem-watchdog
+
+    # ModemManager MUST remain disabled (hardware constraint: Zao requires exclusive access).
+    if command -v systemctl >/dev/null 2>&1 && [[ -d /run/systemd/system ]]; then
+      systemctl mask ModemManager.service >/dev/null 2>&1 || true
+      systemctl --system daemon-reload >/dev/null || true
+    fi
+    ;;
+  abort-upgrade|abort-remove|abort-deconfigure)
+    ;;
+  *)
+    echo "postinst called with unknown argument \`$1'" >&2
+    exit 1
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0

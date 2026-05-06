@@ -1,0 +1,5 @@
+debian/python-build-standalone/python/* /opt/spark-modem-watchdog/python/
+src/spark_modem /opt/spark-modem-watchdog/lib/
+scripts/postinst_smoke_test.sh /opt/spark-modem-watchdog/libexec/
+debian/spark-modem-watchdog.service /lib/systemd/system/
+debian/conf.d/00-carriers.yaml /etc/spark-modem-watchdog/conf.d/

@@ -1,0 +1,39 @@
+[Unit]
+Description=Spark modem watchdog (Sierra EM7421 + Soliton Zao)
+Documentation=https://github.com/spark/spark-modem-watchdog
+After=network-online.target zao-infra-ctrl.service
+Wants=network-online.target
+
+[Service]
+Type=notify
+NotifyAccess=main
+
+# FR-60 + B-03 belt-and-suspenders B: smoke-test on every start.
+ExecStartPre=/opt/spark-modem-watchdog/libexec/postinst_smoke_test.sh
+
+# Phase 1 placeholder: the real daemon entry point lands in Phase 2.
+# For now, ExecStart= is a no-op that immediately reports READY and exits 0
+# so `systemctl start` succeeds end-to-end after a clean install.
+# Phase 2 will replace this with: ExecStart=/opt/spark-modem-watchdog/bin/spark-modem-watchdog
+ExecStart=/opt/spark-modem-watchdog/python/bin/python3.12 -c \
+  'import sdnotify; sdnotify.SystemdNotifier().notify("READY=1"); import time; time.sleep(0.1)'
+
+Restart=on-failure
+RestartSec=5s
+
+User=root
+Group=root
+NoNewPrivileges=false
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/spark-modem-watchdog /var/log/spark-modem-watchdog /run/spark-modem-watchdog
+
+# ADR-0011: HMAC secret loaded via LoadCredential= (never baked into the unit or env files).
+# The credential file path is /etc/credstore/spark-modem-watchdog.hmac-secret
+# or set via systemd's LoadCredential= mechanism at deploy time.
+# Phase 2 implementation reads via CREDENTIALS_DIRECTORY env var set by systemd.
+LoadCredential=spark-modem-watchdog.hmac-secret:/etc/spark-modem-watchdog/hmac-secret
+
+[Install]
+WantedBy=multi-user.target

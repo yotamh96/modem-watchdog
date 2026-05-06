@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+case "$1" in
+  remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+    if command -v systemctl >/dev/null 2>&1 && [[ -d /run/systemd/system ]]; then
+      systemctl --system daemon-reload >/dev/null || true
+    fi
+    ;;
+  purge)
+    # Unmask ModemManager on purge — we no longer own the box's modem management.
+    if command -v systemctl >/dev/null 2>&1 && [[ -d /run/systemd/system ]]; then
+      systemctl unmask ModemManager.service >/dev/null 2>&1 || true
+      systemctl --system daemon-reload >/dev/null || true
+    fi
+
+    # Remove the bundled venv on purge (saves ~35 MiB; operator chose to remove).
+    rm -rf /opt/spark-modem-watchdog || true
+
+    # Remove state and log directories on purge.
+    rm -rf /var/lib/spark-modem-watchdog || true
+    rm -rf /var/log/spark-modem-watchdog || true
+
+    # Remove the system user on purge.
+    if id -u spark-modem-watchdog >/dev/null 2>&1; then
+      deluser --system spark-modem-watchdog >/dev/null 2>&1 || true
+    fi
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0

@@ -1,0 +1,10 @@
+spark-modem-watchdog (2.0.0-1) UNRELEASED; urgency=medium
+
+  * Initial 2.0 release: Python rewrite of v1 bash toolchain.
+  * Bundles CPython 3.12 via python-build-standalone (closes Q8).
+  * Includes wire/ types, state_store/, subproc/, clock/, config/,
+    event_logger/, and the default carrier table for IL/US/UK/DE.
+  * No daemon yet — Phase 1 is plumbing only; the cycle/policy/actions
+    land in Phase 2.
+
+ -- spark-modem-watchdog devs <dev@draco.co.il>  Wed, 06 May 2026 00:00:00 +0000

@@ -1,0 +1,24 @@
+Source: spark-modem-watchdog
+Section: net
+Priority: optional
+Maintainer: spark-modem-watchdog devs <dev@draco.co.il>
+Build-Depends:
+ debhelper-compat (= 13),
+ curl,
+ ca-certificates
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+
+Package: spark-modem-watchdog
+Architecture: arm64
+Depends:
+ ${misc:Depends},
+ libqmi-utils (>= 1.30),
+ iproute2,
+ systemd (>= 245)
+Recommends: logrotate
+Description: On-device watchdog for Sierra EM7421 LTE modems behind Soliton Zao
+ spark-modem-watchdog v2 keeps a fleet of NVIDIA Jetson Orin NX bonded-uplink
+ boxes online by detecting unhealthy Sierra EM7421 modems and applying the
+ smallest recovery action that has a chance of fixing the issue without
+ making things worse. Bundles CPython 3.12 via python-build-standalone.

@@ -1,0 +1,7 @@
+/etc/spark-modem-watchdog/conf.d
+/var/lib/spark-modem-watchdog
+/var/lib/spark-modem-watchdog/state/by-usb
+/var/log/spark-modem-watchdog
+/run/spark-modem-watchdog
+/opt/spark-modem-watchdog/libexec
+/opt/spark-modem-watchdog/lib
