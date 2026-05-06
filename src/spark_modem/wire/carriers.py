@@ -40,3 +40,22 @@ class CarrierTable(BaseWire):
 
     schema_version: int = Field(default=CURRENT_SCHEMA_VERSION, ge=1)
     carriers: list[CarrierEntry]
+
+    def lookup(self, mcc: str, mnc: str) -> CarrierEntry | None:
+        """FR-30: APN selection by (MCC, MNC) lookup.
+
+        Iterates ``self.carriers`` and returns the first entry whose
+        ``mcc`` and ``mnc`` both match the inputs exactly. Comparison is
+        string-equality (the wire uses StrictStr, so "01" != "1" by design;
+        callers pass the canonical 3-digit MCC and 2-3 digit MNC strings as
+        produced by ``parse_get_serving_system``).
+
+        Returns ``None`` if no carrier entry matches. The actions/set_apn
+        execute() treats ``None`` as a non-fatal failure with reason
+        ``no_carrier:<mcc>/<mnc>`` (FR-33 / NFR-42: new MCC/MNC entries
+        are a YAML edit, no code release).
+        """
+        for entry in self.carriers:
+            if entry.mcc == mcc and entry.mnc == mnc:
+                return entry
+        return None

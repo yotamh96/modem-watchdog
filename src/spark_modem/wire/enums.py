@@ -79,12 +79,23 @@ class RegistrationState(StrEnum):
 
 class ActionKind(StrEnum):
     """RECOVERY_SPEC.md ladder: set_apn / fix_raw_ip / sim_power_on /
-    soft_reset -> modem_reset -> usb_reset; global driver_reset."""
+    soft_reset / set_operating_mode / fix_autosuspend -> modem_reset ->
+    usb_reset; global driver_reset.
+
+    Phase 2 cheap actions (registered in actions/dispatcher._REGISTRY):
+      SET_APN, FIX_RAW_IP, SIM_POWER_ON, SOFT_RESET, SET_OPERATING_MODE,
+      FIX_AUTOSUSPEND.
+    Phase 4 destructive actions (NOT registered until Phase 4 + signal-
+    quality gate):
+      MODEM_RESET, USB_RESET, DRIVER_RESET.
+    """
 
     SET_APN = "set_apn"
     FIX_RAW_IP = "fix_raw_ip"
     SIM_POWER_ON = "sim_power_on"
     SOFT_RESET = "soft_reset"
+    SET_OPERATING_MODE = "set_operating_mode"
+    FIX_AUTOSUSPEND = "fix_autosuspend"
     MODEM_RESET = "modem_reset"
     USB_RESET = "usb_reset"
     DRIVER_RESET = "driver_reset"
