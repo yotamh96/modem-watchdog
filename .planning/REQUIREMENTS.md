@@ -20,7 +20,8 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 
 ### Diagnosis
 
-- [ ] **FR-10**: System consults Zao `RASCOW_STAT` before probing; if Zao reports the line as `active`, no QMI probe is run
+- [x] **FR-10
+**: System consults Zao `RASCOW_STAT` before probing; if Zao reports the line as `active`, no QMI probe is run
 - [x] **FR-11
 **: Per-inactive-modem snapshot includes USB speed, QMI responsiveness, operating mode, SIM card/app state, registration, serving carrier (MCC/MNC/desc), signal (RSSI/RSRP/RSRQ/SNR), profile-1 APN, data session, current IPv4
 - [ ] **FR-12**: System classifies each modem with state-machine v2 (post-research refactor): top-level `unknown` / `healthy` / `degraded` / `recovering(level)` / `exhausted` plus orthogonal flags `present` and `rf_blocked` (supersedes PRD FR-12's 7-state shape; ADR-0008)
@@ -127,7 +128,8 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 
 ### Reliability
 
-- [ ] **NFR-10**: Daemon recovers from any single transient error (parse failure, qmicli timeout, partial fixture) within one cycle
+- [x] **NFR-10
+**: Daemon recovers from any single transient error (parse failure, qmicli timeout, partial fixture) within one cycle
 - [x] **NFR-11
 **: Uncaught exception in policy engine MUST NOT terminate the daemon; logged and cycle skipped
 - [ ] **NFR-12**: Daemon tolerates `qmi_wwan` driver reload during operation: `driver_reset` is observable as a clean state transition, not a daemon crash

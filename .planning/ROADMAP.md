@@ -183,7 +183,7 @@ NFR-21.1, NFR-22, NFR-22.1, NFR-42
 Plans:
 - [x] 02-01-PLAN.md — Test fakes + Wave 0 fixture directories (FakeRunner, FakeClock, FakeWebhookPoster, FixtureInventory, FakeDNSResolver, FixtureZaoTailer)
 - [x] 02-02-PLAN.md — qmi/ wrapper + parsers + per-libqmi-version fixtures (FR-11, FR-74; --device-open-proxy always; extra='ignore' boundary)
-- [ ] 02-03-PLAN.md — zao_log/ parser + ZaoLogTailer Protocol + RASCOW_STAT fixtures (FR-10)
+- [x] 02-03-PLAN.md — zao_log/ parser + ZaoLogTailer Protocol + RASCOW_STAT fixtures (FR-10)
 - [ ] 02-04-PLAN.md — inventory/ + observer/ TaskGroup orchestrator with per-task asyncio.timeout(8s) + Diag builder + Issue extractor (FR-2, FR-13, FR-70, FR-71, NFR-4, NFR-10)
 - [ ] 02-05-PLAN.md — policy/ pure engine: transitions + decision_table + gates + engine + spec-as-tests (FR-12, FR-20, FR-21, FR-22, FR-25, FR-25.1, FR-26, FR-26.1, FR-26.2, NFR-11, NFR-20)
 - [ ] 02-06-PLAN.md — actions/ cheap set + dispatcher + verify (set_apn / fix_raw_ip / sim_power_on / soft_reset / set_operating_mode / fix_autosuspend) (FR-22, FR-28, FR-28.1, FR-30..FR-33, FR-40, NFR-42)
@@ -439,7 +439,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundations & ADRs | 7/7 | Complete | 2026-05-06 |
-| 2. Core Daemon | 0/10 | Planned | - |
+| 2. Core Daemon | 3/10 | In Progress | - |
 | 3. Linux Event Sources & Lifecycle | 0/TBD | Not started | - |
 | 4. Destructive Actions & HIL | 0/TBD | Not started | - |
 | 5. Bench & Field Shadow | 0/TBD | Not started | - |
