@@ -1,0 +1,85 @@
+# Default carrier table for spark-modem-watchdog v2.0.
+# Day-one coverage: IL (verified), plus US/UK/DE marked unverified.
+# Carrier additions are pure config; reload via SIGHUP (Phase 3).
+# Source: .planning/research/FEATURES.md §4.6.
+schema_version: 1
+carriers:
+  # --- Israel (verified — production fleet) ---
+  - country: IL
+    mcc: "425"
+    mnc: "01"
+    apn: internetg
+    carrier_name: Partner
+    unverified: false
+  - country: IL
+    mcc: "425"
+    mnc: "02"
+    apn: internetg
+    carrier_name: Cellcom
+    unverified: false
+  - country: IL
+    mcc: "425"
+    mnc: "03"
+    apn: internetg
+    carrier_name: Pelephone
+    unverified: false
+
+  # --- United States (unverified — APN guesses, validate before fleet rollout) ---
+  - country: US
+    mcc: "310"
+    mnc: "410"
+    apn: broadband
+    carrier_name: AT&T
+    unverified: true
+  - country: US
+    mcc: "311"
+    mnc: "480"
+    apn: vzwinternet
+    carrier_name: Verizon
+    unverified: true
+  - country: US
+    mcc: "312"
+    mnc: "530"
+    apn: fast.t-mobile.com
+    carrier_name: SprintTMobile
+    unverified: true
+
+  # --- United Kingdom (unverified — ISO code is GB, not UK) ---
+  - country: GB
+    mcc: "234"
+    mnc: "10"
+    apn: m-bb.o2.co.uk
+    carrier_name: O2
+    unverified: true
+  - country: GB
+    mcc: "234"
+    mnc: "15"
+    apn: internet
+    carrier_name: Vodafone
+    unverified: true
+  - country: GB
+    mcc: "234"
+    mnc: "30"
+    apn: everywhere
+    carrier_name: EE
+    unverified: true
+
+  # --- Germany (unverified) ---
+  - country: DE
+    mcc: "262"
+    mnc: "01"
+    apn: internet.t-d1.de
+    carrier_name: Telekom
+    unverified: true
+  - country: DE
+    mcc: "262"
+    mnc: "02"
+    apn: web.vodafone.de
+    carrier_name: Vodafone-DE
+    unverified: true
+  - country: DE
+    mcc: "262"
+    mnc: "03"
+    apn: internet
+    carrier_name: O2-DE
+    unverified: true
