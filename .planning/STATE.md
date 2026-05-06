@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-03-wire-package-PLAN.md
-last_updated: "2026-05-06T08:49:04.339Z"
+stopped_at: Completed 01-04-state-store-PLAN.md
+last_updated: "2026-05-06T09:27:02.653Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 7
-  completed_plans: 3
-  percent: 43
+  completed_plans: 4
+  percent: 57
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 01 (foundations-adrs) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Ready to execute
 Last activity: 2026-05-06
 
-Progress: [████░░░░░░] 43%
+Progress: [██████░░░░] 57%
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Progress: [████░░░░░░] 43%
 | Phase 01-foundations-adrs P01 | 10 minutes | 2 tasks | 15 files |
 | Phase 01 P07 | 14 | 3 tasks | 12 files |
 | Phase 01 P01-03-wire-package | 18 | 3 tasks | 30 files |
+| Phase 01-foundations-adrs P04 | 240 | 4 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,9 @@ Recent decisions affecting current work:
 - Pydantic v2 BaseWire: frozen=True, extra=forbid, populate_by_name=True — strict wire boundary (CONTEXT.md W-02)
 - ModemState 5+2 ADR-0008: state Literal + recovering_level + present + rf_blocked; state_to_int() stable 0-4 encoding for ADR-0013 metric
 - CarrierTable uses StrictStr to reject YAML type coercions including Norway problem (NO->False) and MNC-as-int
+- Public/private lock split in StateStore: public save_* acquires asyncio.Lock + flock; private _save_*_locked called from downgrade branch — prevents asyncio.Lock re-entry deadlock (ADR-0012)
+- Windows dev-host flock no-op: AsyncFlockHandle(fd=-1) sentinel when fcntl unavailable; asyncio.Lock tests pass on non-POSIX hosts without skipping whole test files
+- model_validate() over constructor for pydantic alias fields without mypy plugin — bypasses call-arg error on populate_by_name aliases
 
 ### Pending Todos
 
@@ -98,8 +102,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-06T08:49:04.291Z
-Stopped at: Completed 01-03-wire-package-PLAN.md
+Last session: 2026-05-06T09:27:02.638Z
+Stopped at: Completed 01-04-state-store-PLAN.md
 Resume file: None
 
 **Planned Phase:** 1 (Foundations & ADRs) — 7 plans — 2026-05-06T07:27:10.298Z
