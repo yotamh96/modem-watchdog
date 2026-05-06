@@ -153,6 +153,43 @@ def test_exhausted_holds_until_decay() -> None:
     assert new.state == "exhausted"
 
 
+def test_exhausted_to_healthy_on_clear_snapshot() -> None:
+    """WR-01: exhausted -> healthy when issues clear AND signal good.
+
+    RECOVERY_SPEC §3.2: an exhausted modem must be able to return to
+    healthy when the snapshot becomes clean (no issues, signal above
+    gate).  This is currently served by the early-return at the top of
+    ``transition``, but the explicit ``case "exhausted":`` arm now also
+    handles it defensively so a future refactor of the early-return
+    cannot regress M4 (zero exhausted-stuck).
+    """
+    new = transition(
+        _state(state="exhausted"),
+        _snap(),  # default signal: rsrp=-90, rsrq=-10, snr=5 (all above gate)
+        _ctx(),
+    )
+    assert new.state == "healthy"
+    assert new.recovering_level is None
+    assert new.rf_blocked is False
+
+
+def test_exhausted_with_rf_blocked_only_stays_exhausted() -> None:
+    """WR-01 boundary: exhausted + no issues + rf_blocked -> stays exhausted.
+
+    The recovery condition requires BOTH ``not snap.issues`` AND
+    ``not rf_blocked``; if signal is below gate, the modem must stay
+    exhausted even with an empty issues list (the radio environment is
+    not yet good enough to declare recovery).
+    """
+    new = transition(
+        _state(state="exhausted"),
+        _snap(rsrp_dbm=-115),  # rf_blocked = True; no issues
+        _ctx(),
+    )
+    assert new.state == "exhausted"
+    assert new.rf_blocked is True
+
+
 # --- 2: rf_blocked derivation -------------------------------------------
 
 
@@ -243,11 +280,7 @@ def test_rf_only_with_no_issues_returns_healthy() -> None:
 def test_transitions_uses_match_statement_not_if_elif() -> None:
     """CLAUDE.md anti-pattern catalogue: forbid `if/elif` on ModemState."""
     src = (
-        Path(__file__).resolve().parents[3]
-        / "src"
-        / "spark_modem"
-        / "policy"
-        / "transitions.py"
+        Path(__file__).resolve().parents[3] / "src" / "spark_modem" / "policy" / "transitions.py"
     ).read_text(encoding="utf-8")
     assert "match prior.state:" in src, (
         "transitions.py must dispatch via `match prior.state:` -- "

@@ -88,9 +88,7 @@ def transition(  # noqa: PLR0911 -- one return per state-machine arm; intentiona
         case "recovering":
             # If still has issues, stay recovering (level may bump in engine).
             if snap.issues:
-                level = (
-                    prior.recovering_level if prior.recovering_level is not None else 1
-                )
+                level = prior.recovering_level if prior.recovering_level is not None else 1
                 return prior.model_copy(
                     update={
                         "state": "recovering",
@@ -101,7 +99,20 @@ def transition(  # noqa: PLR0911 -- one return per state-machine arm; intentiona
                 )
             return _to_healthy(prior, present, rf_blocked)
         case "exhausted":
-            # Exhausted holds until counter decay restores budget (engine).
+            # Exhausted -> healthy is reached via the early-return at line 70
+            # ("no issues AND not rf_blocked").  When that early-return does
+            # NOT trigger (issues present OR rf_blocked), the modem stays
+            # exhausted; counter decay in engine.run_cycle eventually clears
+            # the counters and the next cycle that observes a clean snapshot
+            # falls through the early-return back to healthy.
+            #
+            # WR-01 (Phase 2 review): explicit no-issues + clear-signal arm
+            # added defensively so the recovery path does not depend on the
+            # ordering of the early-return at line 70.  Equivalent to the
+            # early-return today; a future refactor that moves or removes
+            # that early-return MUST NOT regress M4 (zero exhausted-stuck).
+            if not snap.issues and not rf_blocked:
+                return _to_healthy(prior, present, rf_blocked)
             return _stay_or_update(prior, "exhausted", present, rf_blocked)
 
 
