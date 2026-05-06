@@ -7,6 +7,8 @@ Public surface for Phase 2/3/4 consumers:
 
 from spark_modem.state_store.errors import (
     AtomicWriteFailed,
+    StateFileCorrupt,
+    StateFileIOError,
     StateStoreError,
     StateStoreLocked,
     UsbPathMismatch,
@@ -34,6 +36,8 @@ __all__ = [
     "GlobalsLoadResult",
     "LoadResult",
     "PerModemLockTable",
+    "StateFileCorrupt",
+    "StateFileIOError",
     "StateStore",
     "StateStoreError",
     "StateStoreLocked",

@@ -45,7 +45,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from spark_modem.state_store.atomic import _fsync_directory, atomic_write_bytes
-from spark_modem.state_store.errors import UsbPathMismatch
+from spark_modem.state_store.errors import (
+    StateFileCorrupt,
+    StateFileIOError,
+    UsbPathMismatch,
+)
 from spark_modem.state_store.inventory import cross_check_inventory
 from spark_modem.state_store.locks import (
     PerModemLockTable,
@@ -210,21 +214,19 @@ class StateStore:
                 try:
                     raw_bytes = target.read_bytes()
                 except OSError as e:
-                    raise UsbPathMismatch(
-                        file_usb_path=usb_path,
-                        sysfs_usb_path=None,
-                        cdc_wdm=None,
+                    raise StateFileIOError(
                         file_path=str(target),
+                        reason=str(e),
+                        original_exception=e,
                     ) from e
 
                 try:
                     raw: dict[str, object] = json.loads(raw_bytes.decode("utf-8"))
                 except (ValueError, UnicodeDecodeError) as e:
-                    raise UsbPathMismatch(
-                        file_usb_path=usb_path,
-                        sysfs_usb_path=usb_path,
-                        cdc_wdm=None,
+                    raise StateFileCorrupt(
                         file_path=str(target),
+                        reason=str(e),
+                        original_exception=e,
                     ) from e
 
                 file_version = _schema_version_of(raw)

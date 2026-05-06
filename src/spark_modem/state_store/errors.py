@@ -63,6 +63,49 @@ class StateStoreLocked(StateStoreError):  # noqa: N818
         super().__init__(f"State-store lock {lock_path!r} held by {holder_str}")
 
 
+class StateFileCorrupt(StateStoreError):  # noqa: N818
+    """JSON parse failure on a persisted state file.
+
+    Distinct from UsbPathMismatch (inventory mismatch) and StateFileIOError
+    (OS-level read failure). Operator runbook step: inspect the file, then
+    run ``spark-modem ctl reset-state --modem=<usb_path>`` to clear.
+    """
+
+    def __init__(
+        self,
+        *,
+        file_path: str,
+        reason: str,
+        original_exception: BaseException | None = None,
+    ) -> None:
+        self.file_path = file_path
+        self.reason = reason
+        self.original_exception = original_exception
+        super().__init__(f"State file corrupt: {file_path!r}: {reason}")
+
+
+class StateFileIOError(StateStoreError):  # noqa: N818
+    """OS-level I/O error reading or writing a state file.
+
+    Distinct from UsbPathMismatch (inventory mismatch) and StateFileCorrupt
+    (bad JSON). Causes include EIO (storage failure), EACCES (permissions),
+    ENOSPC. Operator runbook step: investigate hardware / permissions before
+    clearing state.
+    """
+
+    def __init__(
+        self,
+        *,
+        file_path: str,
+        reason: str,
+        original_exception: BaseException | None = None,
+    ) -> None:
+        self.file_path = file_path
+        self.reason = reason
+        self.original_exception = original_exception
+        super().__init__(f"State file I/O error: {file_path!r}: {reason}")
+
+
 class AtomicWriteFailed(StateStoreError):  # noqa: N818
     """An atomic file write could not be completed.
 
