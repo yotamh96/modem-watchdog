@@ -75,13 +75,40 @@ override_dh_auto_install: debian/python-build-standalone/.unpacked
 	# SOURCE_DATE_EPOCH is exported above so .pyc files are deterministic.
 	$(VENVDIR)/bin/python3.12 -m compileall -q $(VENVDIR)/lib
 
-	# Strip the bundled python's pip/setuptools/wheel + uv to keep .deb size <40 MiB
-	# (NFR-51). uv was a build-time tool only; we don't ship it on the box.
+	# Strip the bundled python's pip/setuptools/wheel + uv — build-time tools
+	# only; not shipped on the box (NFR-51).
 	$(VENVDIR)/bin/python3.12 -m pip uninstall -y uv pip setuptools wheel || true
+
+	# Trim PBS stdlib parts the daemon never imports. PBS ships the full
+	# CPython stdlib (~80 MB extracted) for relocatability, but the daemon
+	# only uses asyncio, json, pathlib, time, os, signal, fcntl, etc. plus
+	# the 10 third-party libs. The lists below are conservative: anything
+	# imported by the runtime libs is kept (e.g. ssl, hashlib, decimal).
+	rm -rf $(VENVDIR)/lib/python3.12/test
+	rm -rf $(VENVDIR)/lib/python3.12/idlelib
+	rm -rf $(VENVDIR)/lib/python3.12/lib2to3
+	rm -rf $(VENVDIR)/lib/python3.12/turtledemo
+	rm -rf $(VENVDIR)/lib/python3.12/tkinter
+	rm -rf $(VENVDIR)/lib/python3.12/ensurepip
+	rm -rf $(VENVDIR)/lib/python3.12/pydoc_data
+	rm -f  $(VENVDIR)/lib/python3.12/turtle.py
+	rm -rf $(VENVDIR)/share/man
+	rm -rf $(VENVDIR)/share/doc
+	# Drop the matching .pyc cache for everything we just removed.
+	find $(VENVDIR)/lib/python3.12 -type d -name __pycache__ \
+		\( -path '*/test/*' -o -path '*/idlelib/*' -o -path '*/lib2to3/*' \
+		   -o -path '*/turtledemo/*' -o -path '*/tkinter/*' \
+		   -o -path '*/ensurepip/*' -o -path '*/pydoc_data/*' \) \
+		-exec rm -rf {} + 2>/dev/null || true
 
 	# Sanity: the install path is the final path. Refuse to ship a .deb where
 	# the bundled python's sys.executable points anywhere other than /opt/...
 	$(VENVDIR)/bin/python3.12 -c "import sys; assert sys.executable == '$(VENVDIR)/bin/python3.12', sys.executable"
+
+	# Sanity: every runtime lib still imports after the stdlib trim. Catches
+	# any over-aggressive deletion before the .deb is sealed.
+	SPARK_MODEM_PYTHON=$(VENVDIR)/bin/python3.12 \
+		bash $(CURDIR)/scripts/postinst_smoke_test.sh
 
 # Disable Python bytecode compilation by debhelper's dh_python — we compileall'd
 # against SOURCE_DATE_EPOCH already and don't want dh_python to re-compile and
