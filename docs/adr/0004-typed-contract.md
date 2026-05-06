@@ -5,6 +5,7 @@
 | Status       | Accepted       |
 | Date         | 2026-05-05     |
 | Deciders     | Eng team       |
+| Amended      | 2026-05-06     |
 
 ## Context
 
@@ -76,8 +77,38 @@ Specifically:
 | Legacy state file lying around after a downgrade         | Daemon refuses to load future-schema files with a structured error and a clear remediation hint (`spark-modem ctl reset-state`). |
 | Bumping schema_version breaks deployed boxes that haven't upgraded | Cutover plan (MIGRATION § 5) goes phase-by-phase; we don't bump schemas across a phase boundary mid-migration. |
 
+## Amendment 2026-05-06
+
+**Closes new question (CONTEXT.md S-03 / SUMMARY §8 item 14):
+schema-downgrade behavior.**
+
+The original "Decision" required "Lower versions require explicit
+migration code; without it, refuse." Research (`.planning/research/
+PITFALLS.md` §3.4) refined this:
+
+**Schema downgrade is non-destructive.** When the daemon boots and
+finds a state file with `schema_version < CURRENT_SCHEMA_VERSION`:
+
+1. Rename the old file to `<original>.from-v<N>.json` (a sibling in the
+   same directory).
+2. Write a fresh-default state file at `CURRENT_SCHEMA_VERSION`.
+3. Emit a structured `schema_downgrade_pending` event (typed; see
+   `spark_modem.wire.events.SchemaDowngradePending`).
+4. The shadow file is preserved verbatim until the operator runs
+   `spark-modem ctl migrate-state` (Phase 2) or `ctl reset-state --all`.
+
+Forward versions (file's `schema_version > CURRENT_SCHEMA_VERSION`) still
+refuse: the daemon raises `SchemaVersionTooNew` and exits non-zero (the
+`apt downgrade` failure path is loud rather than data-destroying).
+
+Implementation reference: `src/spark_modem/wire/versioning.py`
+(Plan 03), `src/spark_modem/state_store/store.py` (Plan 04),
+`tests/unit/state_store/test_schema_downgrade.py` (Plan 04).
+
 ## Revisit when
 
 - We add a stable external consumer that wants JSON Schema separately.
 - We want over-the-wire validation in flight (e.g. a fleet API
   endpoint). Then we'll publish the JSON Schema to that boundary.
+- A `ctl migrate-state` command is implemented (Phase 2) that can
+  automatically upgrade shadow `.from-v<N>.json` files.

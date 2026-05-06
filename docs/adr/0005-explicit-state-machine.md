@@ -2,9 +2,10 @@
 
 | Field        | Value          |
 | ------------ | -------------- |
-| Status       | Accepted       |
+| Status       | Superseded by ADR-0008 |
 | Date         | 2026-05-05     |
 | Deciders     | Eng team       |
+| Superseded   | 2026-05-06     |
 
 ## Context
 
@@ -68,3 +69,25 @@ by row.
 - We need a multi-modem state (e.g. "site is RF-blocked"). Today
   that's modelled as N independent RfBlocked states; if it grows
   enough, we may add a global state above the per-modem machines.
+
+## Superseded 2026-05-06 — see ADR-0008
+
+Research (`.planning/research/FEATURES.md` §4.1) found the 7-state
+shape redundant: `disconnected` is a guard rather than a state, and
+`rf_blocked` is partly orthogonal (cheap actions still run while it's
+set; worked example RECOVERY_SPEC.md §10.2 transitions
+`recovering(modem) → rf_blocked → recovering(usb)` show that
+`recovering` did not actually disappear when `rf_blocked` was set).
+
+**ADR-0008** replaces this with **5 top-level states + 2 orthogonal
+flags**:
+
+- states: `unknown` / `healthy` / `degraded` / `recovering(level)` / `exhausted`
+- flags: `present: bool`, `rf_blocked: bool`
+
+The functions `transition()` and `decide_action()` from this ADR
+survive in spirit; their signatures shift to consume the new shape.
+See ADR-0008 for the full new shape and `src/spark_modem/wire/state.py`
+(Plan 03) for the implementation. The original 7-state diagram in
+RECOVERY_SPEC.md §3 was updated in Phase 1 (the diagram now reflects
+5+2 — `RECOVERY_SPEC.md` is amended in the same PR as ADR-0008).

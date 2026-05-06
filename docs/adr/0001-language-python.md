@@ -6,6 +6,7 @@
 | Date         | 2026-05-05     |
 | Deciders     | Eng team       |
 | Supersedes   | (v1: bash)     |
+| Amended      | 2026-05-06     |
 
 ## Context
 
@@ -76,9 +77,36 @@ on the system Python; we ship the runtime we tested with.
   with `pydantic`; we have measured comparable internal services at
   40–60 MiB.
 
+## Amendment 2026-05-06
+
+**Closes PROJECT.md Q8** (Jetson Python). The original "Decision"
+section said "Python 3.11+, packaged as a Debian `.deb` containing a
+self-contained venv at /opt/spark-modem-watchdog/" but did not commit
+to a sourcing tactic. Research (`.planning/research/STACK.md` §2)
+closed the question: **bundle CPython 3.12 via
+`astral-sh/python-build-standalone`**.
+
+Rationale (full reasoning in `.planning/research/STACK.md`):
+
+- Jetson system Python is 3.8.10 (L4T R35.6.4 / Ubuntu 20.04). Pydantic
+  v2.11+ requires Python ≥3.9; deadsnakes does not publish 3.11+ for
+  Ubuntu 20.04 ("focal"). Patching the box's system Python is operationally
+  hostile (Zao's runtime depends on it).
+- python-build-standalone publishes glibc-2.17-baselined CPython for
+  `aarch64-unknown-linux-gnu`; Ubuntu 20.04 ships glibc 2.31 — comfortable
+  margin. Tarball is ~30 MiB; `.deb` size ceiling 40 MiB (NFR-51) accommodates.
+- Python 3.13 deferred (free-threaded transition risk + thinner aarch64
+  wheel ecosystem). 3.14 too new (beta).
+
+The full packaging recipe (PBS + `uv pip compile` for lockfile + custom
+debhelper rule replacing `dh-virtualenv`) is documented separately in
+**ADR-0010**.
+
 ## Revisit when
 
 - We need a meaningfully smaller RSS (e.g. running on something
   smaller than Orin NX). At that point Go becomes attractive.
 - The team's Rust expertise grows enough that the velocity argument
   flips. Today it doesn't.
+- CPython 3.13's free-threaded story stabilizes and we want concurrent
+  GIL-free execution (see also ADR-0010 Revisit when).

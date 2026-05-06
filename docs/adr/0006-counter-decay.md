@@ -5,6 +5,7 @@
 | Status       | Accepted       |
 | Date         | 2026-05-05     |
 | Deciders     | Eng team       |
+| Amended      | 2026-05-06     |
 
 ## Context
 
@@ -70,6 +71,48 @@ Mechanism:
 | Decay too conservative: a modem with a transient issue gets stuck Exhausted longer than necessary | K=10 (5 min at default polling) is short enough that a transient SIM hiccup doesn't pin a modem out. |
 | Off-by-one: streak reaches K but counters don't decay | Tested explicitly in `tests/replay/test_counter_decay.py` with a 12-cycle fixture. |
 
+## Amendment 2026-05-06
+
+**Pinned cycle ordering + streak persistence (closes PITFALLS §9.1, §9.2).**
+
+Research surfaced two failure modes the original ADR did not address:
+
+1. **Daemon-restart silently resets `_healthy_streak`** (PITFALLS §9.2).
+   The original "Decision" describes the mechanism but does not say the
+   streak is durable. v1's regression risk: a streak that's lost on
+   every daemon restart re-introduces the v1 permanent-Exhausted
+   failure mode this ADR was written to fix.
+
+2. **`_healthy_streak` persistence vs decay race** (PITFALLS §9.1):
+   a crash mid-cycle between "streak += 1" and "counters reset" leaves
+   the on-disk file inconsistent.
+
+**Refined rule (atomic single-write per cycle):**
+
+Per cycle, the per-modem state-write pipeline is:
+
+```
+streak update → decay check → counter reset (if streak == K) →
+state-write (one atomic temp+rename+dir-fsync)
+```
+
+All four happen as ONE atomic write per cycle. `_healthy_streak` is
+persisted in the per-modem state file every cycle and reloaded on
+daemon start; mid-streak restart does NOT reset progress.
+
+Replay test contract (Phase 2): the policy-engine replay harness
+includes a daemon-restart-mid-streak case that proves K consecutive
+Healthy cycles correctly resume after restart and decay counters to
+zero on cycle K post-restart, not on cycle K post-most-recent-boot.
+
+Implementation reference: `src/spark_modem/wire/state.py`
+(`_healthy_streak` field with alias on ModemState, Plan 03);
+`src/spark_modem/state_store/store.py` (atomic save, Plan 04);
+Phase 2 cycle driver wires the actual streak increment/decay logic.
+
+See ADR-0009 (state files keyed by usb_path) and ADR-0012 (atomic
+write + locking) for the persistence and concurrency context.
+
 ## Revisit when
 
 - Field data shows real chronic flap that still gets stuck Exhausted.
@@ -77,3 +120,6 @@ Mechanism:
 - We add new actions and the per-action ceilings need different
   decay rates. Today all counters share K; per-action K is a
   forward extension.
+- The atomic-write semantics in ADR-0012 change (e.g. a write-ahead
+  log replaces temp+rename); the cycle ordering guarantee here must
+  be re-verified against the new write model.

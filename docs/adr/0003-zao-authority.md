@@ -6,6 +6,7 @@
 | Date         | 2026-05-05     |
 | Deciders     | Eng team       |
 | Inherits     | v1's behaviour, formalised. |
+| Amended      | 2026-05-06     |
 
 ## Context
 
@@ -68,8 +69,30 @@ control structures, but:
 | Zao stops writing the log for some other reason          | Same: `zao_log_stale` triggers fallback. The daemon does not silently start probing active lines. |
 | Race: Zao log says active, but Zao is mid-fail and the modem is stuck | Acceptable. Zao's control loop rapidly transitions inactive on real failure. The watchdog notices a few cycles later. The cost is minutes, not hours. |
 
+## Amendment 2026-05-06
+
+**Closes PROJECT.md Q3** (minimum Zao SDK). Confirmed: Zao SDK 2.1.0+;
+pre-2.1.0 is unsupported (Zao log format `RASCOW_STAT` not stable).
+Phase 5 (Bench & Field Shadow) captures every box's `(EM7421 firmware,
+Zao SDK, libqmi)` triple as fixtures; any box outside the known set is
+upgraded before Phase 6 cutover.
+
+**Bound parser surface.** The Zao log tailer parses ONLY the
+`RASCOW_STAT` line; all other lines are accepted-but-ignored and
+counted via a `zao_log_unparsed_lines_total` metric. Growing the
+parsed surface (e.g. accepting a new Zao log line type) is a
+schema-version bump for the Zao log tailer subsystem. Rationale:
+Zao SDK changes are not on our control plane; pinning the parsed
+surface and surfacing every other line as opaque-but-counted means
+a Zao SDK upgrade that adds new log lines doesn't silently break us
+(and the metric tells us when we should consider expanding the parser).
+
+Source: `.planning/research/PITFALLS.md` §2.x (Zao SDK churn).
+
 ## Revisit when
 
 - Zao SDK exposes a stable D-Bus or shared-memory state interface.
 - We need finer granularity than "active / not active" (e.g. per-
   bearer or per-PDP context).
+- A Zao SDK upgrade changes the `RASCOW_STAT` format; the
+  `zao_log_unparsed_lines_total` spike is the leading indicator.
