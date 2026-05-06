@@ -18,6 +18,9 @@ dev = [
     "pytest-cov>=5,<7",
 ]
 
+[project.scripts]
+spark-modem = "spark_modem.cli.main:main"
+
 [build-system]
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
