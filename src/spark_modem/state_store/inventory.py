@@ -17,9 +17,12 @@ Hardware-free design: walk_sysfs_for_qmi_modems accepts a configurable
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from spark_modem.state_store.errors import UsbPathMismatch
+
+_logger = logging.getLogger(__name__)
 
 SIERRA_VID = "1199"
 """Sierra Wireless USB Vendor ID (EM7421 and family).
@@ -51,8 +54,16 @@ def walk_sysfs_for_qmi_modems(sysfs_root: Path) -> dict[str, str]:
         if not id_vendor_file.is_file():
             continue
         try:
-            vid = id_vendor_file.read_text().strip()
-        except OSError:
+            vid = id_vendor_file.read_text(encoding="ascii").strip()
+        except (OSError, UnicodeDecodeError) as e:
+            # Surface permissions errors and encoding anomalies so operators
+            # can investigate rather than seeing the modem silently disappear.
+            _logger.warning(
+                "spark_modem.inventory: skipping %s: %s: %s",
+                dev_dir.name,
+                type(e).__name__,
+                e,
+            )
             continue
         if vid != SIERRA_VID:
             continue
