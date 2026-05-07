@@ -254,7 +254,18 @@ NFR-12, NFR-13, NFR-30
      FR-43.1, NFR-12); daemon runs as root with no other process granted
      suid bits (NFR-30).
 
-**Plans**: TBD
+**Plans**: 9 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Event source supervisor + WakeSignal scaffold + IssueDetail extension (E-01, E-02, E-03 enum + FakeAsyncinotify + FakeSleeper + linux_only marker)
+- [ ] 03-02-PLAN.md — pyudev producer + UdevInventory + netns derivation + qmicli netns prepend (E-05, FR-1, FR-3, FR-4)
+- [ ] 03-03-PLAN.md — pyroute2 rtnetlink producer (PITFALLS §6.1 ENOBUFS handling)
+- [ ] 03-04-PLAN.md — asyncinotify dual-watcher (events.jsonl reopen + Zao log tailer) + EventLogWriter.reopen + ZaoLogInotifyTailer dual-mode (R-01, R-03, R-04, FR-43, FR-43.1)
+- [ ] 03-05-PLAN.md — kmsg producer + classifier + dedup (E-03, FR-14)
+- [ ] 03-06-PLAN.md — Daemon lifecycle modules + main.py rewrite + wire variants (EventSourceCrashed + SimSwapped); WATCHDOG cycle-end placement (L-01..L-05, FR-53, FR-61, FR-61.1, FR-75, NFR-13)
+- [ ] 03-07-PLAN.md — cycle_driver SIM-swap detection + StateStore.reset_modem_streak_and_counters atomic reset (FR-3, FR-4, RECOVERY_SPEC §8)
+- [ ] 03-08-PLAN.md — systemd unit hardening (U-01..U-05) + logrotate snippet (R-02) + cross-platform unit-file-audit test (FR-53, NFR-30)
+- [ ] 03-09-PLAN.md — Integration tests (SC #1..#5) + bench Jetson human-verify checkpoint (FR-1, FR-43, FR-43.1, NFR-12)
 
 ### Phase 4: Destructive Actions & HIL
 
@@ -440,7 +451,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Foundations & ADRs | 7/7 | Complete | 2026-05-06 |
 | 2. Core Daemon | 9/10 | In Progress | - |
-| 3. Linux Event Sources & Lifecycle | 0/TBD | Not started | - |
+| 3. Linux Event Sources & Lifecycle | 0/9 | Not started | - |
 | 4. Destructive Actions & HIL | 0/TBD | Not started | - |
 | 5. Bench & Field Shadow | 0/TBD | Not started | - |
 | 6. Cutover & Fleet Rollout | 0/TBD | Not started | - |
