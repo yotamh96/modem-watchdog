@@ -154,6 +154,47 @@ class WebhookDropped(_EventBase):
     reason: str = ""
 
 
+class EventSourceCrashed(_EventBase):
+    """Issue #7 / Open Question 2 RESOLVED: supervisor wrapper emits this on
+    producer-task crash so events.jsonl carries a structured record of every
+    Exception that survived through restart_on_crash, NOT just a log line.
+
+    Plan 03-06 wires the supervisor to call event_logger.append(
+    EventSourceCrashed(...)). Producers themselves are minimal — they push
+    WakeSignal and let the wrapper handle crash emission (CONTEXT.md E-01
+    Pattern 1).
+
+    Used by: src/spark_modem/event_sources/supervisor.py restart_on_crash
+    wrapper.
+
+    T-03-06-07 mitigation: error_message bound to max_length=200 to prevent
+    log-injection / path-leak through pathological exception messages.
+    """
+
+    kind: Literal["event_source_crashed"] = "event_source_crashed"
+    source: str  # snake_case producer name e.g. "udev_producer"
+    error_class: str  # exception class name (no module prefix)
+    error_message: str = Field(max_length=200)  # short; redacted of paths
+    restart_attempt: int = Field(ge=1)  # 1-indexed restart count
+    backoff_seconds: float = Field(ge=0.0)  # next sleep duration
+
+
+class SimSwapped(_EventBase):
+    """Issue #8 / E-04: ICCID change at the same usb_path triggers atomic
+    streak+counters reset (RECOVERY_SPEC §8). Plan 03-07 wires cycle_driver
+    to emit this AFTER reset_modem_streak_and_counters completes its atomic
+    write — never via logger.info, never as a free-form log line.
+
+    ICCID values are sha256[:8]-redacted; the daemon never logs raw ICCIDs
+    on the wire.
+    """
+
+    kind: Literal["sim_swapped"] = "sim_swapped"
+    usb_path: str
+    iccid_hash_old: str = Field(min_length=8, max_length=8)  # sha256[:8] of old ICCID
+    iccid_hash_new: str = Field(min_length=8, max_length=8)  # sha256[:8] of new ICCID
+
+
 Event = Annotated[
     ActionPlanned
     | ActionExecuted
@@ -165,7 +206,9 @@ Event = Annotated[
     | UsbPathMismatch
     | MaintenanceWindowStarted
     | MaintenanceWindowEnded
-    | WebhookDropped,
+    | WebhookDropped
+    | EventSourceCrashed
+    | SimSwapped,
     Field(discriminator="kind"),
 ]
 """One discriminated-union type for parsing events.jsonl back."""

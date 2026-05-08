@@ -86,6 +86,7 @@ class ClockProto(Protocol):
     """
 
     def monotonic(self) -> float: ...
+    def wall_clock_iso(self) -> str: ...
 
 
 @runtime_checkable
@@ -135,14 +136,11 @@ async def restart_on_crash(
     selecting the next backoff. Chronic-crash producers can't accumulate
     attempts forever; transient crashes still see escalation.
 
-    The ``event_logger`` parameter is plumbed so Plan 03-06 can wire
-    structured ``event_source_crashed`` emission without changing this
-    signature; Plan 03-01 only logs via ``logger.exception``.
+    Plan 03-06 wires structured ``EventSourceCrashed`` emission via
+    ``event_logger.append`` in the ``except Exception`` block.
     """
-    # ``event_logger`` is reserved for Plan 03-06 wiring — explicit del to
-    # silence "unused argument" linters until the structured-event variant
-    # lands (T-03-01-06 accepted threat).
-    del event_logger
+    # Local import to avoid circular import on package init.
+    from spark_modem.wire.events import EventSourceCrashed  # noqa: PLC0415
 
     attempt = 0
     while True:
@@ -155,12 +153,33 @@ async def restart_on_crash(
         except asyncio.CancelledError:
             # Passthrough: TaskGroup cancellation must propagate.
             raise
-        except Exception:  # supervisor catches all Exception to self-heal (E-01)
+        except Exception as exc:  # supervisor catches all Exception to self-heal (E-01)
             uptime = clock.monotonic() - start_monotonic
             logger.exception("event_source_crashed source=%s uptime=%.1fs", name, uptime)
             # Pitfall 15: long clean run before crash -> reset attempt counter.
             if uptime >= reset_after_uptime_s:
                 attempt = 0
             delay = backoffs[min(attempt, len(backoffs) - 1)]
+            # Issue #7 / Open Question 2 RESOLVED: emit structured event so
+            # events.jsonl carries every supervisor-caught crash, not just
+            # the logger.exception line. T-03-06-07: error_message capped at
+            # 200 chars to prevent log-injection / path-leak.
+            try:
+                msg = str(exc)[:200]
+                event_logger.append(
+                    EventSourceCrashed(
+                        ts_iso=clock.wall_clock_iso(),
+                        source=name,
+                        error_class=type(exc).__name__,
+                        error_message=msg,
+                        restart_attempt=attempt + 1,
+                        backoff_seconds=delay,
+                    )
+                )
+            except Exception:  # NFR-11: never let crash-event emission crash the supervisor
+                logger.exception(
+                    "event_source_crashed: failed to append structured event source=%s",
+                    name,
+                )
             attempt += 1
             await sleeper.sleep(delay)
