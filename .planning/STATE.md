@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-04-PLAN.md
-last_updated: "2026-05-08T15:06:46.051Z"
+stopped_at: Completed 03-05-PLAN.md
+last_updated: "2026-05-08T15:24:39.007Z"
 last_activity: 2026-05-08
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 26
-  completed_plans: 21
-  percent: 81
+  completed_plans: 22
+  percent: 85
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 03 (linux-event-sources-lifecycle) — EXECUTING
-Plan: 5 of 9
+Plan: 6 of 9
 Status: Ready to execute
 Last activity: 2026-05-08
 
-Progress: [████████░░] 81%
+Progress: [█████████░] 85%
 
 ## Performance Metrics
 
@@ -73,6 +73,7 @@ Progress: [████████░░] 81%
 | Phase 03 P02 | 13min | 2 tasks tasks | 13 files files |
 | Phase 03 P03 | 6min | 1 task tasks | 4 files files |
 | Phase 03 P04 | 13min | 2 tasks tasks | 11 files files |
+| Phase 03 P05 | 9min | 2 tasks tasks | 14 files files |
 
 ## Accumulated Context
 
@@ -209,6 +210,12 @@ Recent decisions affecting current work:
 - Plan 03-04: EventLogWriter extended with reopen() + _reopen_buffer (deque maxlen=1000) + _reopening flag + reopen_overflow_count read-only property (R-03). Logrotate fd swap is microsecond-fast in happy path; buffer is defense for disk-full/EPERM pathological case. _REOPEN_BUFFER_MAX module constant; bounded ~500 KiB worst case. Plan 03-06 wires reopen_overflow_count into events_dropped_total{reason=reopen_overflow}
 - Plan 03-04: tailer pushes WakeSignal.ZAO_LOG itself (consumer owns wake-signal semantics because it has internal state); producer pushes WakeSignal.EVENTS_LOG_ROTATED directly because EventLogReopener has zero state. Two-consumers, two-shapes: producer dispatches; consumers push wake signals
 - Plan 03-04: deferred WakeSignal import inside zao_log/inotify_tailer.py:_zao_wake_signal() avoids circular import event_sources/supervisor.py to zao_log/. _InotifyProto Protocol co-located in asyncinotify_producer.py types the async-context-manager + add_watch + async-iterable surface; FakeAsyncinotify satisfies structurally without inheritance
+- Plan 03-05: kmsg classifier locks 5 closed-enum IssueDetail values via test contract gate (test_kmsg_patterns_table_size_locked_at_5) — adding a 6th regex requires deliberate edits to enum + table + count assertion; per CONTEXT.md Deferred Ideas catalog growth lands via ADR or Phase 4 follow-up
+- Plan 03-05: KmsgDedup mirrors webhook/dedup.py shape with key=IssueDetail and default window=30s (LOCKED per CONTEXT.md E-03); semantics flipped vs is_deduped — should_emit returns True on EMIT for caller readability
+- Plan 03-05: re.IGNORECASE on all 5 KMSG_PATTERNS regexes — RESEARCH.md cited capital 'USB' but real Linux kernel writes lowercase 'usb 1-3.1:'; bench-Jetson regex iteration per CONTEXT.md 'Claude's Discretion' since enum values are LOCKED but regex strings are data
+- Plan 03-05: EPIPE handled inside drain loop (NOT escaped to supervisor like rtnetlink ENOBUFS) — semantics differ: EPIPE on /dev/kmsg means kernel ring buffer wrapped (just keep reading at new tail); ENOBUFS on rtnetlink means socket buffer overflow (close+reopen); per-error-code semantics matter
+- Plan 03-05: fd_factory tuple injection (production wires None and opens /dev/kmsg lazily; tests pass sentinel fd + fake.read) — same testable-defaults pattern as ipr_factory (Plan 03-03) and inotify_factory (Plan 03-04); module imports cleanly on Windows dev hosts
+- Plan 03-05: test path uses loop.call_soon (vs production loop.add_reader) — fake fd is a sentinel value not registered with OS event loop; ProactorEventLoop on Windows would error on add_reader(99, ...); both paths exit via the same finally cleanup
 
 ### Pending Todos
 
@@ -226,8 +233,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-08T15:06:46.034Z
-Stopped at: Completed 03-04-PLAN.md
+Last session: 2026-05-08T15:24:38.987Z
+Stopped at: Completed 03-05-PLAN.md
 Resume file: None
 
 **Planned Phase:** 03 (Linux Event Sources & Lifecycle) — 9 plans — 2026-05-07T07:12:05.104Z
