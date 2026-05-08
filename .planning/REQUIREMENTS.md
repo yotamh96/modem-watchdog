@@ -29,7 +29,8 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 's 7-state shape; ADR-0008)
 - [x] **FR-13
 **: System emits a typed `Diag` snapshot every cycle conforming to SCHEMA § Diag
-- [ ] **FR-14**: System detects host-level issues (USB overcurrent, "device not accepting address", thermal events) from `dmesg` and treats them as global issues
+- [x] **FR-14
+**: System detects host-level issues (USB overcurrent, "device not accepting address", thermal events) from `dmesg` and treats them as global issues
 
 ### Recovery
 

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 3 context gathered
-last_updated: "2026-05-07T07:12:05.125Z"
-last_activity: 2026-05-06
+status: executing
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-05-08T14:14:42.637Z"
+last_activity: 2026-05-08
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 26
-  completed_plans: 17
-  percent: 65
+  completed_plans: 18
+  percent: 69
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-05)
 
 **Core value:** Maximize end-user uplink availability across the four bonded modems by applying minimum-impact recovery actions — and never running a destructive recovery that has zero chance of fixing the observed issue.
-**Current focus:** Phase 02 ✅ COMPLETE; ready for Phase 03 (Linux Event Sources & Lifecycle)
+**Current focus:** Phase 03 — linux-event-sources-lifecycle
 
 ## Current Position
 
-Phase: 02 (core-daemon-laptop-testable) — COMPLETE (EXIT GATE PASSED)
-Plan: 10 of 10 ✅
-Status: Phase 2 complete; ready for Phase 3 (Linux Event Sources & Lifecycle)
-Last activity: 2026-05-06
+Phase: 03 (linux-event-sources-lifecycle) — EXECUTING
+Plan: 2 of 9
+Status: Ready to execute
+Last activity: 2026-05-08
 
-Progress: [██████████] 100% (Phase 2 of 7)
+Progress: [███████░░░] 69%
 
 ## Performance Metrics
 
@@ -69,6 +69,7 @@ Progress: [██████████] 100% (Phase 2 of 7)
 | Phase 02 P07 | 12 minutes | 2 tasks tasks | 11 files files |
 | Phase 02 P09 | ~30m | 2 tasks tasks | 27 files files |
 | Phase 02 P10 | ~30m | 2 tasks | 1015 files (5 daemon src + 4 daemon tests + 1 generator + 4 replay tests + 1004 fixture JSONs + 1 .gitkeep) |
+| Phase 03 P01 | 12min | 2 tasks tasks | 10 files files |
 
 ## Accumulated Context
 
@@ -178,6 +179,12 @@ Recent decisions affecting current work:
 - Plan 02-10: replay verdict classifier R-02 partial order — 'safer' partial order: v2 picking cheaper than v1 is 'less-safe' ONLY when v1 picked destructive AND v1_succeeded; v1_succeeded=False/None means cheaper is at-least-as-good ('safer')
 - Plan 02-10: restart_mid_streak fixtures hand-authored (generator does not synthesise daemon-restart scenarios); two-fixture pre/post + JSON round-trip simulates restart and proves FR-26.1 streak persistence end-to-end
 - Plan 02-10: Phase 2 EXIT GATE PASSED — 100% (952/952) fault-cycle agreement with v1; replay-summary.json gitignored (T-02-10-03); full pytest suite 1675 tests in 11.82s (well under M7 30s)
+- Plan 03-01: WakeSignal closed StrEnum (E-02) — 5 sources locked (UDEV/RTNETLINK/ZAO_LOG/EVENTS_LOG_ROTATED/KMSG); state derives from re-observation, queue carries opaque sentinels only (ADR-0002)
+- Plan 03-01: restart_on_crash supervisor (E-01) — bounded backoff (1,2,4,8,60) cap + Pitfall 15 attempt-counter reset after >=300s clean uptime; CancelledError passthrough; logger.exception only in 03-01 (Plan 03-06 wires structured event_source_crashed emission, T-03-01-06 accepted threat)
+- Plan 03-01: Sleeper Protocol (PITFALLS §14.1) — production wires asyncio.sleep adapter, tests inject FakeSleeper that advances FakeClock and yields control; runtime_checkable so isinstance(fake, Sleeper) works in contract tests
+- Plan 03-01: IssueDetail extended 34→40 with 6 host-level kmsg values (USB_OVERCURRENT/USB_ENUM_FAILURE/THERMAL_THROTTLE/QMI_WWAN_PROBE_FAIL/TEGRA_HUB_PSU_DROOP/UNKNOWN); USB_OVERCURRENT distinct from per-modem ENUMERATION_OVERCURRENT (W-04 closed-enum discipline) — pinned by contract test
+- Plan 03-01: FakeAsyncinotify async-iterable + FakeMask IntFlag + FakeInotifyEvent dataclass — depended on by Plans 03-04 (zao_log + events.jsonl rotation) and 03-06 (lifecycle integration); same dual-surface pattern as Phase 2 FixtureZaoTailer (production Protocol + test-only inject_event mutator)
+- Plan 03-01: linux_only pytest marker registered once in pyproject.toml [tool.pytest.ini_options].markers — Plans 03-02..03-06 (~14 test files) reference it without re-registering
 
 ### Pending Todos
 
@@ -195,9 +202,9 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: --stopped-at
-Stopped at: Phase 3 context gathered
-Resume file: --resume-file
+Last session: 2026-05-08T14:14:42.618Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: None
 
 **Planned Phase:** 03 (Linux Event Sources & Lifecycle) — 9 plans — 2026-05-07T07:12:05.104Z
 **Phase 2 status:** ✅ COMPLETE — all 10 plans shipped, replay harness 100% v1 agreement, 1675-test suite green in 11.82s

@@ -257,7 +257,7 @@ NFR-12, NFR-13, NFR-30
 **Plans**: 9 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Event source supervisor + WakeSignal scaffold + IssueDetail extension (E-01, E-02, E-03 enum + FakeAsyncinotify + FakeSleeper + linux_only marker)
+- [x] 03-01-PLAN.md — Event source supervisor + WakeSignal scaffold + IssueDetail extension (E-01, E-02, E-03 enum + FakeAsyncinotify + FakeSleeper + linux_only marker)
 - [ ] 03-02-PLAN.md — pyudev producer + UdevInventory + netns derivation + qmicli netns prepend (E-05, FR-1, FR-3, FR-4)
 - [ ] 03-03-PLAN.md — pyroute2 rtnetlink producer (PITFALLS §6.1 ENOBUFS handling)
 - [ ] 03-04-PLAN.md — asyncinotify dual-watcher (events.jsonl reopen + Zao log tailer) + EventLogWriter.reopen + ZaoLogInotifyTailer dual-mode (R-01, R-03, R-04, FR-43, FR-43.1)
