@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-06-PLAN.md
-last_updated: "2026-05-08T15:49:47.922Z"
+stopped_at: Completed 03-07-PLAN.md
+last_updated: "2026-05-08T16:06:19.321Z"
 last_activity: 2026-05-08
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 26
-  completed_plans: 23
-  percent: 88
+  completed_plans: 24
+  percent: 92
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 03 (linux-event-sources-lifecycle) — EXECUTING
-Plan: 7 of 9
+Plan: 8 of 9
 Status: Ready to execute
 Last activity: 2026-05-08
 
-Progress: [█████████░] 88%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
@@ -75,6 +75,7 @@ Progress: [█████████░] 88%
 | Phase 03 P04 | 13min | 2 tasks tasks | 11 files files |
 | Phase 03 P05 | 9min | 2 tasks tasks | 14 files files |
 | Phase 03 P06 | 17min | 2 tasks tasks | 16 files files |
+| Phase 03-linux-event-sources-lifecycle P07 | 9min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -225,6 +226,10 @@ Recent decisions affecting current work:
 - Plan 03-06: PID lock built on top of state_store.locks.acquire_flock at run_dir/lock — third file separate from state.lock and modem-{usb_path}.lock per ADR-0012; StateStoreLocked translated into PidLockHeldError; FakePIDLock asyncio.Lock-backed for cross-platform tests (production POSIX flock, kernel-released on death)
 - Plan 03-06: main.py production path is a SCAFFOLD — argparse + preflight + marker classify + PID lock + SdNotifyLifecycle construction land today; TaskGroup body spawning 5 supervised producers + cycle loop + 2 signal watchers documented inline; full wiring lands Plan 03-09 integration suite. WATCHDOG cycle-end placement asserted by Plan 03-06 unit test today.
 - Plan 03-06: --laptop CLI flag preserves Phase 2 single-cycle wiring path; build_default_settings + _NoZaoTailer + _InventoryFromFile fakes survive in cli.clients for backwards-compat with Phase 2 integration tests
+- Plan 03-07: StateStore.reset_modem_streak_and_counters public async method — resets healthy_streak=0 + counters={} in ONE atomic write per RECOVERY_SPEC §8 (Issue #9); per-modem asyncio.Lock + flock (FR-61.1 / ADR-0012); preserves all OTHER ModemState fields; brand-new-modem path constructs fresh shell
+- Plan 03-07: cycle_driver._detect_and_handle_sim_swaps inserts AFTER observation AND BEFORE policy.engine.run_cycle (T-03-07-05) so the engine reads post-reset ModemState; pipeline order is save_identity_map -> reset_modem_streak_and_counters -> event_logger.append (T-03-07-03); ICCID values sha256[:8]-redacted in SimSwapped event payload (T-03-07-02; Issue #8: NEVER logger.info)
+- Plan 03-07: ModemSnapshot extended with identity_iccid + identity_imsi optional fields (18-22 / 14-15 digit patterns matching wire/identity.Identity); observer/issue_extractor surfaces both from existing GetSimStateResult parser; empty-string parser output collapses to None at observer boundary so transient SIM states (PIN required, app not detected, error) don't trigger false-positive SimSwapped events
+- Plan 03-07: did NOT extract _load_modem_state_unlocked / _save_modem_state_unlocked private helpers (plan called this OPTIONAL); reused existing _save_modem_state_locked private helper; new method's read side is 3-line inline (target.read_bytes + json.loads + ModemState.model_validate); kept diff to store.py minimal at +44 LOC
 
 ### Pending Todos
 
@@ -242,8 +247,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-08T15:49:14.500Z
-Stopped at: Completed 03-06-PLAN.md
+Last session: 2026-05-08T16:06:19.306Z
+Stopped at: Completed 03-07-PLAN.md
 Resume file: None
 
 **Planned Phase:** 03 (Linux Event Sources & Lifecycle) — 9 plans — 2026-05-07T07:12:05.104Z
