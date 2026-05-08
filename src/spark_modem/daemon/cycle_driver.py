@@ -167,7 +167,10 @@ class CycleDriver:
         modems = await self._inventory.scan()
 
         def qmi_factory(m: ModemDescriptor) -> QmiWrapper:
-            return QmiWrapper(runner=self._runner, device=f"/dev/{m.cdc_wdm}")
+            # E-05: pass descriptor.ns so QmiWrapper auto-prepends `ip netns
+            # exec <ns>` when running in a per-line netns; None on bench
+            # Jetson is a no-op (PITFALLS §6.2 — never setns from asyncio).
+            return QmiWrapper(runner=self._runner, device=f"/dev/{m.cdc_wdm}", ns=m.ns)
 
         try:
             snapshots: list[ModemSnapshot] = await observe_all(
@@ -274,6 +277,9 @@ class CycleDriver:
         """Execute each non-suppressed PlannedAction whose kind is registered."""
         out: list[ActionResult] = []
         cdc_by_usb: dict[str, str] = {m.usb_path: m.cdc_wdm for m in modems}
+        # E-05: descriptor.ns flows into the per-action QmiWrapper so that
+        # `ip netns exec <ns>` is prepended when the modem lives in a netns.
+        ns_by_usb: dict[str, str | None] = {m.usb_path: m.ns for m in modems}
 
         for plan in cycle_result.plans:
             if not is_registered(plan.kind):
@@ -300,10 +306,12 @@ class CycleDriver:
                 # No descriptor for this usb_path (modem disappeared between
                 # observe and dispatch).  Skip; next cycle will re-evaluate.
                 continue
+            ns_for_action = ns_by_usb.get(who.usb_path)
 
             per_action_qmi = QmiWrapper(
                 runner=self._runner,
                 device=f"/dev/{cdc}",
+                ns=ns_for_action,  # E-05; None on single-namespace bench Jetson
             )
             per_action_ctx = ActionContext(
                 qmi=per_action_qmi,

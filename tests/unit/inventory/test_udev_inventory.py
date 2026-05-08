@@ -9,6 +9,7 @@ by tests/unit/inventory/test_sysfs.py.
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -39,8 +40,6 @@ async def test_scan_passes_sysfs_root_override(tmp_path: Path) -> None:
     Skipped on Windows because of symlink/permission semantics, mirroring
     the SysfsInventory test pattern.
     """
-    import sys
-
     if sys.platform == "win32":
         pytest.skip("Symlink-and-permission-heavy sysfs simulation; production target is Linux")
 

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Final
 
 from spark_modem.inventory.descriptor import ModemDescriptor
+from spark_modem.inventory.netns import derive_ns
 
 _SIERRA_VID: Final[str] = "1199"
 _EM7421_PID: Final[str] = "9091"
@@ -36,7 +37,8 @@ class SysfsInventory:
           - `cdc_wdm`   -- found by walking the entry's children to find a
             `cdc-wdmN` under any `usbmisc/` directory
           - `iface`     -- corresponding `wwanN` net interface
-          - `ns`        -- None (Phase 3 derives from netns)
+          - `ns`        -- derived via inventory/netns.derive_ns (E-05);
+            None on the bench Jetson single-namespace case
           - `line`      -- derived from the trailing component of `usb_path`
 
         Modems whose `cdc_wdm` device has not yet enumerated are skipped;
@@ -76,7 +78,7 @@ class SysfsInventory:
                     line=line,
                     cdc_wdm=cdc_wdm,
                     usb_path=usb_path,
-                    ns=None,  # Phase 3 derives from netns
+                    ns=derive_ns(resolved),  # E-05; None on single-namespace
                     iface=iface,
                 )
             )

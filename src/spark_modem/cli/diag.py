@@ -64,7 +64,8 @@ async def run(args: argparse.Namespace) -> int:
     runner = FixtureRunner(fixture_dir=fixture_dir)
 
     def qmi_factory(m: ModemDescriptor) -> QmiWrapper:
-        return QmiWrapper(runner=runner, device=f"/dev/{m.cdc_wdm}")
+        # E-05: ns flows from descriptor; None on single-namespace bench Jetson.
+        return QmiWrapper(runner=runner, device=f"/dev/{m.cdc_wdm}", ns=m.ns)
 
     clock = _CliClock()
     zao = _NoZaoTailer()

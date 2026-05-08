@@ -17,7 +17,6 @@ keeps tests cross-platform where possible.
 
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 
@@ -62,7 +61,7 @@ def test_returns_none_when_link_target_not_named_netns(tmp_path: Path) -> None:
     ns_dir.mkdir(parents=True)
     ns_link = ns_dir / "net"
     # Point to a fictitious inode that won't match anything in netns_root.
-    os.symlink("net:[99999999]", ns_link)
+    ns_link.symlink_to("net:[99999999]")
     empty_netns_root = tmp_path / "var-run-netns"
     empty_netns_root.mkdir()
     assert derive_ns(tmp_path, netns_root=empty_netns_root) is None
@@ -84,7 +83,7 @@ def test_returns_name_when_netns_inode_matches(tmp_path: Path) -> None:
     inode = target_ns.stat().st_ino
 
     ns_link = ns_dir / "net"
-    os.symlink(f"net:[{inode}]", ns_link)
+    ns_link.symlink_to(f"net:[{inode}]")
 
     assert derive_ns(tmp_path, netns_root=netns_root) == "line1"
 
@@ -97,7 +96,7 @@ def test_returns_none_when_link_target_malformed(tmp_path: Path) -> None:
     ns_dir = device_dir / "ns"
     ns_dir.mkdir(parents=True)
     ns_link = ns_dir / "net"
-    os.symlink("not-a-netns-target", ns_link)
+    ns_link.symlink_to("not-a-netns-target")
     assert derive_ns(tmp_path) is None
 
 
@@ -109,7 +108,7 @@ def test_returns_none_when_link_target_inode_unparseable(tmp_path: Path) -> None
     ns_dir = device_dir / "ns"
     ns_dir.mkdir(parents=True)
     ns_link = ns_dir / "net"
-    os.symlink("net:[abc]", ns_link)
+    ns_link.symlink_to("net:[abc]")
     assert derive_ns(tmp_path) is None
 
 
@@ -121,6 +120,6 @@ def test_returns_none_when_netns_root_does_not_exist(tmp_path: Path) -> None:
     ns_dir = device_dir / "ns"
     ns_dir.mkdir(parents=True)
     ns_link = ns_dir / "net"
-    os.symlink("net:[12345]", ns_link)
+    ns_link.symlink_to("net:[12345]")
     nonexistent_netns_root = tmp_path / "absent-dir"
     assert derive_ns(tmp_path, netns_root=nonexistent_netns_root) is None

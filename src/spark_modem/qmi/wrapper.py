@@ -116,89 +116,120 @@ class QmiWrapper:
     (Phase 3 SIGTERM handler reads it).
     """
 
-    def __init__(self, *, runner: SubprocRunner, device: str) -> None:
+    def __init__(self, *, runner: SubprocRunner, device: str, ns: str | None = None) -> None:
         if not device:
             raise ValueError("QmiWrapper: device must be non-empty (e.g. '/dev/cdc-wdm0')")
         self._runner = runner
         self._device = device
+        self._ns: str | None = ns
         self._in_critical_section: bool = False
+
+    def _argv(self, qmicli_args: list[str]) -> list[str]:
+        """Prepend ``ip netns exec <ns>`` to ``qmicli_args`` when self._ns is set (E-05).
+
+        PITFALLS §6.2: NEVER setns() from the asyncio loop. The
+        ``ip netns exec`` subprocess does its own setns in a forked
+        child; the daemon's loop stays in the host namespace.
+
+        Single source of truth — every qmicli method routes through
+        this helper, so adding a Phase 4 destructive method without
+        wrapping is caught by the parameterized regression test in
+        ``tests/unit/qmi/test_wrapper_netns.py``.
+        """
+        if self._ns is None:
+            return qmicli_args
+        return ["ip", "netns", "exec", self._ns, *qmicli_args]
 
     # ---- query methods (read-only) -------------------------------------
 
     async def nas_get_signal_info(self) -> CompletedProcess:
         return await self._runner.run(
-            [
-                "qmicli",
-                "--device-open-proxy",
-                f"--device={self._device}",
-                "--nas-get-signal-info",
-            ],
+            self._argv(
+                [
+                    "qmicli",
+                    "--device-open-proxy",
+                    f"--device={self._device}",
+                    "--nas-get-signal-info",
+                ]
+            ),
             timeout_s=_DEFAULT_TIMEOUT_S,
         )
 
     async def nas_get_serving_system(self) -> CompletedProcess:
         return await self._runner.run(
-            [
-                "qmicli",
-                "--device-open-proxy",
-                f"--device={self._device}",
-                "--nas-get-serving-system",
-            ],
+            self._argv(
+                [
+                    "qmicli",
+                    "--device-open-proxy",
+                    f"--device={self._device}",
+                    "--nas-get-serving-system",
+                ]
+            ),
             timeout_s=_DEFAULT_TIMEOUT_S,
         )
 
     async def uim_get_card_status(self) -> CompletedProcess:
         return await self._runner.run(
-            [
-                "qmicli",
-                "--device-open-proxy",
-                f"--device={self._device}",
-                "--uim-get-card-status",
-            ],
+            self._argv(
+                [
+                    "qmicli",
+                    "--device-open-proxy",
+                    f"--device={self._device}",
+                    "--uim-get-card-status",
+                ]
+            ),
             timeout_s=_DEFAULT_TIMEOUT_S,
         )
 
     async def wds_get_packet_service_status(self) -> CompletedProcess:
         return await self._runner.run(
-            [
-                "qmicli",
-                "--device-open-proxy",
-                f"--device={self._device}",
-                "--wds-get-packet-service-status",
-            ],
+            self._argv(
+                [
+                    "qmicli",
+                    "--device-open-proxy",
+                    f"--device={self._device}",
+                    "--wds-get-packet-service-status",
+                ]
+            ),
             timeout_s=_DEFAULT_TIMEOUT_S,
         )
 
     async def wds_get_profile_settings(self, *, profile_index: int = 1) -> CompletedProcess:
         return await self._runner.run(
-            [
-                "qmicli",
-                "--device-open-proxy",
-                f"--device={self._device}",
-                f"--wds-get-profile-settings=3gpp,{profile_index}",
-            ],
+            self._argv(
+                [
+                    "qmicli",
+                    "--device-open-proxy",
+                    f"--device={self._device}",
+                    f"--wds-get-profile-settings=3gpp,{profile_index}",
+                ]
+            ),
             timeout_s=_DEFAULT_TIMEOUT_S,
         )
 
     async def wds_get_current_settings(self) -> CompletedProcess:
         return await self._runner.run(
-            [
-                "qmicli",
-                "--device-open-proxy",
-                f"--device={self._device}",
-                "--wds-get-current-settings",
-            ],
+            self._argv(
+                [
+                    "qmicli",
+                    "--device-open-proxy",
+                    f"--device={self._device}",
+                    "--wds-get-current-settings",
+                ]
+            ),
             timeout_s=_DEFAULT_TIMEOUT_S,
         )
 
     async def dms_get_operating_mode(self) -> CompletedProcess:
         return await self._runner.run(
-            [
-                "qmicli",
-                "--device-open-proxy",
-                f"--device={self._device}",
-                "--dms-get-operating-mode",
-            ],
+            self._argv(
+                [
+                    "qmicli",
+                    "--device-open-proxy",
+                    f"--device={self._device}",
+                    "--dms-get-operating-mode",
+                ]
+            ),
             timeout_s=_DEFAULT_TIMEOUT_S,
         )
 
@@ -209,12 +240,14 @@ class QmiWrapper:
         self._in_critical_section = True
         try:
             return await self._runner.run(
-                [
-                    "qmicli",
-                    "--device-open-proxy",
-                    f"--device={self._device}",
-                    f"--dms-set-operating-mode={mode}",
-                ],
+                self._argv(
+                    [
+                        "qmicli",
+                        "--device-open-proxy",
+                        f"--device={self._device}",
+                        f"--dms-set-operating-mode={mode}",
+                    ]
+                ),
                 timeout_s=_STATE_CHANGE_TIMEOUT_S,
             )
         finally:
@@ -225,12 +258,14 @@ class QmiWrapper:
         self._in_critical_section = True
         try:
             return await self._runner.run(
-                [
-                    "qmicli",
-                    "--device-open-proxy",
-                    f"--device={self._device}",
-                    f"--uim-sim-power-on={slot}",
-                ],
+                self._argv(
+                    [
+                        "qmicli",
+                        "--device-open-proxy",
+                        f"--device={self._device}",
+                        f"--uim-sim-power-on={slot}",
+                    ]
+                ),
                 timeout_s=_STATE_CHANGE_TIMEOUT_S,
             )
         finally:
@@ -249,12 +284,14 @@ class QmiWrapper:
         self._in_critical_section = True
         try:
             return await self._runner.run(
-                [
-                    "qmicli",
-                    "--device-open-proxy",
-                    f"--device={self._device}",
-                    f"--wds-modify-profile=3gpp,{profile_index},apn={apn},ip-family={ip_family}",
-                ],
+                self._argv(
+                    [
+                        "qmicli",
+                        "--device-open-proxy",
+                        f"--device={self._device}",
+                        f"--wds-modify-profile=3gpp,{profile_index},apn={apn},ip-family={ip_family}",
+                    ]
+                ),
                 timeout_s=_STATE_CHANGE_TIMEOUT_S,
             )
         finally:
@@ -271,12 +308,14 @@ class QmiWrapper:
         self._in_critical_section = True
         try:
             return await self._runner.run(
-                [
-                    "qmicli",
-                    "--device-open-proxy",
-                    f"--device={self._device}",
-                    f"--wds-set-ip-family={family}",
-                ],
+                self._argv(
+                    [
+                        "qmicli",
+                        "--device-open-proxy",
+                        f"--device={self._device}",
+                        f"--wds-set-ip-family={family}",
+                    ]
+                ),
                 timeout_s=_STATE_CHANGE_TIMEOUT_S,
             )
         finally:
