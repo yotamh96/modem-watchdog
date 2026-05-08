@@ -21,6 +21,7 @@ Pin every contract point:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import errno
 from typing import Any
 
@@ -89,10 +90,8 @@ async def _drive_producer_one_drain(
             await asyncio.sleep(0)
             break
     task.cancel()
-    try:
+    with contextlib.suppress(asyncio.CancelledError):
         await task
-    except asyncio.CancelledError:
-        pass
 
 
 async def test_classified_line_emits_issue_and_wake_signal() -> None:
