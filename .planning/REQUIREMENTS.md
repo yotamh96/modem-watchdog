@@ -311,8 +311,8 @@ Mapped during ROADMAP creation 2026-05-06. Every v1 REQ-ID maps to exactly one p
 | FR-41 | Phase 2 | Pending |
 | FR-41.1 | Phase 2 | Pending |
 | FR-42 | Phase 2 | Pending |
-| FR-43 | Phase 3 | Pending |
-| FR-43.1 | Phase 3 | Pending |
+| FR-43 | Phase 3 | Done (Plan 03-04) |
+| FR-43.1 | Phase 3 | Done (Plan 03-04) |
 | FR-44 | Phase 2 | Done (Plan 02-08) |
 | FR-44.1 | Phase 1 | Done (Plan 02-08 wires sign_envelope; wire shape from Phase 1) |
 | FR-44.2 | Phase 1 | Done (Plan 02-08 sets X-Spark-Timestamp; wire shape from Phase 1) |

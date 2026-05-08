@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-03-PLAN.md
-last_updated: "2026-05-08T14:47:24.675Z"
+stopped_at: Completed 03-04-PLAN.md
+last_updated: "2026-05-08T15:06:46.051Z"
 last_activity: 2026-05-08
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 26
-  completed_plans: 20
-  percent: 77
+  completed_plans: 21
+  percent: 81
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 03 (linux-event-sources-lifecycle) — EXECUTING
-Plan: 4 of 9
+Plan: 5 of 9
 Status: Ready to execute
 Last activity: 2026-05-08
 
-Progress: [████████░░] 77%
+Progress: [████████░░] 81%
 
 ## Performance Metrics
 
@@ -72,6 +72,7 @@ Progress: [████████░░] 77%
 | Phase 03 P01 | 12min | 2 tasks tasks | 10 files files |
 | Phase 03 P02 | 13min | 2 tasks tasks | 13 files files |
 | Phase 03 P03 | 6min | 1 task tasks | 4 files files |
+| Phase 03 P04 | 13min | 2 tasks tasks | 11 files files |
 
 ## Accumulated Context
 
@@ -203,6 +204,11 @@ Recent decisions affecting current work:
 - Plan 03-03: rtnetlink producer body is exactly put_nowait WakeSignal.RTNETLINK ONLY (PITFALLS 6.1 PRESCRIPTIVE) — no parsing, no logging, no state; 4 MiB SO_RCVBUF 16x kernel default absorbs USB hub PSU droop storms
 - Plan 03-03: pyroute2 imports deferred mirroring Plan 03-02 pyudev pattern — from pyroute2 import AsyncIPRoute lives inside _build_default_ipr and from pyroute2.netlink import rtnl lives inside run_rtnetlink_producer body; tests inject ipr_factory tuple and never trigger real imports; module imports cleanly on Windows dev hosts
 - Plan 03-03: ipr_factory is a tuple of AsyncIPRoute-like object plus groups_constant defaulting to None — preconstructed FakeAsyncIPRoute plus groups_constant tuple injection is lighter than callable factory currying; production wires None and constructs both objects internally
+- Plan 03-04: ZaoLogInotifyTailer dual-mode (FR-43.1) — copytruncate detected via st.st_size < self._last_offset; opportunistic inode compare via st.st_ino != self._last_inode; create-mode handled via MOVE_SELF/DELETE_SELF reset → CREATE/MOVED_TO basename match → re-stat + re-parse. Reuses ZaoLogParser via composition (snapshot is idempotent against current file)
+- Plan 03-04: single supervised asyncinotify producer (R-01) watches events.jsonl parent + Zao log parent + Zao log file; dispatches by event.watch handle identity to two consumers (EventLogReopener + ZaoLogInotifyTailer). Three orthogonal mask booleans (modify/move-or-delete/create-or-moved-to) extracted at producer boundary so consumer code path runs identically against FakeMask + real Mask
+- Plan 03-04: EventLogWriter extended with reopen() + _reopen_buffer (deque maxlen=1000) + _reopening flag + reopen_overflow_count read-only property (R-03). Logrotate fd swap is microsecond-fast in happy path; buffer is defense for disk-full/EPERM pathological case. _REOPEN_BUFFER_MAX module constant; bounded ~500 KiB worst case. Plan 03-06 wires reopen_overflow_count into events_dropped_total{reason=reopen_overflow}
+- Plan 03-04: tailer pushes WakeSignal.ZAO_LOG itself (consumer owns wake-signal semantics because it has internal state); producer pushes WakeSignal.EVENTS_LOG_ROTATED directly because EventLogReopener has zero state. Two-consumers, two-shapes: producer dispatches; consumers push wake signals
+- Plan 03-04: deferred WakeSignal import inside zao_log/inotify_tailer.py:_zao_wake_signal() avoids circular import event_sources/supervisor.py to zao_log/. _InotifyProto Protocol co-located in asyncinotify_producer.py types the async-context-manager + add_watch + async-iterable surface; FakeAsyncinotify satisfies structurally without inheritance
 
 ### Pending Todos
 
@@ -220,8 +226,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-08T14:47:24.653Z
-Stopped at: Completed 03-03-PLAN.md
+Last session: 2026-05-08T15:06:46.034Z
+Stopped at: Completed 03-04-PLAN.md
 Resume file: None
 
 **Planned Phase:** 03 (Linux Event Sources & Lifecycle) — 9 plans — 2026-05-07T07:12:05.104Z

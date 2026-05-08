@@ -260,7 +260,7 @@ Plans:
 - [x] 03-01-PLAN.md — Event source supervisor + WakeSignal scaffold + IssueDetail extension (E-01, E-02, E-03 enum + FakeAsyncinotify + FakeSleeper + linux_only marker)
 - [x] 03-02-PLAN.md — pyudev producer + UdevInventory + netns derivation + qmicli netns prepend (E-05, FR-1, FR-3, FR-4)
 - [x] 03-03-PLAN.md — pyroute2 rtnetlink producer (PITFALLS §6.1 ENOBUFS handling)
-- [ ] 03-04-PLAN.md — asyncinotify dual-watcher (events.jsonl reopen + Zao log tailer) + EventLogWriter.reopen + ZaoLogInotifyTailer dual-mode (R-01, R-03, R-04, FR-43, FR-43.1)
+- [x] 03-04-PLAN.md — asyncinotify dual-watcher (events.jsonl reopen + Zao log tailer) + EventLogWriter.reopen + ZaoLogInotifyTailer dual-mode (R-01, R-03, R-04, FR-43, FR-43.1)
 - [ ] 03-05-PLAN.md — kmsg producer + classifier + dedup (E-03, FR-14)
 - [ ] 03-06-PLAN.md — Daemon lifecycle modules + main.py rewrite + wire variants (EventSourceCrashed + SimSwapped); WATCHDOG cycle-end placement (L-01..L-05, FR-53, FR-61, FR-61.1, FR-75, NFR-13)
 - [ ] 03-07-PLAN.md — cycle_driver SIM-swap detection + StateStore.reset_modem_streak_and_counters atomic reset (FR-3, FR-4, RECOVERY_SPEC §8)
