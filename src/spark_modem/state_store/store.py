@@ -257,6 +257,50 @@ class StateStore:
                 _ = expected_cdc_wdm  # forward-compat hook (Phase 2 identity layer)
                 return LoadResult(state=state, downgrade_event=None)
 
+    async def reset_modem_streak_and_counters(self, usb_path: str) -> None:
+        """Reset _healthy_streak + all escalation counters atomically (E-04 / FR-4).
+
+        Called by daemon/cycle_driver.py when a SIM swap (ICCID change at the
+        same usb_path) is detected within a cycle.  RECOVERY_SPEC §8 atomic
+        cycle write order: streak update -> decay check -> counter reset ->
+        state-write — this method performs all four in ONE atomic write at
+        maximum reset values (streak=0, counters={}).
+
+        Lock discipline: per-modem asyncio.Lock OUTER, per-modem flock INNER
+        (Phase 1 ADR-0012; mirrors save_modem_state).  Daemon and a concurrent
+        ``ctl reset-state`` from a second shell never produce a lost update on
+        the same modem (FR-61.1 / T-03-07-01).
+
+        SIM swap is the ONE legitimate counter-reset signal other than a
+        fresh-state daemon start with no prior file (CLAUDE.md §"Critical
+        invariants" #7).  When called on a brand-new modem with no state file
+        on disk, this method writes a fresh-default ModemState (state=unknown,
+        streak=0, counters={}) so subsequent loads see the reset shape.
+        """
+        # Layer 1: per-modem asyncio.Lock (in-process serialisation).
+        async with self._modem_locks.get(usb_path):
+            # Layer 2: per-modem flock (cross-process; daemon-vs-CLI guard).
+            # Lock acquisition order: asyncio.Lock acquired above, flock here.
+            lock_path = lockfile_for_modem(usb_path, run=self._run_dir)
+            async with acquire_flock_async(lock_path, blocking=True):
+                target = state_file_for_modem(usb_path, root=self._state_root)
+                if target.exists():
+                    # Preserve all OTHER fields (state, present, rf_blocked,
+                    # last_action_monotonic, last_state_transition_iso); only
+                    # the streak + counters are reset per RECOVERY_SPEC §8.
+                    raw: dict[str, object] = json.loads(
+                        target.read_bytes().decode("utf-8"),
+                    )
+                    existing = ModemState.model_validate(raw)
+                    reset_state = existing.model_copy(
+                        update={"healthy_streak": 0, "counters": {}},
+                    )
+                else:
+                    # Brand-new modem path: no prior state file on disk.
+                    reset_state = _fresh_modem_state(usb_path)
+                # Single atomic write — RECOVERY_SPEC §8 ordering preserved.
+                await self._save_modem_state_locked(usb_path, reset_state)
+
     async def list_modem_state_usb_paths(self) -> tuple[str, ...]:
         """Return sorted usb_paths with active (non-shadow) state files on disk."""
         d = state_by_usb_dir(root=self._state_root)
