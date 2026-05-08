@@ -15,9 +15,11 @@ from spark_modem.wire.events import (
     DaemonStarted,
     DaemonStopped,
     EventAdapter,
+    EventSourceCrashed,
     MaintenanceWindowEnded,
     MaintenanceWindowStarted,
     SchemaDowngradePending,
+    SimSwapped,
     StateTransition,
     UsbPathMismatch,
 )
@@ -203,3 +205,164 @@ def test_event_adapter_validate_json() -> None:
     event = EventAdapter.validate_json(json.dumps(raw))
     assert isinstance(event, DaemonStopped)
     assert event.reason == DaemonStopReason.SIGTERM
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 Plan 03-06: EventSourceCrashed (Issue #7) + SimSwapped (Issue #8)
+# ---------------------------------------------------------------------------
+
+
+def test_event_source_crashed_constructs() -> None:
+    """EventSourceCrashed constructs with required fields (Issue #7)."""
+    e = EventSourceCrashed(
+        ts_iso="2026-05-07T00:00:00Z",
+        source="udev_producer",
+        error_class="OSError",
+        error_message="ENOBUFS",
+        restart_attempt=1,
+        backoff_seconds=1.0,
+    )
+    assert e.kind == "event_source_crashed"
+    assert e.source == "udev_producer"
+    assert e.error_class == "OSError"
+    assert e.error_message == "ENOBUFS"
+    assert e.restart_attempt == 1
+    assert e.backoff_seconds == 1.0
+    assert e.schema_version == 1
+
+
+def test_event_source_crashed_error_message_capped_at_200() -> None:
+    """T-03-06-07: pathological exception messages capped at 200 chars."""
+    long_msg = "x" * 250
+    with pytest.raises(ValidationError):
+        EventSourceCrashed(
+            ts_iso="2026-05-07T00:00:00Z",
+            source="udev_producer",
+            error_class="OSError",
+            error_message=long_msg,
+            restart_attempt=1,
+            backoff_seconds=1.0,
+        )
+
+
+def test_event_source_crashed_restart_attempt_must_be_positive() -> None:
+    """restart_attempt must be >= 1 (1-indexed restart count)."""
+    with pytest.raises(ValidationError):
+        EventSourceCrashed(
+            ts_iso="2026-05-07T00:00:00Z",
+            source="udev_producer",
+            error_class="OSError",
+            error_message="boom",
+            restart_attempt=0,
+            backoff_seconds=1.0,
+        )
+
+
+def test_event_source_crashed_backoff_seconds_non_negative() -> None:
+    """backoff_seconds must be >= 0."""
+    with pytest.raises(ValidationError):
+        EventSourceCrashed(
+            ts_iso="2026-05-07T00:00:00Z",
+            source="udev_producer",
+            error_class="OSError",
+            error_message="boom",
+            restart_attempt=1,
+            backoff_seconds=-1.0,
+        )
+
+
+def test_event_source_crashed_round_trips_through_event_adapter() -> None:
+    """EventAdapter.dump_json + validate_json round-trip preserves all fields."""
+    e = EventSourceCrashed(
+        ts_iso="2026-05-07T00:00:00Z",
+        source="udev_producer",
+        error_class="OSError",
+        error_message="ENOBUFS",
+        restart_attempt=1,
+        backoff_seconds=1.0,
+    )
+    raw = EventAdapter.dump_json(e)
+    back = EventAdapter.validate_json(raw)
+    assert isinstance(back, EventSourceCrashed)
+    assert back.kind == "event_source_crashed"
+    assert back.source == "udev_producer"
+    assert back.error_class == "OSError"
+    assert back.restart_attempt == 1
+    assert back.backoff_seconds == 1.0
+
+
+def test_sim_swapped_constructs() -> None:
+    """SimSwapped constructs with required fields (Issue #8 / E-04)."""
+    e = SimSwapped(
+        ts_iso="2026-05-07T00:00:00Z",
+        usb_path="2-3.1.1",
+        iccid_hash_old="deadbeef",
+        iccid_hash_new="cafebabe",
+    )
+    assert e.kind == "sim_swapped"
+    assert e.usb_path == "2-3.1.1"
+    assert e.iccid_hash_old == "deadbeef"
+    assert e.iccid_hash_new == "cafebabe"
+
+
+def test_sim_swapped_iccid_hash_must_be_8_chars() -> None:
+    """ICCID hashes are sha256[:8] redacted — pinned to exactly 8 chars."""
+    with pytest.raises(ValidationError):
+        SimSwapped(
+            ts_iso="2026-05-07T00:00:00Z",
+            usb_path="2-3.1.1",
+            iccid_hash_old="short",  # less than 8 chars
+            iccid_hash_new="cafebabe",
+        )
+    with pytest.raises(ValidationError):
+        SimSwapped(
+            ts_iso="2026-05-07T00:00:00Z",
+            usb_path="2-3.1.1",
+            iccid_hash_old="deadbeef",
+            iccid_hash_new="toolongstring",  # more than 8 chars
+        )
+
+
+def test_sim_swapped_round_trips_through_event_adapter() -> None:
+    """EventAdapter round-trip preserves SimSwapped fields."""
+    e = SimSwapped(
+        ts_iso="2026-05-07T00:00:00Z",
+        usb_path="2-3.1.1",
+        iccid_hash_old="deadbeef",
+        iccid_hash_new="cafebabe",
+    )
+    raw = EventAdapter.dump_json(e)
+    back = EventAdapter.validate_json(raw)
+    assert isinstance(back, SimSwapped)
+    assert back.kind == "sim_swapped"
+    assert back.usb_path == "2-3.1.1"
+
+
+def test_event_adapter_dispatches_event_source_crashed() -> None:
+    """EventAdapter discriminator dispatches kind='event_source_crashed'."""
+    raw = {
+        "kind": "event_source_crashed",
+        "ts_iso": "2026-05-07T00:00:00Z",
+        "source": "rtnetlink_producer",
+        "error_class": "OSError",
+        "error_message": "ENOBUFS",
+        "restart_attempt": 2,
+        "backoff_seconds": 2.0,
+        "schema_version": 1,
+    }
+    event = EventAdapter.validate_python(raw)
+    assert isinstance(event, EventSourceCrashed)
+
+
+def test_event_adapter_dispatches_sim_swapped() -> None:
+    """EventAdapter discriminator dispatches kind='sim_swapped'."""
+    raw = {
+        "kind": "sim_swapped",
+        "ts_iso": "2026-05-07T00:00:00Z",
+        "usb_path": "2-3.1.1",
+        "iccid_hash_old": "deadbeef",
+        "iccid_hash_new": "cafebabe",
+        "schema_version": 1,
+    }
+    event = EventAdapter.validate_python(raw)
+    assert isinstance(event, SimSwapped)
