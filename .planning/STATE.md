@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-05-08T14:14:42.637Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-05-08T14:34:32.446Z"
 last_activity: 2026-05-08
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 26
-  completed_plans: 18
-  percent: 69
+  completed_plans: 19
+  percent: 73
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 03 (linux-event-sources-lifecycle) — EXECUTING
-Plan: 2 of 9
+Plan: 3 of 9
 Status: Ready to execute
 Last activity: 2026-05-08
 
-Progress: [███████░░░] 69%
+Progress: [███████░░░] 73%
 
 ## Performance Metrics
 
@@ -70,6 +70,7 @@ Progress: [███████░░░] 69%
 | Phase 02 P09 | ~30m | 2 tasks tasks | 27 files files |
 | Phase 02 P10 | ~30m | 2 tasks | 1015 files (5 daemon src + 4 daemon tests + 1 generator + 4 replay tests + 1004 fixture JSONs + 1 .gitkeep) |
 | Phase 03 P01 | 12min | 2 tasks tasks | 10 files files |
+| Phase 03 P02 | 13min | 2 tasks tasks | 13 files files |
 
 ## Accumulated Context
 
@@ -185,6 +186,13 @@ Recent decisions affecting current work:
 - Plan 03-01: IssueDetail extended 34→40 with 6 host-level kmsg values (USB_OVERCURRENT/USB_ENUM_FAILURE/THERMAL_THROTTLE/QMI_WWAN_PROBE_FAIL/TEGRA_HUB_PSU_DROOP/UNKNOWN); USB_OVERCURRENT distinct from per-modem ENUMERATION_OVERCURRENT (W-04 closed-enum discipline) — pinned by contract test
 - Plan 03-01: FakeAsyncinotify async-iterable + FakeMask IntFlag + FakeInotifyEvent dataclass — depended on by Plans 03-04 (zao_log + events.jsonl rotation) and 03-06 (lifecycle integration); same dual-surface pattern as Phase 2 FixtureZaoTailer (production Protocol + test-only inject_event mutator)
 - Plan 03-01: linux_only pytest marker registered once in pyproject.toml [tool.pytest.ini_options].markers — Plans 03-02..03-06 (~14 test files) reference it without re-registering
+- Plan 03-02: pyudev.Monitor.from_netlink + loop.add_reader is the sole USB subscription path; producer body is signals-only (action filter forwards add/remove/bind/unbind for VID=1199 only); MonitorObserver never imported (PITFALLS §7.1 PRESCRIPTIVE)
+- Plan 03-02: pyudev import deferred inside _build_default_monitor() so the module is Windows-importable; tests inject FakeUdevMonitor and never trigger the real import; same pattern Plans 03-03/04 will adopt for pyroute2/asyncinotify
+- Plan 03-02: UdevInventory uses composition over inheritance — holds a SysfsInventory and delegates scan(); Plan 03-06 daemon swap is one line (SysfsInventory→UdevInventory); observer/cycle_driver/cli/diag don't change
+- Plan 03-02: derive_ns option-(a) — sysfs symlink at <usb_dev>/.../net/wwan*/device/ns/net resolved against /var/run/netns by stat().st_ino; bench Jetson single-namespace yields None; subprocess-free (PITFALLS §6.2: never setns from asyncio loop)
+- Plan 03-02: QmiWrapper(ns: str|None=None) defaults to None for backwards compat; every existing qmicli method routes through self._argv() helper; 11-method parameterized test + count-pin assertion catches Phase 4 destructive method bypass
+- Plan 03-02: cycle_driver.py qmi_factory + per-action QmiWrapper construction + cli/diag.py qmi_factory now pass ns=descriptor.ns; ns_by_usb dict mirrors cdc_by_usb shape; bench Jetson with ns=None is no-op
+- Plan 03-02: _make_on_readable factored as module-level closure factory so unit tests exercise classification + drain logic directly (cross-platform); one POSIX-only test verifies loop.add_reader/remove_reader lifecycle through os.pipe() pair
 
 ### Pending Todos
 
@@ -202,8 +210,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-08T14:14:42.618Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-05-08T14:34:04.378Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None
 
 **Planned Phase:** 03 (Linux Event Sources & Lifecycle) — 9 plans — 2026-05-07T07:12:05.104Z

@@ -13,11 +13,14 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 
 ### Discovery & Inventory
 
-- [ ] **FR-1**: System discovers all Sierra-VID modems on USB at startup and on udev `add`/`remove` events
+- [x] **FR-1
+**: System discovers all Sierra-VID modems on USB at startup and on udev `add`/`remove` events
 - [x] **FR-2
 **: System resolves each modem to `(line, cdc_wdm, usb_path, namespace, iface)` via sysfs (no hardcoded paths)
-- [ ] **FR-3**: System detects SIM identity (ICCID, IMSI) per modem and persists `(usb_path → identity)` map across reboots
-- [ ] **FR-4**: System detects SIM swap (ICCID change at the same `usb_path`) and triggers re-provisioning
+- [x] **FR-3
+**: System detects SIM identity (ICCID, IMSI) per modem and persists `(usb_path → identity)` map across reboots
+- [x] **FR-4
+**: System detects SIM swap (ICCID change at the same `usb_path`) and triggers re-provisioning
 
 ### Diagnosis
 
@@ -86,8 +89,10 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 .1**: `status.json` includes `cycle.actions_executed` and `cycle.transitions` counters and `carrier_table_sha256` (M-11/M-17)
 - [x] **FR-42
 **: Prometheus scrape endpoint on Unix socket (default `/run/spark-modem-watchdog/metrics.sock`)
-- [ ] **FR-43**: Event log rotated via `logrotate` with 7-day, 100 MiB retention default
-- [ ] **FR-43.1**: inotify tail tolerates both `create`-mode rotation (MOVE_SELF/DELETE_SELF) **and** `copytruncate` mode (st_size truncation check) (PITFALLS §8.1)
+- [x] **FR-4
+3**: Event log rotated via `logrotate` with 7-day, 100 MiB retention default
+- [x] **FR-4
+3.1**: inotify tail tolerates both `create`-mode rotation (MOVE_SELF/DELETE_SELF) **and** `copytruncate` mode (st_size truncation check) (PITFALLS §8.1)
 - [x] **FR-44**: Webhook POST on `Healthy → Degraded` and `Recovering → Exhausted` transitions, with typed payload
 - [x] **FR-44.1
 **: HMAC-SHA256 webhook signing in v2.0 (header `X-Spark-Signature: sha256=<hex>` over raw body bytes), promoted from v2.1 (closes PRD Q5 — research §4.3)
@@ -147,7 +152,8 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 
 ### Performance
 
-- [ ] **NFR-1**: A full diag cycle completes in ≤10 s on the target Jetson when no modems are unresponsive (cold-start first cycle exempt, see startup_delay_seconds)
+- [x] **NFR-1
+**: A full diag cycle completes in ≤10 s on the target Jetson when no modems are unresponsive (cold-start first cycle exempt, see startup_delay_seconds)
 - [x] **NFR-2
 **: Daemon consumes ≤1 % CPU averaged over a 10-min window in steady state
 - [x] **NFR-3
