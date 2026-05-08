@@ -64,6 +64,18 @@ class IssueDetail(StrEnum):
     THERMAL_CRITICAL = "thermal_critical"
     ZAO_UNIT_INACTIVE = "zao_unit_inactive"
     ZAO_LOG_STALE = "zao_log_stale"
+    # Host (kmsg classifier — Phase 3 / E-03; D-03)
+    # USB_OVERCURRENT is DISTINCT from ENUMERATION_OVERCURRENT above:
+    # the latter is a per-modem enumeration-time event from sysfs/qmicli;
+    # USB_OVERCURRENT is a host-wide kmsg-classified event covering
+    # hub-level power droops that may affect multiple modems at once.
+    # Closed-enum discipline (W-04) — never collapse, never alias.
+    USB_OVERCURRENT = "usb_overcurrent"
+    USB_ENUM_FAILURE = "usb_enum_failure"
+    THERMAL_THROTTLE = "thermal_throttle"
+    QMI_WWAN_PROBE_FAIL = "qmi_wwan_probe_fail"
+    TEGRA_HUB_PSU_DROOP = "tegra_hub_psu_droop"
+    UNKNOWN = "unknown"
 
 
 class RegistrationState(StrEnum):

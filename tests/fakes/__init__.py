@@ -7,6 +7,12 @@ discipline (Phase 2 convention).
 
 from __future__ import annotations
 
+from tests.fakes.asyncinotify import FakeAsyncinotify, FakeInotifyEvent, FakeMask
 from tests.fakes.sleeper import FakeSleeper
 
-__all__ = ["FakeSleeper"]
+__all__ = [
+    "FakeAsyncinotify",
+    "FakeInotifyEvent",
+    "FakeMask",
+    "FakeSleeper",
+]

@@ -103,9 +103,7 @@ class FakeAsyncinotify:
         watch: object | None = None,
     ) -> None:
         """Queue an event for the next ``__anext__`` pull."""
-        self._queue.append(
-            FakeInotifyEvent(mask=mask, path=path, watch=watch or object())
-        )
+        self._queue.append(FakeInotifyEvent(mask=mask, path=path, watch=watch or object()))
 
     def close(self) -> None:
         """Mark the fake closed; the async iterator stops once drained."""
