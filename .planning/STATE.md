@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-05-08T14:34:32.446Z"
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-05-08T14:47:24.675Z"
 last_activity: 2026-05-08
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 26
-  completed_plans: 19
-  percent: 73
+  completed_plans: 20
+  percent: 77
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 03 (linux-event-sources-lifecycle) — EXECUTING
-Plan: 3 of 9
+Plan: 4 of 9
 Status: Ready to execute
 Last activity: 2026-05-08
 
-Progress: [███████░░░] 73%
+Progress: [████████░░] 77%
 
 ## Performance Metrics
 
@@ -71,6 +71,7 @@ Progress: [███████░░░] 73%
 | Phase 02 P10 | ~30m | 2 tasks | 1015 files (5 daemon src + 4 daemon tests + 1 generator + 4 replay tests + 1004 fixture JSONs + 1 .gitkeep) |
 | Phase 03 P01 | 12min | 2 tasks tasks | 10 files files |
 | Phase 03 P02 | 13min | 2 tasks tasks | 13 files files |
+| Phase 03 P03 | 6min | 1 task tasks | 4 files files |
 
 ## Accumulated Context
 
@@ -193,6 +194,15 @@ Recent decisions affecting current work:
 - Plan 03-02: QmiWrapper(ns: str|None=None) defaults to None for backwards compat; every existing qmicli method routes through self._argv() helper; 11-method parameterized test + count-pin assertion catches Phase 4 destructive method bypass
 - Plan 03-02: cycle_driver.py qmi_factory + per-action QmiWrapper construction + cli/diag.py qmi_factory now pass ns=descriptor.ns; ns_by_usb dict mirrors cdc_by_usb shape; bench Jetson with ns=None is no-op
 - Plan 03-02: _make_on_readable factored as module-level closure factory so unit tests exercise classification + drain logic directly (cross-platform); one POSIX-only test verifies loop.add_reader/remove_reader lifecycle through os.pipe() pair
+- Plan 03-03: rtnetlink producer ships with tight read loop body (PITFALLS §6.1 PRESCRIPTIVE) —  ONLY, no parsing/no logging/no state; 4 MiB SO_RCVBUF (16x kernel default) absorbs USB hub PSU droop storms
+- Plan 03-03: ENOBUFS escapes the producer to the supervisor — restart_on_crash (Plan 03-01) catches Exception and re-enters the factory which constructs a fresh AsyncIPRoute() (close+reopen recovery prescribed); catching ENOBUFS in the producer would silently exhaust the kernel buffer
+- Plan 03-03: pyroute2 imports deferred (mirrors Plan 03-02 pyudev pattern) —  lives inside  and  lives inside the run_rtnetlink_producer body; tests inject ipr_factory tuple, never trigger the real imports; module imports cleanly on Windows dev hosts
+- Plan 03-03: ipr_factory is  — preconstructed (FakeAsyncIPRoute, groups_constant) tuple injection is lighter than callable factory currying; production wires None and constructs both objects internally
+- Plan 03-03: FakeAsyncIPRoute exposes asyncore.socket.setsockopt as a recording surface via _FakeAsyncoreHolder + _FakeSocket; production setsockopt access uses defensive getattr chain so tests can record calls without monkey-patching pyroute2 internals
+- Plan 03-03: pyproject.toml mypy override extended — module list is now ['sdnotify', 'asyncinotify', 'pyudev', 'pyroute2', 'pyroute2.netlink']; both pyroute2 modules added because they are imported via two separate from-statements
+- Plan 03-03: rtnetlink producer body is exactly put_nowait WakeSignal.RTNETLINK ONLY (PITFALLS 6.1 PRESCRIPTIVE) — no parsing, no logging, no state; 4 MiB SO_RCVBUF 16x kernel default absorbs USB hub PSU droop storms
+- Plan 03-03: pyroute2 imports deferred mirroring Plan 03-02 pyudev pattern — from pyroute2 import AsyncIPRoute lives inside _build_default_ipr and from pyroute2.netlink import rtnl lives inside run_rtnetlink_producer body; tests inject ipr_factory tuple and never trigger real imports; module imports cleanly on Windows dev hosts
+- Plan 03-03: ipr_factory is a tuple of AsyncIPRoute-like object plus groups_constant defaulting to None — preconstructed FakeAsyncIPRoute plus groups_constant tuple injection is lighter than callable factory currying; production wires None and constructs both objects internally
 
 ### Pending Todos
 
@@ -210,8 +220,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-08T14:34:04.378Z
-Stopped at: Completed 03-02-PLAN.md
+Last session: 2026-05-08T14:47:24.653Z
+Stopped at: Completed 03-03-PLAN.md
 Resume file: None
 
 **Planned Phase:** 03 (Linux Event Sources & Lifecycle) — 9 plans — 2026-05-07T07:12:05.104Z

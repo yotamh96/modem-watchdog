@@ -259,7 +259,7 @@ NFR-12, NFR-13, NFR-30
 Plans:
 - [x] 03-01-PLAN.md — Event source supervisor + WakeSignal scaffold + IssueDetail extension (E-01, E-02, E-03 enum + FakeAsyncinotify + FakeSleeper + linux_only marker)
 - [x] 03-02-PLAN.md — pyudev producer + UdevInventory + netns derivation + qmicli netns prepend (E-05, FR-1, FR-3, FR-4)
-- [ ] 03-03-PLAN.md — pyroute2 rtnetlink producer (PITFALLS §6.1 ENOBUFS handling)
+- [x] 03-03-PLAN.md — pyroute2 rtnetlink producer (PITFALLS §6.1 ENOBUFS handling)
 - [ ] 03-04-PLAN.md — asyncinotify dual-watcher (events.jsonl reopen + Zao log tailer) + EventLogWriter.reopen + ZaoLogInotifyTailer dual-mode (R-01, R-03, R-04, FR-43, FR-43.1)
 - [ ] 03-05-PLAN.md — kmsg producer + classifier + dedup (E-03, FR-14)
 - [ ] 03-06-PLAN.md — Daemon lifecycle modules + main.py rewrite + wire variants (EventSourceCrashed + SimSwapped); WATCHDOG cycle-end placement (L-01..L-05, FR-53, FR-61, FR-61.1, FR-75, NFR-13)
@@ -451,7 +451,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Foundations & ADRs | 7/7 | Complete | 2026-05-06 |
 | 2. Core Daemon | 9/10 | In Progress | - |
-| 3. Linux Event Sources & Lifecycle | 0/9 | Not started | - |
+| 3. Linux Event Sources & Lifecycle | 3/9 | In Progress | - |
 | 4. Destructive Actions & HIL | 0/TBD | Not started | - |
 | 5. Bench & Field Shadow | 0/TBD | Not started | - |
 | 6. Cutover & Fleet Rollout | 0/TBD | Not started | - |
