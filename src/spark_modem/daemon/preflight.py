@@ -44,19 +44,17 @@ _PREFLIGHT_TIMEOUT_S: float = 2.0
 async def preflight_check() -> None:
     """Verify every required binary is present on PATH.
 
-    Calls ``subproc_runner.run`` for each binary; ``FileNotFoundError`` from
-    the underlying ``asyncio.create_subprocess_exec`` indicates the binary is
-    not installed (FR-60). Other ``OSError`` subclasses propagate to the
-    caller (the daemon ``main()`` translates them into ``last-config-error``
-    + non-zero exit).
+    Calls ``subproc_runner.run`` for each binary; ``FileNotFoundError``
+    from the spawn layer indicates the binary is not installed (FR-60).
+    Other ``OSError`` subclasses propagate to the caller (the daemon
+    ``main()`` translates them into ``last-config-error`` + non-zero
+    exit).
     """
     for binary, args in _PREFLIGHT_BINARIES:
         try:
             await subproc_runner.run([binary, *args], timeout_s=_PREFLIGHT_TIMEOUT_S)
         except FileNotFoundError as exc:
-            raise PreflightFailed(
-                f"required binary {binary!r} not on PATH (FR-60)"
-            ) from exc
+            raise PreflightFailed(f"required binary {binary!r} not on PATH (FR-60)") from exc
 
 
 def write_last_config_error(*, run_dir: Path, message: str) -> None:

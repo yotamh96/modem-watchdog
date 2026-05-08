@@ -73,9 +73,7 @@ class SdNotifyLifecycle:
 
                 notifier = sdnotify.SystemdNotifier()
             except ImportError:  # pragma: no cover — production has the wheel
-                logger.warning(
-                    "sdnotify import failed; lifecycle notifications will no-op"
-                )
+                logger.warning("sdnotify import failed; lifecycle notifications will no-op")
                 notifier = None
         self._notifier = notifier
 

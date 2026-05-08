@@ -54,23 +54,21 @@ from spark_modem.daemon.preflight import (
 )
 from spark_modem.event_logger.writer import EventLogWriter
 from spark_modem.event_sources.supervisor import restart_on_crash
+from spark_modem.inventory.udev import UdevInventory
 from spark_modem.state_store.store import StateStore
 from spark_modem.status_reporter.metrics_registry import MetricRegistry
 from spark_modem.subproc import runner as subproc_runner
 from spark_modem.webhook.poster import WebhookPoster
 from spark_modem.wire.carriers import CarrierTable
 from spark_modem.wire.webhook import DaemonRestart, WebhookEnvelope
+from spark_modem.zao_log.inotify_tailer import ZaoLogInotifyTailer
 
 logger = logging.getLogger(__name__)
 
 # WR-08: anchor laptop fixture inventory path to the repo root so
 # `python -m spark_modem.daemon.main` works from any CWD.
 _LAPTOP_INVENTORY_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "tests"
-    / "fixtures"
-    / "inventory"
-    / "four_modems.json"
+    Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "inventory" / "four_modems.json"
 )
 
 # Phase 3 supervisor backoff envelope (Pitfall 15) — copied from supervisor
@@ -117,9 +115,7 @@ async def _laptop_main() -> int:
     settings = build_default_settings()
     clock = _CliClock()
     state_root_path = Path(settings.state_root)
-    _ensure_dirs(
-        state_root_path, Path(settings.run_dir), Path(settings.events_log_path).parent
-    )
+    _ensure_dirs(state_root_path, Path(settings.run_dir), Path(settings.events_log_path).parent)
 
     store = StateStore(
         state_root_override=state_root_path,
@@ -220,9 +216,7 @@ async def _production_main(args: argparse.Namespace) -> int:
 
     # Step 4: read clean-shutdown marker; classify prior run.
     prior_reason, prior_uptime = classify_prior_run(run_dir=run_dir)
-    logger.info(
-        "prior run classified reason=%s uptime=%.1fs", prior_reason.value, prior_uptime
-    )
+    logger.info("prior run classified reason=%s uptime=%.1fs", prior_reason.value, prior_uptime)
 
     # Step 5: acquire PID lock at /run/.../lock (FR-61, ADR-0012).
     try:
@@ -274,8 +268,14 @@ async def _production_main(args: argparse.Namespace) -> int:
             # The hooks above are exercised end-to-end in Plan 03-09
             # integration tests. Plan 03-06's daemon-side modules
             # (lifecycle / sigterm / sighup / preflight) all land here.
+            # Production-path subsystems Plan 03-09 wires inside the
+            # TaskGroup body: UdevInventory replaces the laptop fixture
+            # InventorySource; ZaoLogInotifyTailer replaces the laptop
+            # _NoZaoTailer behind the same ZaoLogTailer Protocol surface.
             _ = restart_on_crash  # keep the import live for Plan 03-09
             _ = signal  # keep the import live for the eventual loop.add_signal_handler calls
+            _ = UdevInventory  # production-path InventorySource (Plan 03-09)
+            _ = ZaoLogInotifyTailer  # production-path ZaoLogTailer (Plan 03-09)
             return 0
     except PidLockHeldError as exc:
         logger.error("daemon already running: %s", exc)
