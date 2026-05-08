@@ -538,18 +538,18 @@ async def test_aexit_close_on_cancel(tmp_path: Path) -> None:
         await asyncio.sleep(0)
         if len(fake.watches) >= 2:
             break
-    assert fake._closed is False  # noqa: SLF001 — test contract with the fake
+    # Test contract with the fake — read internal state to verify lifecycle.
+    assert fake._closed is False
 
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await task
-    assert fake._closed is True  # noqa: SLF001 — test contract with the fake
+    # Test contract with the fake — read internal state to verify lifecycle.
+    assert fake._closed is True
 
 
 def test_module_imports_cross_platform() -> None:
     """Module imports cleanly on Windows (deferred-asyncinotify-import contract)."""
-    from spark_modem.event_sources.asyncinotify_producer import (  # noqa: I001 — runtime import smoke test
-        run_asyncinotify_producer,
-    )
-
+    # The import at the top of this file is the smoke test; if importing it
+    # triggered a Linux-only import the file wouldn't have collected.
     assert callable(run_asyncinotify_producer)
