@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-05-PLAN.md
-last_updated: "2026-05-08T15:24:39.007Z"
+stopped_at: Completed 03-06-PLAN.md
+last_updated: "2026-05-08T15:49:47.922Z"
 last_activity: 2026-05-08
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 26
-  completed_plans: 22
-  percent: 85
+  completed_plans: 23
+  percent: 88
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 03 (linux-event-sources-lifecycle) — EXECUTING
-Plan: 6 of 9
+Plan: 7 of 9
 Status: Ready to execute
 Last activity: 2026-05-08
 
-Progress: [█████████░] 85%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -74,6 +74,7 @@ Progress: [█████████░] 85%
 | Phase 03 P03 | 6min | 1 task tasks | 4 files files |
 | Phase 03 P04 | 13min | 2 tasks tasks | 11 files files |
 | Phase 03 P05 | 9min | 2 tasks tasks | 14 files files |
+| Phase 03 P06 | 17min | 2 tasks tasks | 16 files files |
 
 ## Accumulated Context
 
@@ -216,6 +217,14 @@ Recent decisions affecting current work:
 - Plan 03-05: EPIPE handled inside drain loop (NOT escaped to supervisor like rtnetlink ENOBUFS) — semantics differ: EPIPE on /dev/kmsg means kernel ring buffer wrapped (just keep reading at new tail); ENOBUFS on rtnetlink means socket buffer overflow (close+reopen); per-error-code semantics matter
 - Plan 03-05: fd_factory tuple injection (production wires None and opens /dev/kmsg lazily; tests pass sentinel fd + fake.read) — same testable-defaults pattern as ipr_factory (Plan 03-03) and inotify_factory (Plan 03-04); module imports cleanly on Windows dev hosts
 - Plan 03-05: test path uses loop.call_soon (vs production loop.add_reader) — fake fd is a sentinel value not registered with OS event loop; ProactorEventLoop on Windows would error on add_reader(99, ...); both paths exit via the same finally cleanup
+- Plan 03-06: EventSourceCrashed (Issue #7) + SimSwapped (Issue #8) wire variants — supervisor emits structurally on producer crash via event_logger.append (Open Question 2 RESOLVED); SimSwapped iccid_hash_old/new pinned sha256[:8] (8 chars); error_message capped max_length=200 (T-03-06-07)
+- Plan 03-06: SigtermChoreography 8-step strict ordering (cancel cycle → cancel producers → drain → emit DaemonStopped → stop webhook → unlink metrics socket → write marker); per-step try/except (NFR-11); deadline budget 5s with min(deadline_remaining, 3.0) drain cap
+- Plan 03-06: SighupSwapper transactional swap — RELOAD_RESTART field changes refused (returns False, keeps old); RELOAD_DATA-only changes applied via atomic ref swap; DnsCache force-refresh on webhook_url change; cycle driver reads self._settings once per cycle so swap is naturally cycle-boundary atomic
+- Plan 03-06: WATCHDOG cycle-end placement (Issue #5 / PITFALLS §4.1) regression-gated by test_watchdog_kicks_after_cycle_completion — recording status_reporter and recording sd_notify share call_order list; assert write_status_json index < watchdog_kick index
+- Plan 03-06: L-04 boot classifier marker precedence (CONFIG_INVALID > SIGTERM > CRASH); corrupt JSON in clean-shutdown still classifies SIGTERM with uptime fallback to 0.0 (the marker existed; the daemon DID emit it); markers unlinked after read so next boot starts clean
+- Plan 03-06: PID lock built on top of state_store.locks.acquire_flock at run_dir/lock — third file separate from state.lock and modem-{usb_path}.lock per ADR-0012; StateStoreLocked translated into PidLockHeldError; FakePIDLock asyncio.Lock-backed for cross-platform tests (production POSIX flock, kernel-released on death)
+- Plan 03-06: main.py production path is a SCAFFOLD — argparse + preflight + marker classify + PID lock + SdNotifyLifecycle construction land today; TaskGroup body spawning 5 supervised producers + cycle loop + 2 signal watchers documented inline; full wiring lands Plan 03-09 integration suite. WATCHDOG cycle-end placement asserted by Plan 03-06 unit test today.
+- Plan 03-06: --laptop CLI flag preserves Phase 2 single-cycle wiring path; build_default_settings + _NoZaoTailer + _InventoryFromFile fakes survive in cli.clients for backwards-compat with Phase 2 integration tests
 
 ### Pending Todos
 
@@ -233,8 +242,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-08T15:24:38.987Z
-Stopped at: Completed 03-05-PLAN.md
+Last session: 2026-05-08T15:49:14.500Z
+Stopped at: Completed 03-06-PLAN.md
 Resume file: None
 
 **Planned Phase:** 03 (Linux Event Sources & Lifecycle) — 9 plans — 2026-05-07T07:12:05.104Z

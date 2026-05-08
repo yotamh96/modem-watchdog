@@ -113,7 +113,8 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 - [x] **FR-50.3**: `--explain` flag on `diag` surfaces decision rationale (PRD UC3, RUNBOOK reference)
 - [x] **FR-51**: CLI accepts `--qmi-fixture-dir=PATH` to read recorded `qmicli` output instead of executing
 - [x] **FR-52**: CLI accepts `--diag-fixture=PATH` for `recovery` to replay a captured snapshot
-- [ ] **FR-53**: Daemon runs as a systemd `Type=notify` unit; graceful SIGTERM within 5 s
+- [x] **FR-53
+**: Daemon runs as a systemd `Type=notify` unit; graceful SIGTERM within 5 s
 - [x] **FR-54
 **: Configuration precedence: CLI flags > env vars > `/etc/spark-modem-watchdog/conf.d/*.yaml` > baked-in defaults; SIGHUP transactional reload for data-only fields (closes PRD Q6 — research §8 #7)
 
@@ -121,8 +122,10 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 
 - [x] **FR-60
 **: Refuse to start if `qmicli`, `ip`, and bundled `python3` (>=3.12 from `python-build-standalone`) are not present (closes PROJECT.md Q8 — research §2)
-- [ ] **FR-61**: Single PID lock on `/run/spark-modem-watchdog/lock` for the daemon
-- [ ] **FR-61.1**: Per-modem and state-store advisory `flock`s separate from PID lock; CLI mutating commands acquire the same locks the daemon does (M-21; PITFALLS §3.2/§16.1)
+- [x] **FR-61
+**: Single PID lock on `/run/spark-modem-watchdog/lock` for the daemon
+- [x] **FR-61
+.1**: Per-modem and state-store advisory `flock`s separate from PID lock; CLI mutating commands acquire the same locks the daemon does (M-21; PITFALLS §3.2/§16.1)
 - [x] **FR-62
 **: All persistent file writes are atomic (temp + rename + directory fsync)
 - [x] **FR-62
@@ -144,7 +147,8 @@ REQ-IDs use the docs/PRD.md convention: `FR-NN` for functional, `NFR-NN` for non
 **: Policy engine is a pure function `Diag × {ModemState, Globals, Config, Clock} → PlannedAction[]` — no subprocess, no I/O, no env reads (RECOVERY_SPEC §1)
 - [x] **FR-74
 **: qmi-proxy is owned by Zao; daemon refuses to start in qmicli-direct mode if proxy is unavailable (closes PRD Q2 — research §8 #3)
-- [ ] **FR-75**: Daemon emits `READY=1` via `sd_notify` after first full cycle; emits `STATUS=` keepalive each cycle; optional `WatchdogSec=90s` cadence (research §4.2)
+- [x] **FR-75
+**: Daemon emits `READY=1` via `sd_notify` after first full cycle; emits `STATUS=` keepalive each cycle; optional `WatchdogSec=90s` cadence (research §4.2)
 
 ---
 
