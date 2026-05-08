@@ -45,6 +45,19 @@ operational invariants v2 must preserve, not capabilities to re-prove. -->
 - ✓ Day-one carrier table: 12 entries (IL/US/GB/DE) with hostile-input fixtures (Norway problem + leading-zero MNCs)
 - ✓ CI gates green on aarch64: `mypy --strict`, `ruff check`, `ruff format --check`, `pytest -m "unit or integration"` (302 tests)
 
+**Phase 3 (Linux Event Sources & Lifecycle) — validated 2026-05-08 (bench-Jetson SC #1/#3/#4/#5 hardware exec deferred to Phase 4 HIL):**
+
+- ✓ Event-source supervisor: WakeSignal closed StrEnum (5 members) + restart_on_crash with bounded backoff [1,2,4,8,60]s + 300s uptime reset + CancelledError passthrough; EventSourceCrashed structurally emitted on producer crash
+- ✓ pyudev producer + UdevInventory: `Monitor.from_netlink + loop.add_reader(monitor.fileno())` — never MonitorObserver; netns derivation (`derive_ns`) + QmiWrapper netns prepend (all 11 qmicli methods routed); deferred pyudev import for Windows dev-host parsing
+- ✓ pyroute2 rtnetlink producer: `AsyncIPRoute` with 4 MiB SO_RCVBUF; tight read-loop body is exactly `event_queue.put_nowait(WakeSignal.RTNETLINK)`; ENOBUFS escapes to supervisor for socket close+reopen
+- ✓ asyncinotify dual-mode logrotate: `EventLogWriter.reopen()` for own-log rotation + `ZaoLogInotifyTailer` handling both create-mode (MOVE_SELF/DELETE_SELF) and copytruncate (st_size shrink + inode unchanged)
+- ✓ /dev/kmsg producer: `O_RDONLY|O_NONBLOCK + lseek(SEEK_END) + loop.add_reader`; 5 closed-enum KMSG_PATTERNS classifier with case-insensitive regex (real Linux writes lowercase 'usb'); per-detail 30s monotonic dedup; 6 host-level IssueDetail values (E-03)
+- ✓ Daemon lifecycle: preflight (kernel module + topology probe), sd_notify Type=notify with WatchdogSec=90s + cycle-end watchdog kick (Issue #5 regression gate pinned), 8-step SIGTERM choreography ≤5s, SIGHUP atomic config swap (pre-validate → flip), single PID lock + per-modem flocks + state-store flock all separate from PID lock
+- ✓ cycle_driver SIM-swap detection: `_detect_and_handle_sim_swaps` between observation and policy.engine; sha256[:8] ICCID redaction; `StateStore.reset_modem_streak_and_counters` single-atomic-write per RECOVERY_SPEC §8; structured `SimSwapped` emit
+- ✓ systemd unit hardened (U-01..U-05): WatchdogSec=90s, RuntimeDirectoryPreserve=yes, LoadCredential= for HMAC secret, ExecStartPre=config-check, R-02 logrotate snippet (`create 0640 root adm` + empty postrotate); 20-test cross-platform unit-file audit gate
+- ✓ Integration test tier: 6 SC tests (`test_lifecycle.py` covers boot-to-READY, SIM-swap, SIGTERM 5s, ctl serialisation, qmi_wwan reload) + real `/usr/sbin/logrotate -f` exercise (`test_logrotate_create.py`); Linux-only via per-module `pytestmark = pytest.mark.linux_only` (Issue #6 resolved — conftest does NOT auto-mark)
+- ✓ Test suite at exit: 1835 pass / 88 skip / 0 fail in 17.80s (M7 30s budget preserved); mypy --strict + ruff check + ruff format + SP-04 subprocess lint all green; FR-1, FR-3, FR-4, FR-14, FR-43, FR-43.1, FR-53, FR-61, FR-61.1, FR-75, NFR-12, NFR-13, NFR-30 marked done
+
 ### Active
 
 <!-- v2.0 scope. All hypotheses until shipped against the live fleet
@@ -236,4 +249,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-06 after Phase 1 (Foundations & ADRs) completion*
+*Last updated: 2026-05-08 after Phase 3 (Linux Event Sources & Lifecycle) completion*
