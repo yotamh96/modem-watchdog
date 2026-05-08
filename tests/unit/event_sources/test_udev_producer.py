@@ -14,6 +14,7 @@ Strategy:
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 from collections import deque
 
@@ -115,8 +116,6 @@ async def test_run_udev_producer_wires_add_reader_and_cleans_up() -> None:
     on CancelledError. We don't actually send events over the pipe — we just
     verify the lifecycle (add_reader / remove_reader bracketing the await).
     """
-    import os
-
     read_fd, write_fd = os.pipe()
     try:
         monitor = FakeUdevMonitor()
@@ -143,9 +142,7 @@ async def test_run_udev_producer_wires_add_reader_and_cleans_up() -> None:
         loop.remove_reader = recording_remove_reader  # type: ignore[method-assign]
 
         try:
-            task = asyncio.create_task(
-                run_udev_producer(event_queue=queue, monitor=monitor)
-            )
+            task = asyncio.create_task(run_udev_producer(event_queue=queue, monitor=monitor))
             # Yield once so the producer reaches add_reader + asyncio.Future().
             await asyncio.sleep(0)
             assert added_fds == [read_fd]
@@ -189,12 +186,12 @@ def test_device_without_id_vendor_id_property_does_not_push() -> None:
 
 
 def test_module_imports_cross_platform() -> None:
-    """The udev_producer module must import on Windows dev hosts (pyudev import deferred)."""
-    # If we reach this point the import already succeeded at module import time.
-    from spark_modem.event_sources import udev_producer
+    """The udev_producer module must import on Windows dev hosts (pyudev import deferred).
 
-    assert callable(udev_producer.run_udev_producer)
-    assert callable(udev_producer._make_on_readable)
+    If we reached this test, the module imported at top of file already.
+    """
+    assert callable(run_udev_producer)
+    assert callable(_make_on_readable)
 
 
 # Suppress unused-import warning for `deque` if any platform skips the async test.
