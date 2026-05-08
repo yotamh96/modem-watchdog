@@ -53,9 +53,7 @@ async def _drive_producer_until_messages_consumed(
     messages arrive.
     """
     task = asyncio.create_task(
-        run_rtnetlink_producer(
-            event_queue=queue, ipr_factory=(fake_ipr, _FAKE_RTMGRP_LINK_VALUE)
-        )
+        run_rtnetlink_producer(event_queue=queue, ipr_factory=(fake_ipr, _FAKE_RTMGRP_LINK_VALUE))
     )
     # Yield until the producer has consumed all injected messages.
     for _ in range(50):  # bounded loop — 50 yields is plenty for tests
@@ -124,7 +122,9 @@ async def test_enobufs_escapes_to_caller() -> None:
 
     assert exc_info.value.errno == errno.ENOBUFS
     # The async context manager still ran __aexit__ on the way out.
-    assert fake_ipr._closed is True  # noqa: SLF001 — attribute is the test's contract
+    # Reading _closed directly is intentional — the fake's contract is
+    # that __aexit__ flips this attribute; tests pin that contract.
+    assert fake_ipr._closed is True
 
 
 async def test_no_logging_in_message_loop(caplog: pytest.LogCaptureFixture) -> None:
@@ -158,9 +158,7 @@ async def test_aexit_called_on_cancel() -> None:
     queue = _RecordingQueue()
 
     task = asyncio.create_task(
-        run_rtnetlink_producer(
-            event_queue=queue, ipr_factory=(fake_ipr, _FAKE_RTMGRP_LINK_VALUE)
-        )
+        run_rtnetlink_producer(event_queue=queue, ipr_factory=(fake_ipr, _FAKE_RTMGRP_LINK_VALUE))
     )
     # Yield enough to enter the async with block + reach the iterator.
     for _ in range(10):
@@ -173,7 +171,7 @@ async def test_aexit_called_on_cancel() -> None:
         await task
 
     # __aexit__ ran on the way out -> _closed is True.
-    assert fake_ipr._closed is True  # noqa: SLF001 — attribute is the test's contract
+    assert fake_ipr._closed is True
 
 
 def test_module_imports_cross_platform() -> None:

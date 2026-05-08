@@ -126,11 +126,14 @@ class _FakeMsgIter:
 
     async def __anext__(self) -> object:
         # Busy-yield until something is injected or the parent closes.
-        while not self._parent._queue:  # noqa: SLF001 - tight coupling to parent fake
-            if self._parent._closed:  # noqa: SLF001 - tight coupling to parent fake
+        # Tight coupling to parent fake is intentional — _FakeMsgIter is
+        # an internal helper, not a public surface.
+        parent = self._parent
+        while not parent._queue:
+            if parent._closed:
                 raise StopAsyncIteration
             await asyncio.sleep(0)
-        item = self._parent._queue.popleft()  # noqa: SLF001 - tight coupling to parent fake
+        item = parent._queue.popleft()
         if isinstance(item, OSError):
             raise item
         return item

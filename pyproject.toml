@@ -64,7 +64,7 @@ packages = ["spark_modem"]
 explicit_package_bases = true
 
 [[tool.mypy.overrides]]
-module = ["sdnotify", "asyncinotify", "pyudev"]
+module = ["sdnotify", "asyncinotify", "pyudev", "pyroute2", "pyroute2.netlink"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
