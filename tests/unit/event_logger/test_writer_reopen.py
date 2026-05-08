@@ -14,10 +14,8 @@ existing fd; only POSIX has that semantic).
 from __future__ import annotations
 
 import json
-import os
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock
 
 import pytest
 
@@ -133,11 +131,6 @@ def test_reopen_creates_file_if_logrotate_renamed_inode(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_eventlog_reopener_calls_writer_reopen() -> None:
     """EventLogReopener.on_rotate() delegates to the writer's reopen()."""
-    mock_writer = AsyncMock()
-    # AsyncMock auto-mocks both sync and async methods; reopen() is sync.
-    mock_writer.reopen = AsyncMock(return_value=None)
-    # Hand-roll a sync recording mock for reopen() to match the writer's
-    # actual sync signature.
     call_count = {"n": 0}
 
     class _RecordingWriter:

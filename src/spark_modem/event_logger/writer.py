@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+from collections import deque
 from pathlib import Path
 from types import TracebackType
 from typing import Self
@@ -39,6 +40,11 @@ from spark_modem.wire.events import (
 )
 
 _MODE = 0o640
+
+# R-03: in-memory buffer cap during the reopen window. 1000 events x ~500 B
+# per event = ~500 KiB worst case — bounded memory cost. Overflow is silent
+# at the deque level (oldest dropped) and observable via reopen_overflow_count.
+_REOPEN_BUFFER_MAX = 1000
 
 # Concrete types that make up the Event discriminated union.
 # Used for isinstance checks in append() so callers get a clear TypeError
@@ -90,6 +96,15 @@ class EventLogWriter:
             # the first append. On Windows _fsync_directory is a no-op (the
             # daemon never runs there; this is a dev-host accommodation).
             _fsync_directory(parent, self._path)
+        # Phase 3 R-03: in-memory buffer catches writes during the reopen
+        # window (microseconds in the happy path; defense for the
+        # pathological disk-full / EPERM case). deque(maxlen=1000) silently
+        # drops oldest on overflow; reopen_overflow_count tracks drops so
+        # Plan 03-06 metrics integration can surface
+        # events_dropped_total{reason="reopen_overflow"}.
+        self._reopen_buffer: deque[bytes] = deque(maxlen=_REOPEN_BUFFER_MAX)
+        self._reopening: bool = False
+        self._reopen_overflow_count: int = 0
 
     def append(self, event: Event) -> None:
         """Serialize and write one newline-terminated JSON line.
@@ -97,14 +112,71 @@ class EventLogWriter:
         Raises:
           EventLogClosedError if the writer was closed.
           TypeError if `event` is not an Event-union member.
+
+        During the reopen window (``self._reopening`` True, set by
+        ``EventLogReopener``), the line is buffered to ``_reopen_buffer``
+        instead of written; ``reopen()`` flushes the buffer to the new fd.
         """
         fd = self._fd
-        if fd is None:
+        if fd is None and not self._reopening:
             raise EventLogClosedError(f"writer for {self._path!s} is closed")
         if not isinstance(event, _EVENT_TYPES):
             raise TypeError(f"expected an Event union member, got {type(event).__name__!r}")
-        line = EventAdapter.dump_json(event)  # bytes, no trailing newline
-        os.write(fd, line + b"\n")
+        line = EventAdapter.dump_json(event) + b"\n"
+        if self._reopening:
+            # Buffer until reopen completes. deque(maxlen=1000) silently drops
+            # oldest on overflow; track count so Plan 03-06 metrics integration
+            # can surface it (R-03 overflow case).
+            if len(self._reopen_buffer) >= _REOPEN_BUFFER_MAX:
+                self._reopen_overflow_count += 1
+            self._reopen_buffer.append(line)
+            return
+        # fd is not None here (the early-return above handles fd is None).
+        assert fd is not None
+        os.write(fd, line)
+
+    def reopen(self) -> None:
+        """Close the current fd, reopen at the same path, flush buffered writes.
+
+        Called by the asyncinotify dispatcher (Plan 03-04
+        ``event_logger/inotify_reopener.py``) when logrotate moves the inode
+        out from under us. R-03: the reopen window is microseconds in the
+        happy path (single coroutine, no awaits between detect and reopen);
+        the buffer is defense for the pathological case of disk-full / EPERM
+        on the new fd.
+
+        After reopen completes, ``_reopening`` is cleared and subsequent
+        appends route directly to the new fd again.
+        """
+        self._reopening = True
+        try:
+            old_fd = self._fd
+            self._fd = None
+            if old_fd is not None:
+                with contextlib.suppress(OSError):
+                    os.close(old_fd)
+            # Re-open at the same path; logrotate `create 0640 root adm`
+            # has already created it (R-02), but O_CREAT defends against the
+            # race where asyncinotify fires before the create.
+            self._fd = os.open(
+                str(self._path),
+                os.O_WRONLY | os.O_CREAT | os.O_APPEND,
+                _MODE,
+            )
+            # Flush buffered writes in FIFO order.
+            while self._reopen_buffer:
+                buffered = self._reopen_buffer.popleft()
+                os.write(self._fd, buffered)
+        finally:
+            self._reopening = False
+
+    @property
+    def reopen_overflow_count(self) -> int:
+        """Count of buffered writes dropped due to deque(maxlen=1000) overflow.
+
+        Plan 03-06 wires this into ``events_dropped_total{reason="reopen_overflow"}``.
+        """
+        return self._reopen_overflow_count
 
     def fileno(self) -> int:
         fd = self._fd
