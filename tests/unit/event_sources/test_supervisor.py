@@ -27,8 +27,6 @@ from spark_modem.event_sources.supervisor import (
 from tests.fakes.clock import FakeClock
 from tests.fakes.sleeper import FakeSleeper
 
-pytestmark = pytest.mark.asyncio
-
 
 class _RecordingEventLogger:
     """Minimal EventLogWriterProto satisfier for tests."""
@@ -48,9 +46,7 @@ class _RecordingEventLogger:
 def test_wake_signal_has_five_closed_members() -> None:
     """E-02: WakeSignal has exactly the 5 locked sources as StrEnum values."""
     values = frozenset(s.value for s in WakeSignal)
-    assert values == frozenset(
-        {"udev", "rtnetlink", "zao_log", "events_log_rotated", "kmsg"}
-    )
+    assert values == frozenset({"udev", "rtnetlink", "zao_log", "events_log_rotated", "kmsg"})
 
 
 def test_wake_signal_str_repr_uses_value() -> None:
@@ -234,7 +230,7 @@ async def test_supervisor_returns_silently_on_factory_clean_return() -> None:
 
     async def factory() -> None:
         call_count[0] += 1
-        return  # clean exit
+        # Clean exit (no return needed; falling off the function ends it).
 
     await restart_on_crash(
         "events_log_reopener",
@@ -284,7 +280,8 @@ async def test_supervisor_logs_via_logger_exception_on_crash(
         await task
 
     matching = [
-        r for r in caplog.records
+        r
+        for r in caplog.records
         if r.levelno >= logging.ERROR and "event_source_crashed" in r.getMessage()
     ]
     assert matching, "expected at least one ERROR log with 'event_source_crashed'"

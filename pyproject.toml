@@ -76,4 +76,5 @@ markers = [
     "unit: hardware-free unit tests",
     "integration: laptop-runnable integration tests",
     "hil: hardware-in-the-loop tests requiring real Jetson",
+    "linux_only: requires Linux-specific syscalls (skipif on Windows)",
 ]
