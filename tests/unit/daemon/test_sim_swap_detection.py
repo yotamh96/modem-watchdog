@@ -44,7 +44,6 @@ from tests.fakes.clock import FakeClock
 from tests.fakes.runner import FakeRunner
 from tests.fakes.zao_log import FixtureZaoTailer
 
-
 # ---------------------------------------------------------------------------
 # Test fakes specific to SIM-swap pipeline mocking
 # ---------------------------------------------------------------------------
@@ -400,12 +399,8 @@ async def test_new_modem_no_swap_event_only_persists_identity(tmp_path: Path) ->
 
 async def test_two_modems_one_swap_only_resets_swapped_one(tmp_path: Path) -> None:
     """Modem A unchanged, modem B swapped; reset called ONCE with B's usb_path."""
-    desc_a = ModemDescriptor(
-        line=1, cdc_wdm="cdc-wdm0", usb_path="2-3.1.1", ns=None, iface="wwan0"
-    )
-    desc_b = ModemDescriptor(
-        line=2, cdc_wdm="cdc-wdm1", usb_path="2-3.1.2", ns=None, iface="wwan1"
-    )
+    desc_a = ModemDescriptor(line=1, cdc_wdm="cdc-wdm0", usb_path="2-3.1.1", ns=None, iface="wwan0")
+    desc_b = ModemDescriptor(line=2, cdc_wdm="cdc-wdm1", usb_path="2-3.1.2", ns=None, iface="wwan1")
     recording_logger = _RecordingEventLogger()
     driver, store, _clock = _make_driver(
         tmp_path=tmp_path,
@@ -476,7 +471,7 @@ async def test_swap_reset_called_before_policy_engine(tmp_path: Path) -> None:
     async def _record_reset(usb_path: str) -> None:
         call_order.append("reset_modem_streak_and_counters")
 
-    def _record_run_cycle(*args: Any, **kwargs: Any) -> CycleResult:  # noqa: ARG001
+    def _record_run_cycle(*args: Any, **kwargs: Any) -> CycleResult:
         call_order.append("policy.engine.run_cycle")
         return _empty_cycle_result()
 

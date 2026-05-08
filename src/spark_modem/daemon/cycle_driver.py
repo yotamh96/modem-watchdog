@@ -12,10 +12,19 @@ SC #5: the driver constructs and enqueues the four canonical webhook
 envelopes (``HealthyToDegraded``, ``RecoveringToExhausted``,
 ``ActionFailedWebhook``).  ``DaemonRestart`` is emitted ONCE at boot from
 ``daemon/main.py`` — not a per-cycle concern.
+
+Plan 03-07 / E-04: SIM-swap detection runs AFTER observation and BEFORE
+``policy.engine.run_cycle`` so the engine reads post-reset ModemState (the
+detection pipeline calls ``StateStore.reset_modem_streak_and_counters`` for
+each swapped usb_path; otherwise the engine would emit a state transition
+based on stale streak/counters).  ICCID values are sha256[:8]-redacted in the
+emitted ``SimSwapped`` event payload — daemon never logs raw ICCIDs (Issue
+#8 / T-03-07-02).
 """
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -39,9 +48,10 @@ from spark_modem.wire.carriers import CarrierTable
 from spark_modem.wire.diag import Diag, ModemSnapshot, WhoModem
 from spark_modem.wire.enums import ActionKind
 from spark_modem.wire.enums import ActionResult as ActionResultEnum
-from spark_modem.wire.events import Event
+from spark_modem.wire.events import Event, SimSwapped
 from spark_modem.wire.events import StateTransition as StateTransitionEvent
 from spark_modem.wire.globals import GlobalsState
+from spark_modem.wire.identity import Identity
 from spark_modem.wire.state import ModemState, state_to_int
 from spark_modem.wire.status import (
     StatusCycleSummary,
@@ -190,6 +200,21 @@ class CycleDriver:
         )
         diag = build_diag(snapshots, zao_snap, cycle_id, self._clock)
 
+        # 1b. E-04 SIM-swap detection (FR-4: latency = one cycle).
+        #     Runs AFTER snapshots collection AND BEFORE policy.engine.run_cycle
+        #     because the engine reads ModemState which depends on streak +
+        #     counters being correct for THIS cycle's decision.  Per-modem
+        #     ICCID was extracted by the observer's uim-get-card-status parse
+        #     (Phase 2 issue_extractor; Plan 03-07 wires it through
+        #     ModemSnapshot.identity_iccid).  Cycle driver loads the identity
+        #     map ONCE per cycle, compares, and on diff: persists the new
+        #     identity AND resets streak + counters atomically (RECOVERY_SPEC §8
+        #     single-write discipline preserved by
+        #     StateStore.reset_modem_streak_and_counters).  Then emits a
+        #     STRUCTURED SimSwapped event with sha256[:8]-redacted ICCIDs
+        #     (Issue #8: NEVER logger.info; T-03-07-02 raw-ICCID prohibition).
+        await self._detect_and_handle_sim_swaps(modems, snapshots)
+
         # 2. Hydrate prior states for the modems we observed
         prior_states: dict[str, ModemState] = {}
         for m in modems:
@@ -268,6 +293,82 @@ class CycleDriver:
     # ------------------------------------------------------------------
     # internal helpers
     # ------------------------------------------------------------------
+
+    async def _detect_and_handle_sim_swaps(
+        self,
+        modems: list[ModemDescriptor],
+        snapshots: list[ModemSnapshot],
+    ) -> None:
+        """Plan 03-07 / E-04: detect ICCID changes; reset + emit SimSwapped.
+
+        Atomic ordering (RECOVERY_SPEC §8 spirit; T-03-07-03 mitigation):
+          1. Persist updated identity map (save_identity_map) — atomic;
+             takes globals_lock + state-store flock.
+          2. For each swapped usb_path: reset_modem_streak_and_counters —
+             atomic single write per RECOVERY_SPEC §8; takes per-modem
+             asyncio.Lock + flock.
+          3. Emit structured SimSwapped event via event_logger.append with
+             sha256[:8]-redacted ICCIDs (NEVER logger.info — Issue #8).
+
+        New-modem path (no prior identity for usb_path): identity persisted
+        but NO reset and NO SimSwapped event — this is enrollment, not swap.
+        """
+        prior_identities = await self._store.load_identity_map()
+
+        # Build the current identity map only for modems whose snapshot
+        # surfaced an ICCID (transient absence is NOT a swap signal — the
+        # observer's empty-string-collapses-to-None contract handles this).
+        current_identities: dict[str, Identity] = {}
+        ts = self._clock.wall_clock_iso()
+        for desc, snap in zip(modems, snapshots, strict=True):
+            if snap.identity_iccid is None or snap.identity_imsi is None:
+                continue
+            prior_id = prior_identities.get(desc.usb_path)
+            first_seen = prior_id.first_seen_iso if prior_id is not None else ts
+            current_identities[desc.usb_path] = Identity(
+                usb_path=desc.usb_path,
+                iccid=snap.identity_iccid,
+                imsi=snap.identity_imsi,
+                first_seen_iso=first_seen,
+                last_seen_iso=ts,
+            )
+
+        # Compute swap targets BEFORE persisting the new identity map so
+        # the comparison reflects the prior-vs-current diff exactly.
+        sim_swap_targets: list[tuple[str, str, str]] = []  # (usb_path, old, new)
+        for usb_path, current_id in current_identities.items():
+            prior_id = prior_identities.get(usb_path)
+            if prior_id is not None and prior_id.iccid != current_id.iccid:
+                sim_swap_targets.append(
+                    (usb_path, prior_id.iccid, current_id.iccid),
+                )
+
+        # Persist the updated identity map iff anything changed: this covers
+        # both swap targets AND new-modem additions (where prior_id is None).
+        identity_map_changed = sim_swap_targets or any(
+            usb_path not in prior_identities
+            or prior_identities[usb_path].iccid != current_id.iccid
+            or prior_identities[usb_path].imsi != current_id.imsi
+            for usb_path, current_id in current_identities.items()
+        )
+        if identity_map_changed:
+            await self._store.save_identity_map(current_identities)
+
+        # Reset streak + counters atomically for each swapped modem; emit
+        # SimSwapped via event_logger.append AFTER the reset so events.jsonl
+        # is a chronological projection of post-reset state.
+        for usb_path, old_iccid, new_iccid in sim_swap_targets:
+            await self._store.reset_modem_streak_and_counters(usb_path)
+            old_hash = hashlib.sha256(old_iccid.encode("utf-8")).hexdigest()[:8]
+            new_hash = hashlib.sha256(new_iccid.encode("utf-8")).hexdigest()[:8]
+            self._events.append(
+                SimSwapped(
+                    ts_iso=ts,
+                    usb_path=usb_path,
+                    iccid_hash_old=old_hash,
+                    iccid_hash_new=new_hash,
+                ),
+            )
 
     async def _dispatch_actions(
         self,

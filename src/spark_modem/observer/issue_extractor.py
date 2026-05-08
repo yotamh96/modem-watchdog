@@ -105,6 +105,17 @@ async def probe_modem_to_snapshot(
     mnc = ss.mnc if isinstance(ss, GetServingSystemResult) else None
     sim_state = sim.app_state if isinstance(sim, GetSimStateResult) else None
     operating_mode = op.mode if isinstance(op, GetOperatingModeResult) else None
+    # Phase 3 / Plan 03-07: surface ICCID/IMSI for E-04 SIM-swap detection at
+    # the cycle-driver boundary.  Empty-string ICCID/IMSI from the parser
+    # collapses to None so the cycle driver treats a transient empty read as
+    # absence (no swap), not as a different identity than the prior one.
+    identity_iccid: str | None = None
+    identity_imsi: str | None = None
+    if isinstance(sim, GetSimStateResult):
+        if sim.iccid is not None and sim.iccid.strip() != "":
+            identity_iccid = sim.iccid
+        if sim.imsi is not None and sim.imsi.strip() != "":
+            identity_imsi = sim.imsi
 
     issues = extract_issues(
         modem=modem,
@@ -125,6 +136,8 @@ async def probe_modem_to_snapshot(
         registration=registration,
         mcc=mcc,
         mnc=mnc,
+        identity_iccid=identity_iccid,
+        identity_imsi=identity_imsi,
         signal=signal_snap,
         issues=issues,
     )

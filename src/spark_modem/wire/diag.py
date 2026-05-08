@@ -67,6 +67,14 @@ class ModemSnapshot(BaseWire):
     registration: RegistrationState | None = None
     mcc: str | None = Field(default=None, pattern=r"^\d{3}$")
     mnc: str | None = Field(default=None, pattern=r"^\d{2,3}$")
+    # Phase 3 / Plan 03-07: identity surfaced from the qmicli uim-get-card-status
+    # parse (Phase 2 observer.issue_extractor.probe_modem_to_snapshot).  Both are
+    # None when the SIM is absent, in PIN-required state, or when qmicli failed
+    # — observer treats absence as a downgrade signal, never a swap.  Cycle
+    # driver compares identity_iccid against StateStore.load_identity_map() to
+    # detect E-04 SIM swaps within one cycle.
+    identity_iccid: str | None = Field(default=None, pattern=r"^\d{18,22}$")
+    identity_imsi: str | None = Field(default=None, pattern=r"^\d{14,15}$")
     signal: SignalSnapshot = Field(default_factory=SignalSnapshot)
     issues: list[Issue] = Field(default_factory=list)
 
