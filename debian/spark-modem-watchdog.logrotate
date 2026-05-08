@@ -1,0 +1,14 @@
+/var/log/spark-modem-watchdog/events.jsonl {
+    daily
+    rotate 7
+    size 100M
+    compress
+    delaycompress
+    missingok
+    notifempty
+    sharedscripts
+    create 0640 root adm
+    postrotate
+        # Empty — daemon detects rotation via asyncinotify producer (R-01)
+    endscript
+}

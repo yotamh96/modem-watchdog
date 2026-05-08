@@ -11,23 +11,39 @@ NotifyAccess=main
 # FR-60 + B-03 belt-and-suspenders B: smoke-test on every start.
 ExecStartPre=/opt/spark-modem-watchdog/libexec/postinst_smoke_test.sh
 
-# Phase 1 placeholder: the real daemon entry point lands in Phase 2.
-# For now, ExecStart= is a no-op that immediately reports READY and exits 0
-# so `systemctl start` succeeds end-to-end after a clean install.
-# Phase 2 will replace this with: ExecStart=/opt/spark-modem-watchdog/bin/spark-modem-watchdog
-ExecStart=/opt/spark-modem-watchdog/python/bin/python3.12 -c \
-  'import sdnotify; sdnotify.SystemdNotifier().notify("READY=1"); import time; time.sleep(0.1)'
+# U-05: pre-flight Settings validate before main process. Catches bad
+# config rollouts BEFORE the main daemon process boots, so a bad
+# config doesn't trip StartLimitBurst (PITFALLS §4.2).
+ExecStartPre=/opt/spark-modem-watchdog/bin/spark-modem ctl config-check
 
+# Phase 3 wires the real entry point. The wrapper script lives in
+# /opt/spark-modem-watchdog/bin/ and is provided by the .deb postinst
+# (Phase 4 follow-up: verify wrapper exists; current .deb scaffold may
+# need an additional ExecStart shim).
+ExecStart=/opt/spark-modem-watchdog/bin/spark-modem-watchdog
+
+# U-02: clean SIGTERM exit must not trigger restart. Default StartLimit
+# (5 restarts in 10s) bricks fleet on bad config rollout (PITFALLS §4.2).
 Restart=on-failure
-RestartSec=5s
+RestartSec=10
+StartLimitIntervalSec=300
+StartLimitBurst=20
+TimeoutStopSec=10s
+KillMode=mixed
 
-# Phase 1: hardened baseline. Phase 2 relaxes CapabilityBoundingSet to add
-# CAP_NET_ADMIN for pyroute2; Phase 4 adds CAP_SYS_ADMIN for usb_reset/driver_reset.
-User=spark-modem-watchdog
-Group=spark-modem-watchdog
-NoNewPrivileges=true
-PrivateTmp=true
-PrivateDevices=true
+# U-04: WatchdogSec=90s. Daemon kicks WATCHDOG=1 at cycle-end (PITFALLS
+# §4.1); a stuck mid-cycle triggers systemd-managed restart at the 90s mark.
+# Phase 4 HIL stress tests verify the watchdog kicks even during cycles
+# approaching the 10s P99 budget (NFR-1).
+WatchdogSec=90s
+
+# NFR-30: daemon runs as root; Phase 3 needs CAP_NET_ADMIN on udev/pyroute2,
+# Phase 4 will exercise CAP_SYS_ADMIN/CAP_SYS_MODULE for usb_reset/driver_reset.
+# NoNewPrivileges=yes pins the safety floor; sandboxing below provides
+# defence-in-depth without breaking LoadCredential= on systemd 245.
+User=root
+Group=root
+NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=true
 ProtectKernelTunables=true
@@ -36,25 +52,39 @@ ProtectKernelLogs=true
 ProtectControlGroups=true
 ProtectClock=true
 ProtectHostname=true
-RestrictNamespaces=true
+# U-03: allow netns + mnt for `ip netns exec` and the prom UDS bind.
+RestrictNamespaces=net mnt
 RestrictRealtime=true
 RestrictSUIDSGID=true
 LockPersonality=true
 MemoryDenyWriteExecute=true
 # Daemon needs: AF_UNIX (Prometheus UDS), AF_INET/AF_INET6 (webhooks),
-# AF_NETLINK (pyroute2 rtnetlink).
+# AF_NETLINK (pyroute2 rtnetlink + pyudev kobject_uevent).
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
 SystemCallFilter=@system-service
 SystemCallErrorNumber=EPERM
 
-# Phase 1 needs no capabilities (placeholder ExecStart only notifies READY=1).
-# Phase 2 will add CAP_NET_ADMIN; Phase 4 will add CAP_SYS_ADMIN.
-CapabilityBoundingSet=
+# U-03 sandboxing notes:
+#   - No PrivateMounts= (PITFALLS §4.3 — incompatible with LoadCredential=
+#     on systemd 245 / Ubuntu 20.04).
+#   - No PrivateTmp= (drops for LoadCredential compat + /run visibility for
+#     a sibling `spark-modem ctl` mutator that needs the same flock files).
+#   - No PrivateDevices= (kmsg producer needs read access to /dev/kmsg).
+
+# U-01: CapabilityBoundingSet — Phase 4-forward. Phase 3 doesn't USE
+# CAP_SYS_MODULE (driver reset lands in Phase 4) but ships it preallocated
+# so the unit-file is stable across the Phase 3 → Phase 4 boundary.
+# Single unit-file edit, no mid-rollout edits in Phase 4.
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_SYS_ADMIN CAP_SYS_MODULE CAP_DAC_READ_SEARCH
 AmbientCapabilities=
 
 # systemd-managed directories: auto-created with correct ownership, auto-cleaned.
 RuntimeDirectory=spark-modem-watchdog
 RuntimeDirectoryMode=0750
+# U-03 / PITFALLS §4.4: RuntimeDirectoryPreserve=yes is LOAD-BEARING.
+# Without it, systemd cleans /run/spark-modem-watchdog/ on stop, taking out
+# the PID lock + clean-shutdown marker + state.lock + modem-*.lock + metrics.sock.
+RuntimeDirectoryPreserve=yes
 StateDirectory=spark-modem-watchdog
 StateDirectoryMode=0750
 LogsDirectory=spark-modem-watchdog
