@@ -37,7 +37,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundations & ADRs** ✅ 2026-05-06 - Resolve open questions, land 6 new + 5 amended ADRs, ship `.deb` pipeline, lock wire types (build A "plumbing")
 - [x] **Phase 2: Core Daemon** ✅ 2026-05-06 - Laptop-testable asyncio cycle, policy engine, status/Prom/webhook surface (build B "minimal cycle" + C "status+metrics")
-- [ ] **Phase 3: Linux Event Sources & Lifecycle** - udev/rtnetlink/inotify/dmesg, sd_notify, signal handling, PID-lock, per-modem flocks (build D + E)
+- [x] **Phase 3: Linux Event Sources & Lifecycle** ✅ 2026-05-08 - udev/rtnetlink/inotify/dmesg, sd_notify, signal handling, PID-lock, per-modem flocks (build D + E)
 - [ ] **Phase 4: Destructive Actions & HIL** - soft/modem/usb/driver_reset wired up, signal-gate end-to-end, qmi-proxy crash recovery, HIL CI lane (build F)
 - [ ] **Phase 5: Bench & Field Shadow** - MIGRATION Phases 1+2: dry-run alongside v1 on bench Jetson, then on one field box; fault-cycle agreement ≥95%
 - [ ] **Phase 6: Cutover & Fleet Rollout** - MIGRATION Phases 3-5: one box live → 10% canary → 100% rolling; meet M1-M7 success metrics
@@ -265,7 +265,7 @@ Plans:
 - [x] 03-06-PLAN.md — Daemon lifecycle modules + main.py rewrite + wire variants (EventSourceCrashed + SimSwapped); WATCHDOG cycle-end placement (L-01..L-05, FR-53, FR-61, FR-61.1, FR-75, NFR-13)
 - [x] 03-07-PLAN.md — cycle_driver SIM-swap detection + StateStore.reset_modem_streak_and_counters atomic reset (FR-3, FR-4, RECOVERY_SPEC §8)
 - [x] 03-08-PLAN.md — systemd unit hardening (U-01..U-05) + logrotate snippet (R-02) + cross-platform unit-file-audit test (FR-53, NFR-30)
-- [ ] 03-09-PLAN.md — Integration tests (SC #1..#5) + bench Jetson human-verify checkpoint (FR-1, FR-43, FR-43.1, NFR-12)
+- [x] 03-09-PLAN.md — Integration tests (SC #1..#5) + bench Jetson human-verify checkpoint (FR-1, FR-43, FR-43.1, NFR-12) — completed approved-with-deferral 2026-05-08; bench-Jetson SC #1/#3/#4/#5 hardware verification deferred to Phase 4 HIL ticket (STATE.md Deferred Items)
 
 ### Phase 4: Destructive Actions & HIL
 
@@ -451,7 +451,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Foundations & ADRs | 7/7 | Complete | 2026-05-06 |
 | 2. Core Daemon | 9/10 | In Progress | - |
-| 3. Linux Event Sources & Lifecycle | 7/9 | In Progress | - |
+| 3. Linux Event Sources & Lifecycle | 9/9 | Complete | 2026-05-08 |
 | 4. Destructive Actions & HIL | 0/TBD | Not started | - |
 | 5. Bench & Field Shadow | 0/TBD | Not started | - |
 | 6. Cutover & Fleet Rollout | 0/TBD | Not started | - |

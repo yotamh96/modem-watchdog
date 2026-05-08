@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: blocked
-stopped_at: Plan 03-09 Task 3 — bench-Jetson human-verify checkpoint
-last_updated: "2026-05-08T16:21:08Z"
+status: ready
+stopped_at: Completed 03-09-PLAN.md (Phase 3 EXIT GATE — approved-with-deferral)
+last_updated: "2026-05-08T16:35:00Z"
 last_activity: 2026-05-08
 progress:
   total_phases: 7
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 26
-  completed_plans: 25
-  percent: 96
+  completed_plans: 26
+  percent: 100
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 
 ## Current Position
 
-Phase: 03 (linux-event-sources-lifecycle) — EXECUTING
-Plan: 9 of 9
-Status: Ready to execute
+Phase: 03 (linux-event-sources-lifecycle) — COMPLETE
+Plan: 9 of 9 (Phase 3 EXIT GATE — approved-with-deferral)
+Status: Phase 3 complete; ready for Phase 4 (Destructive Actions & HIL)
 Last activity: 2026-05-08
 
-Progress: [██████████] 96%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -77,6 +77,7 @@ Progress: [██████████] 96%
 | Phase 03 P06 | 17min | 2 tasks tasks | 16 files files |
 | Phase 03-linux-event-sources-lifecycle P07 | 9min | 2 tasks | 6 files |
 | Phase 03-linux-event-sources-lifecycle P08 | 4min | 1 tasks | 3 files |
+| Phase 03-linux-event-sources-lifecycle P09 | ~8min | 3 tasks | 4 files (3 integration tests + SUMMARY) |
 
 ## Accumulated Context
 
@@ -234,6 +235,11 @@ Recent decisions affecting current work:
 - Plan 03-08: U-01..U-05 systemd unit hardening + R-02 logrotate + 20-test cross-platform audit gate; CAP_NET_ADMIN+CAP_SYS_ADMIN+CAP_SYS_MODULE+CAP_DAC_READ_SEARCH preallocated for Phase 4; WatchdogSec=90s with cycle-end kicks (Plan 03-06 Issue #5); StartLimit overrides prevent fleet-bricking (PITFALLS §4.2); RuntimeDirectoryPreserve=yes load-bearing; ExecStartPre=spark-modem ctl config-check pre-flight gate (subcommand body deferred to Plan 03-09)
 - Plan 03-08: NFR-30 User=root + NoNewPrivileges=yes (Phase 3+ needs CAP_NET_ADMIN on udev/pyroute2, Phase 4 needs CAP_SYS_ADMIN/CAP_SYS_MODULE on usb_reset/driver_reset); replaces Phase 1 spark-modem-watchdog non-root user (postinst cleanup deferred to Phase 4)
 - Plan 03-08: R-02 empty postrotate is deliberate one-signal-per-concern decision; logrotate handles POSIX rotation, daemon handles fd swap via asyncinotify (Plan 03-04 EventLogReopener); debhelper dh_installlogrotate auto-picks debian/spark-modem-watchdog.logrotate (no debian/rules change needed)
+- Plan 03-09: integration test tier scaffold (tests/integration/__init__.py + conftest.py) uses per-module pytestmark NOT pytest_collection_modifyitems auto-marker (Issue #6 RESOLVED stays consistent — Plan 03-08's test_unit_file_audit.py runs cross-platform; auto-marker would have broken it)
+- Plan 03-09: SC #1..#5 lifecycle tests in test_lifecycle.py via Fake* injection (FakeRunner + FakeClock + FixtureInventory + FakeSdNotify + FakePIDLock); SC #3 SIGTERM uses asyncio.Event.set() NOT os.kill — production code path is identical (loop.add_signal_handler sets the same Event); avoids cross-platform real-signal issues. Real-signal verification deferred to Phase 4 HIL
+- Plan 03-09: real-logrotate cron exercise in test_logrotate_create.py wraps subprocess.run in asyncio.to_thread (ASYNC221); per-test pytest.mark.skipif on /usr/sbin/logrotate presence so Linux dev hosts without the binary skip cleanly; tests/ tier is SP-04-exempt for direct subprocess.run usage
+- Plan 03-09: Phase 3 EXIT — bench-Jetson SC #1/#3/#4/#5 hardware verification deferred to Phase 4 HIL via approved-with-deferral resume signal (hardware not accessible at Phase 3 exit; integration scaffold + linux_only suite + unit-file audit all green at 1835 pass / 88 skip / 0 fail in 17.94s); WatchdogSec=90s actual-fire under deliberate qmicli wedge already deferred per CONTEXT.md
+- Plan 03-09: Phase 3 status COMPLETE — 9/9 plans shipped; integration tier established as the regression-gate substrate for Phase 4 destructive-action lifecycle tests + Phase 5 shadow-mode no-regression contract
 
 ### Pending Todos
 
@@ -247,18 +253,19 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| *(none)* | | | |
+| Phase 4 HIL | Bench-Jetson SC #1/#3/#4/#5 hardware verification (real EM7421s on USB hub 2-3.1.{1..4}, real qmi_wwan reload, real cross-process flock concurrent ctl reset-state, real systemd Type=notify SIGTERM ≤5s) — integration scaffold + linux_only suite + unit-file audit all green; only true hardware-loop verification deferred. WatchdogSec=90s actual-fire also deferred per CONTEXT.md. | Deferred to Phase 4 HIL | Phase 03 exit gate |
 
 ## Session Continuity
 
-Last session: 2026-05-08T16:21:08Z
-Stopped at: Plan 03-09 Task 3 — bench-Jetson human-verify checkpoint
-Resume file: .planning/phases/03-linux-event-sources-lifecycle/03-09-PLAN.md (Task 3 checkpoint)
+Last session: 2026-05-08T16:35:00Z
+Stopped at: Completed 03-09-PLAN.md (Phase 3 EXIT GATE — approved-with-deferral)
+Resume file: None
 
-**Planned Phase:** 03 (Linux Event Sources & Lifecycle) — 9 plans — 2026-05-07T07:12:05.104Z
+**Planned Phase:** 04 (Destructive Actions & HIL) — TBD plans — to be planned via /gsd-plan-phase 4
 **Phase 2 status:** ✅ COMPLETE — all 10 plans shipped, replay harness 100% v1 agreement, 1675-test suite green in 11.82s
-**Plan 03-09 status:** ⏸ PAUSED at human-verify checkpoint
+**Phase 3 status:** ✅ COMPLETE — all 9 plans shipped; integration tier scaffold + SC #1..#5 lifecycle tests + real-logrotate cron exercise + cross-platform unit-file audit; 1835 unit + integration tests green in 17.94s on Windows dev host (M7 30s budget preserved)
+**Plan 03-09 status:** ✅ COMPLETE — approved-with-deferral
 - Task 1 ✅ commit f5079e9 — integration scaffold + SC #1..#5 lifecycle tests
 - Task 2 ✅ commit f00b13c — real logrotate cron exercise (FR-43 / R-02)
-- Task 3 ⏸ AWAITING bench-Jetson SC #1, SC #3, SC #4, SC #5 hardware verification
-**Next:** User runs the bench-Jetson commands per 03-09 PLAN.md `<how-to-verify>` section and reports back with "approved" / "blocked" / "approved-with-deferral".
+- Task 3 ✅ resolved — bench-Jetson SC verification deferred to Phase 4 HIL ticket (see Deferred Items table)
+**Next:** Phase 4 (Destructive Actions & HIL) — /gsd-plan-phase 4 to scope soft_reset/modem_reset/usb_reset/driver_reset destructive actions + HIL CI lane + bench-Jetson SC #1/#3/#4/#5 verification piggyback

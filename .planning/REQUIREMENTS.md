@@ -283,7 +283,7 @@ Mapped during ROADMAP creation 2026-05-06. Every v1 REQ-ID maps to exactly one p
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FR-1 | Phase 3 | Pending |
+| FR-1 | Phase 3 | Done (Plan 03-02 udev producer + Plan 03-09 SC #1 integration test) |
 | FR-2 | Phase 2 | Pending |
 | FR-3 | Phase 3 | Pending |
 | FR-4 | Phase 3 | Pending |
@@ -315,8 +315,8 @@ Mapped during ROADMAP creation 2026-05-06. Every v1 REQ-ID maps to exactly one p
 | FR-41 | Phase 2 | Pending |
 | FR-41.1 | Phase 2 | Pending |
 | FR-42 | Phase 2 | Pending |
-| FR-43 | Phase 3 | Done (Plan 03-04) |
-| FR-43.1 | Phase 3 | Done (Plan 03-04) |
+| FR-43 | Phase 3 | Done (Plan 03-04 EventLogWriter.reopen + Plan 03-09 real-logrotate cron exercise) |
+| FR-43.1 | Phase 3 | Done (Plan 03-04 dual-mode unit tests + Plan 03-09 real-logrotate `create` mode integration test) |
 | FR-44 | Phase 2 | Done (Plan 02-08) |
 | FR-44.1 | Phase 1 | Done (Plan 02-08 wires sign_envelope; wire shape from Phase 1) |
 | FR-44.2 | Phase 1 | Done (Plan 02-08 sets X-Spark-Timestamp; wire shape from Phase 1) |
@@ -359,7 +359,7 @@ Mapped during ROADMAP creation 2026-05-06. Every v1 REQ-ID maps to exactly one p
 | NFR-5 | Phase 2 | Pending |
 | NFR-10 | Phase 2 | Pending |
 | NFR-11 | Phase 2 | Pending |
-| NFR-12 | Phase 3 | Pending |
+| NFR-12 | Phase 3 | Done (Plan 03-09 SC #5 qmi_wwan reload survival test; bench-Jetson real-driver-reload verification deferred to Phase 4 HIL) |
 | NFR-13 | Phase 3 | Pending |
 | NFR-20 | Phase 2 | Pending |
 | NFR-21 | Phase 2 | Pending |
