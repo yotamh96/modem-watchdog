@@ -264,7 +264,7 @@ Plans:
 - [x] 03-05-PLAN.md — kmsg producer + classifier + dedup (E-03, FR-14)
 - [x] 03-06-PLAN.md — Daemon lifecycle modules + main.py rewrite + wire variants (EventSourceCrashed + SimSwapped); WATCHDOG cycle-end placement (L-01..L-05, FR-53, FR-61, FR-61.1, FR-75, NFR-13)
 - [x] 03-07-PLAN.md — cycle_driver SIM-swap detection + StateStore.reset_modem_streak_and_counters atomic reset (FR-3, FR-4, RECOVERY_SPEC §8)
-- [ ] 03-08-PLAN.md — systemd unit hardening (U-01..U-05) + logrotate snippet (R-02) + cross-platform unit-file-audit test (FR-53, NFR-30)
+- [x] 03-08-PLAN.md — systemd unit hardening (U-01..U-05) + logrotate snippet (R-02) + cross-platform unit-file-audit test (FR-53, NFR-30)
 - [ ] 03-09-PLAN.md — Integration tests (SC #1..#5) + bench Jetson human-verify checkpoint (FR-1, FR-43, FR-43.1, NFR-12)
 
 ### Phase 4: Destructive Actions & HIL
