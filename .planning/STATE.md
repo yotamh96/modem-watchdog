@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-destructive-actions-hil/03-driver-reset-and-eligibility
-last_updated: "2026-05-10T12:10:54.621Z"
+stopped_at: Completed 04-destructive-actions-hil/04-ladder-and-signal-gate
+last_updated: "2026-05-10T12:32:01.463Z"
 last_activity: 2026-05-10
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 33
-  completed_plans: 30
-  percent: 91
+  completed_plans: 31
+  percent: 94
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 04 (destructive-actions-hil) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
 Last activity: 2026-05-10
 
-Progress: [█████████░] 91%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
@@ -83,6 +83,7 @@ Progress: [█████████░] 91%
 | Phase 04-destructive-actions-hil P06-hil-infra-scaffold | 7min | 2 tasks tasks | 8 files files |
 | Phase 04 P02 | 10min | 2 tasks tasks | 16 files files |
 | Phase 04 P03 | 11min (683s) | 3 tasks tasks | 9 files files |
+| Phase 04 P04 | 15min | 3 tasks tasks | 13 files files |
 
 ## Accumulated Context
 
@@ -263,6 +264,11 @@ Recent decisions affecting current work:
 - Plan 04-03: _global_driver_reset_eligible 4-gate predicate replaces Phase 2 placeholder -- thermal -> cooldown -> 75% denominator -> actionable-signal; first-fire (None last_driver_reset_monotonic) handled via explicit is-not-None guard; PROXY_DIED does NOT bypass 75% gate (C-02 user deviation)
 - Plan 04-03: 4 RELOAD_DATA Settings fields land (multi_modem_threshold_fraction=0.75, expected_modem_count=4, global_driver_reset_backoff_seconds=3600, modprobe_timeout_seconds=30); expected_modem_count is RELOAD_DATA not RELOAD_RESTART because cycle driver re-reads it per cycle; signal-floor fields read defensively via getattr until Plan 04-04 lands them in Settings
 - Plan 04-03: dispatcher contract concludes cross-plan rename convention -- _seven_kinds (04-01) -> _eight_kinds (04-02) -> _nine_kinds (04-03); unknown-kind probe rotated to a synthetic non-ActionKind sentinel since every legitimate ActionKind is now registered
+- Plan 04-04: select_rung uses base parameter (not category) -- engine has already done lookup_action so the BASE ActionKind is in hand; this preserves DATAPATH base-rung-2 semantics ((DATAPATH, SESSION_DISCONNECTED) -> base MODEM_RESET; ladder starts at MODEM, never walks back to SOFT)
+- Plan 04-04: legacy ModemState.last_action_monotonic preserved on the wire shape AND bumped atomically -- back-compat contract for Phase 2 state-file replay; locked by test_engine_atomically_bumps_legacy_and_per_kind_timestamps; future engineer must NOT delete the legacy bump as dead code
+- Plan 04-04: non-ladder ActionKinds (SET_APN, FIX_RAW_IP, SIM_POWER_ON, FIX_AUTOSUSPEND, SET_OPERATING_MODE, DRIVER_RESET) pass through select_rung unchanged -- only the destructive triplet (SOFT/MODEM/USB_RESET) escalates
+- Plan 04-04: engine collapses ladder dispatch to one rebind (action_or_skip = select_rung(...)) -- existing isinstance(ActionKind | str) Step-6 dispatch handles both shapes; ruff PLR0912 satisfied without extracting a helper
+- Plan 04-04: SP-04 lint regex literally matches docstring text -- avoid spelling out forbidden tokens (create_subprocess_exec etc.) in docstrings; reword to abstract phrasing like 'kernel-touching primitives'
 
 ### Pending Todos
 
@@ -280,8 +286,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-10T12:10:34.174Z
-Stopped at: Completed 04-destructive-actions-hil/03-driver-reset-and-eligibility
+Last session: 2026-05-10T12:31:40.051Z
+Stopped at: Completed 04-destructive-actions-hil/04-ladder-and-signal-gate
 Resume file: None
 
 **Planned Phase:** 04 (destructive-actions-hil) — 7 plans — 2026-05-10T09:43:20.063Z

@@ -327,8 +327,8 @@ FR-23, FR-24, FR-27
 Plans:
 - [x] 04-01-modem-reset-action-PLAN.md — modem_reset action + dispatcher registration + CLI unblock — completed 2026-05-10
 - [x] 04-02-usb-reset-action-PLAN.md — usb_reset action + sysfs/ module + Sierra-bootloader handling + --target CLI flag — completed 2026-05-10
-- [ ] 04-03-driver-reset-and-eligibility-PLAN.md — driver_reset action + global eligibility predicate + thermal suppression + cooldown
-- [ ] 04-04-ladder-and-signal-gate-PLAN.md — policy/ladder.py + per-action timestamps + signal-gate Settings migration
+- [x] 04-03-driver-reset-and-eligibility-PLAN.md — driver_reset action + global eligibility predicate + thermal suppression + cooldown — completed 2026-05-10
+- [x] 04-04-ladder-and-signal-gate-PLAN.md — policy/ladder.py + per-action timestamps + signal-gate Settings migration — completed 2026-05-10
 - [ ] 04-05-action-skipped-event-PLAN.md — ActionSkipped event variant + decision-table/engine integration
 - [x] 04-06-hil-infra-scaffold-PLAN.md — HIL CI workflow + fault-injection helpers + LFS trace puller — completed 2026-05-10
 - [ ] 04-07-hil-scenario-suite-PLAN.md — 12 HIL scenarios + Phase-3 piggyback + replay-harness 30-day gate
