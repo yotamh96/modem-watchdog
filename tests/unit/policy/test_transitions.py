@@ -236,13 +236,110 @@ def test_rf_blocked_false_when_signal_missing() -> None:
 def test_is_signal_below_gate_at_threshold_boundary() -> None:
     """Strict-less-than: rsrp=-110 itself is NOT below gate (boundary)."""
     snap = _snap(rsrp_dbm=-110, rsrq_db=-15.0, snr_db=0.0)
-    assert is_signal_below_gate(snap) is False
+    assert is_signal_below_gate(snap, _settings()) is False
 
 
 def test_is_signal_below_gate_just_below_threshold() -> None:
     """One field a hair below threshold trips the gate."""
     snap = _snap(rsrp_dbm=-111, rsrq_db=-10.0, snr_db=5.0)
-    assert is_signal_below_gate(snap) is True
+    assert is_signal_below_gate(snap, _settings()) is True
+
+
+# --- Phase 4 Plan 04-04 Task 3: thresholds read from Settings (B-03) ------
+
+
+def test_is_signal_below_gate_reads_rsrp_from_settings() -> None:
+    """B-03: stricter rsrp floor in Settings flips a previously-passing snap to blocked.
+
+    rsrp=-105 is above the default -110 floor (passes); but with a Settings
+    override of -100, rsrp=-105 is below floor -> rf_blocked. Proves the
+    function consults config, not deleted module Final constants.
+    """
+    snap = _snap(rsrp_dbm=-105, rsrq_db=-10.0, snr_db=5.0)
+    assert is_signal_below_gate(snap, _settings()) is False
+    assert (
+        is_signal_below_gate(
+            snap,
+            Settings(
+                state_root="/tmp/test-state",
+                run_dir="/tmp/test-run",
+                events_log_path="/tmp/events.jsonl",
+                metrics_socket_path="/tmp/metrics.sock",
+                carriers_yaml_path="/tmp/carriers.yaml",
+                signal_rsrp_floor_dbm=-100,
+            ),
+        )
+        is True
+    )
+
+
+def test_is_signal_below_gate_reads_rsrq_from_settings() -> None:
+    """B-03: stricter rsrq floor flips passing snap to blocked."""
+    snap = _snap(rsrp_dbm=-90, rsrq_db=-12.0, snr_db=5.0)
+    assert is_signal_below_gate(snap, _settings()) is False
+    assert (
+        is_signal_below_gate(
+            snap,
+            Settings(
+                state_root="/tmp/test-state",
+                run_dir="/tmp/test-run",
+                events_log_path="/tmp/events.jsonl",
+                metrics_socket_path="/tmp/metrics.sock",
+                carriers_yaml_path="/tmp/carriers.yaml",
+                signal_rsrq_floor_db=-10.0,
+            ),
+        )
+        is True
+    )
+
+
+def test_is_signal_below_gate_reads_snr_from_settings() -> None:
+    """B-03: stricter snr floor flips passing snap to blocked."""
+    snap = _snap(rsrp_dbm=-90, rsrq_db=-10.0, snr_db=2.0)
+    assert is_signal_below_gate(snap, _settings()) is False
+    assert (
+        is_signal_below_gate(
+            snap,
+            Settings(
+                state_root="/tmp/test-state",
+                run_dir="/tmp/test-run",
+                events_log_path="/tmp/events.jsonl",
+                metrics_socket_path="/tmp/metrics.sock",
+                carriers_yaml_path="/tmp/carriers.yaml",
+                signal_snr_floor_db=5.0,
+            ),
+        )
+        is True
+    )
+
+
+def test_transition_passes_settings_to_signal_gate() -> None:
+    """B-03: transition() threads ctx.config through to is_signal_below_gate.
+
+    Same snapshot evaluated with default Settings vs custom rsrp floor -- the
+    resulting ModemState.rf_blocked must reflect the Settings override (not
+    the deleted module-level Final constants).
+    """
+    settings_strict = Settings(
+        state_root="/tmp/test-state",
+        run_dir="/tmp/test-run",
+        events_log_path="/tmp/events.jsonl",
+        metrics_socket_path="/tmp/metrics.sock",
+        carriers_yaml_path="/tmp/carriers.yaml",
+        signal_rsrp_floor_dbm=-100,  # stricter than default -110
+    )
+    ctx_strict = PolicyContext(
+        clock=FakeClock(),
+        config=settings_strict,
+        maintenance_active=False,
+        expected_modem_count=1,
+    )
+    snap = _snap(issues=[_issue()], rsrp_dbm=-105, rsrq_db=-10.0, snr_db=5.0)
+    new = transition(_state(), snap, ctx_strict)
+    # Default ctx -- rsrp=-105 passes default -110 floor -> not blocked.
+    assert transition(_state(), snap, _ctx()).rf_blocked is False
+    # Strict ctx -- rsrp=-105 fails -100 floor -> blocked.
+    assert new.rf_blocked is True
 
 
 # --- 3: rf_blocked + no issues stays healthy (RECOVERY_SPEC §3.2) ------

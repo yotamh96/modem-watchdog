@@ -489,3 +489,150 @@ def test_run_cycle_globals_passthrough_when_no_driver_reset() -> None:
     result = run_cycle(diag, {"2-3.1.1": _state()}, g, _ctx())
     assert result.new_globals.driver_reset_count == 2
     assert result.new_globals.last_driver_reset_monotonic == 42.0
+
+
+# --- Plan 04-04 Task 3: ladder integration + atomic per-kind timestamp bump --
+
+
+def test_engine_uses_ladder_select_rung_for_registration() -> None:
+    """B-01: REGISTRATION ladder rung-2 promotion fires when SOFT_RESET counter
+    is at the max_soft ceiling.
+
+    Diag with NOT_REGISTERED_SEARCHING; prior counters at SOFT_RESET=3 (==
+    max_soft default 3); ladder.select_rung promotes to MODEM_RESET.
+    """
+    diag = _diag(
+        [
+            _snap(
+                issues=[
+                    _issue(IssueCategory.REGISTRATION, IssueDetail.NOT_REGISTERED_SEARCHING)
+                ]
+            )
+        ]
+    )
+    state = _state(
+        state="degraded",
+        counters={ActionKind.SOFT_RESET: 3},  # at ceiling -- promote
+    )
+    result = run_cycle(diag, {"2-3.1.1": state}, GlobalsState(), _ctx())
+    assert len(result.plans) == 1
+    assert result.plans[0].kind == ActionKind.MODEM_RESET
+
+
+def test_engine_ladder_yields_skip_exhausted_when_all_rungs_full() -> None:
+    """B-01: counters at every ceiling -> ladder returns 'skip:exhausted'.
+
+    The engine emits a PlannedAction with reason starting with 'skip:exhausted'
+    (mirroring the decision-table-level skip-string pattern).
+    """
+    diag = _diag(
+        [
+            _snap(
+                issues=[
+                    _issue(IssueCategory.REGISTRATION, IssueDetail.NOT_REGISTERED_SEARCHING)
+                ]
+            )
+        ]
+    )
+    state = _state(
+        state="degraded",
+        counters={
+            ActionKind.SOFT_RESET: 3,
+            ActionKind.MODEM_RESET: 2,
+            ActionKind.USB_RESET: 1,
+        },
+    )
+    result = run_cycle(diag, {"2-3.1.1": state}, GlobalsState(), _ctx())
+    assert len(result.plans) == 1
+    plan = result.plans[0]
+    assert plan.reason == "skip:exhausted"
+    # Counter should NOT bump on a skip:exhausted plan.
+    assert ActionKind.MODEM_RESET not in result.new_states["2-3.1.1"].counters
+
+
+def test_engine_atomically_bumps_legacy_and_per_kind_timestamps() -> None:
+    """B-02 / I-03 fix: engine bumps BOTH last_action_monotonic and
+    last_action_monotonic_by_kind[executed_kind] in ONE atomic model_copy.
+
+    This test is the back-compat contract:
+      - state.last_action_monotonic == ctx.clock.monotonic() at action time
+      - state.last_action_monotonic_by_kind[executed_kind] == same value
+      - The two values are EQUAL (atomic same-clock-read)
+      - The legacy field is bumped even though no gate reads it (Phase 2
+        state-file replay relies on the field being populated -- a future
+        engineer must NOT delete this bump as dead code)
+
+    Use SET_APN as the executed action -- it's a cheap action that runs
+    cleanly without ladder/signal interference.
+    """
+    diag = _diag(
+        [_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])]
+    )
+    clock = FakeClock(start_monotonic=12345.0)
+    result = run_cycle(diag, {"2-3.1.1": _state()}, GlobalsState(), _ctx(clock=clock))
+    new_state = result.new_states["2-3.1.1"]
+    expected_ts = 12345.0
+
+    # Per-kind dict has the bump for the executed kind.
+    assert ActionKind.SET_APN in new_state.last_action_monotonic_by_kind
+    assert new_state.last_action_monotonic_by_kind[ActionKind.SET_APN] == expected_ts
+
+    # Legacy field is bumped to the SAME value (back-compat contract).
+    assert new_state.last_action_monotonic == expected_ts
+
+    # The two timestamps are equal -- atomic same-clock-read in one model_copy.
+    assert new_state.last_action_monotonic == new_state.last_action_monotonic_by_kind[
+        ActionKind.SET_APN
+    ]
+
+
+def test_engine_does_not_bump_per_kind_for_skipped_actions() -> None:
+    """B-02: when an action is gated (would_execute=False), per-kind dict is
+    UNCHANGED -- no spurious bump.
+
+    Use the signal gate to suppress: rf_blocked=True + destructive issue.
+    """
+    diag = _diag(
+        [
+            _snap(
+                rsrp_dbm=-115,  # below floor -> rf_blocked
+                issues=[_issue(IssueCategory.QMI, IssueDetail.QMI_CHANNEL_HUNG)],
+            )
+        ]
+    )
+    result = run_cycle(diag, {"2-3.1.1": _state()}, GlobalsState(), _ctx())
+    new_state = result.new_states["2-3.1.1"]
+    # The signal-gate suppressed the destructive plan; per-kind dict stays empty.
+    assert new_state.last_action_monotonic_by_kind == {}
+    # Legacy field also untouched (None on first observation).
+    assert new_state.last_action_monotonic is None
+
+
+def test_engine_phase_2_states_load_and_run_cleanly() -> None:
+    """B-02: Phase 2 ModemState (no last_action_monotonic_by_kind populated)
+    flows through engine without NPE; post-cycle state has the per-kind dict
+    populated for the executed kind.
+    """
+    # Construct a Phase-2-shape ModemState (no per-kind dict explicitly set).
+    state = ModemState.model_validate(
+        {
+            "state": "degraded",
+            "present": True,
+            "rf_blocked": False,
+            "recovering_level": None,
+            "_healthy_streak": 0,
+            "counters": {},
+            "last_action_monotonic": None,
+            "last_state_transition_iso": None,
+        }
+    )
+    assert state.last_action_monotonic_by_kind == {}  # default empty dict
+
+    diag = _diag(
+        [_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])]
+    )
+    clock = FakeClock(start_monotonic=999.0)
+    result = run_cycle(diag, {"2-3.1.1": state}, GlobalsState(), _ctx(clock=clock))
+    new_state = result.new_states["2-3.1.1"]
+    assert new_state.last_action_monotonic_by_kind[ActionKind.SET_APN] == 999.0
+    assert new_state.last_action_monotonic == 999.0
