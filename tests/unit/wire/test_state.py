@@ -144,3 +144,56 @@ def test_state_to_int_stable_mapping() -> None:
     assert state_to_int(_ms("degraded")) == 2
     assert state_to_int(_ms("recovering", level=1)) == 3
     assert state_to_int(_ms("exhausted")) == 4
+
+
+# --- Phase 4 Plan 04-04 last_action_monotonic_by_kind (B-02) ---
+
+
+def test_modem_state_default_last_action_monotonic_by_kind_is_empty_dict() -> None:
+    """B-02: new field defaults to empty dict via Field(default_factory=dict).
+
+    First-observation modems have no prior action history; the per-kind
+    dict starts empty and is populated by the engine's atomic Step-7 update.
+    """
+    m = ModemState(state="unknown", recovering_level=None, present=True, rf_blocked=False)
+    assert m.last_action_monotonic_by_kind == {}
+
+
+def test_modem_state_loads_phase2_json_without_new_field() -> None:
+    """B-02 backwards-compat: Phase 2 ModemState JSON (no new field) loads cleanly.
+
+    Phase 2 state files persisted without last_action_monotonic_by_kind. After
+    Plan 04-04 the field exists, but pydantic's default_factory ensures the
+    legacy on-disk shape parses without error and lands with an empty dict.
+    """
+    phase2_json = (
+        '{"schema_version": 1, "state": "degraded", "present": true, '
+        '"rf_blocked": false, "recovering_level": null, "_healthy_streak": 2, '
+        '"counters": {"soft_reset": 1}, "last_action_monotonic": 1234.5, '
+        '"last_state_transition_iso": "2026-05-06T00:00:00+00:00"}'
+    )
+    m = ModemState.model_validate_json(phase2_json)
+    assert m.last_action_monotonic_by_kind == {}
+    # Legacy field preserved (back-compat contract).
+    assert m.last_action_monotonic == 1234.5
+    assert m.counters[ActionKind.SOFT_RESET] == 1
+
+
+def test_modem_state_roundtrips_with_populated_dict() -> None:
+    """B-02: ModemState round-trips through model_dump_json + model_validate_json
+    with populated last_action_monotonic_by_kind (per-kind monotonic floats)."""
+    m = ModemState(
+        state="degraded",
+        recovering_level=None,
+        present=True,
+        rf_blocked=False,
+        last_action_monotonic_by_kind={
+            ActionKind.SOFT_RESET: 1234.5,
+            ActionKind.MODEM_RESET: 1300.0,
+        },
+    )
+    j = m.model_dump_json(by_alias=True)
+    m2 = ModemState.model_validate_json(j)
+    assert m == m2
+    assert m2.last_action_monotonic_by_kind[ActionKind.SOFT_RESET] == 1234.5
+    assert m2.last_action_monotonic_by_kind[ActionKind.MODEM_RESET] == 1300.0

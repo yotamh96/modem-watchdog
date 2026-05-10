@@ -41,6 +41,7 @@ def _state(
     present: bool = True,
     rf_blocked: bool = False,
     last_action_monotonic: float | None = None,
+    last_action_monotonic_by_kind: dict[ActionKind, float] | None = None,
     recovering_level: int | None = None,
 ) -> ModemState:
     return ModemState.model_validate(
@@ -52,6 +53,7 @@ def _state(
             "_healthy_streak": 0,
             "counters": {},
             "last_action_monotonic": last_action_monotonic,
+            "last_action_monotonic_by_kind": last_action_monotonic_by_kind or {},
             "last_state_transition_iso": None,
         }
     )
@@ -121,9 +123,13 @@ def test_gate_signal_passes_destructive_when_rf_ok() -> None:
 
 
 def test_gate_same_action_backoff_blocks_within_300s() -> None:
-    """last_action at t0; clock at t0+200 -> backoff active."""
+    """last_action at t0; clock at t0+200 -> backoff active.
+
+    Phase 4 (B-02): the gate keys on per-kind timestamps from
+    last_action_monotonic_by_kind, not the legacy global field.
+    """
     clock = FakeClock(start_monotonic=200.0)
-    state = _state(last_action_monotonic=0.0)
+    state = _state(last_action_monotonic_by_kind={ActionKind.SOFT_RESET: 0.0})
     assert (
         gate_same_action_backoff(state, ActionKind.SOFT_RESET, clock, _settings())
         is True
@@ -133,7 +139,7 @@ def test_gate_same_action_backoff_blocks_within_300s() -> None:
 def test_gate_same_action_backoff_passes_after_300s() -> None:
     """clock at t0+301 -> backoff cleared."""
     clock = FakeClock(start_monotonic=301.0)
-    state = _state(last_action_monotonic=0.0)
+    state = _state(last_action_monotonic_by_kind={ActionKind.SOFT_RESET: 0.0})
     assert (
         gate_same_action_backoff(state, ActionKind.SOFT_RESET, clock, _settings())
         is False
@@ -141,9 +147,9 @@ def test_gate_same_action_backoff_passes_after_300s() -> None:
 
 
 def test_gate_same_action_backoff_passes_when_first_action() -> None:
-    """last_action_monotonic=None -> never backoff (first action)."""
+    """last_action_monotonic_by_kind={} -> never backoff (first action)."""
     clock = FakeClock(start_monotonic=10000.0)
-    state = _state(last_action_monotonic=None)
+    state = _state()  # empty per-kind dict by default
     assert (
         gate_same_action_backoff(state, ActionKind.SOFT_RESET, clock, _settings())
         is False
@@ -154,10 +160,54 @@ def test_gate_same_action_backoff_at_exact_threshold_blocks() -> None:
     """Strict-less-than: exactly at backoff_seconds is still blocked."""
     # Settings.backoff_seconds default is 300; t0+299 < 300 -> blocked.
     clock = FakeClock(start_monotonic=299.0)
-    state = _state(last_action_monotonic=0.0)
+    state = _state(last_action_monotonic_by_kind={ActionKind.SOFT_RESET: 0.0})
     assert (
         gate_same_action_backoff(state, ActionKind.SOFT_RESET, clock, _settings())
         is True
+    )
+
+
+# --- gate_same_action_backoff: Phase 4 per-kind discrimination (B-02) ---
+
+
+def test_gate_same_action_backoff_is_per_kind() -> None:
+    """B-02: gate_same_action_backoff discriminates by ActionKind.
+
+    State has SOFT_RESET fired 100s ago (within 300s window) but MODEM_RESET
+    fired 1000s ago (outside window). Same-action gate blocks SOFT_RESET but
+    permits MODEM_RESET.
+    """
+    clock = FakeClock(start_monotonic=1000.0)
+    state = _state(
+        last_action_monotonic_by_kind={
+            ActionKind.SOFT_RESET: 900.0,  # 100s ago, within 300s
+            ActionKind.MODEM_RESET: 0.0,  # 1000s ago, outside 300s
+        }
+    )
+    assert (
+        gate_same_action_backoff(state, ActionKind.SOFT_RESET, clock, _settings())
+        is True
+    )
+    assert (
+        gate_same_action_backoff(state, ActionKind.MODEM_RESET, clock, _settings())
+        is False
+    )
+
+
+def test_gate_same_action_backoff_returns_false_when_kind_not_in_dict() -> None:
+    """B-02: an ActionKind absent from the per-kind dict has no prior history.
+
+    Even if some other kind has a recent timestamp, gate_same_action_backoff
+    only consults THIS kind's entry; missing -> no backoff.
+    """
+    clock = FakeClock(start_monotonic=100.0)
+    state = _state(
+        last_action_monotonic_by_kind={ActionKind.SOFT_RESET: 50.0}
+    )
+    # MODEM_RESET has no entry -- gate must not look at SOFT_RESET's timestamp.
+    assert (
+        gate_same_action_backoff(state, ActionKind.MODEM_RESET, clock, _settings())
+        is False
     )
 
 
@@ -167,7 +217,7 @@ def test_gate_same_action_backoff_at_exact_threshold_blocks() -> None:
 def test_gate_ladder_backoff_only_fires_for_destructive() -> None:
     """Cheap actions bypass the cross-action ladder backoff."""
     clock = FakeClock(start_monotonic=10.0)
-    state = _state(last_action_monotonic=0.0)
+    state = _state(last_action_monotonic_by_kind={ActionKind.MODEM_RESET: 0.0})
     assert (
         gate_ladder_backoff(state, ActionKind.SOFT_RESET, clock, _settings()) is False
     )
@@ -183,7 +233,7 @@ def test_gate_ladder_backoff_only_fires_for_destructive() -> None:
 def test_gate_ladder_backoff_blocks_destructive_within_90s() -> None:
     """last_action at t0; clock at t0+45 -> ladder backoff active."""
     clock = FakeClock(start_monotonic=45.0)
-    state = _state(last_action_monotonic=0.0)
+    state = _state(last_action_monotonic_by_kind={ActionKind.MODEM_RESET: 0.0})
     assert (
         gate_ladder_backoff(state, ActionKind.MODEM_RESET, clock, _settings()) is True
     )
@@ -193,18 +243,57 @@ def test_gate_ladder_backoff_blocks_destructive_within_90s() -> None:
 def test_gate_ladder_backoff_passes_destructive_after_90s() -> None:
     """t0+91 -> ladder backoff cleared."""
     clock = FakeClock(start_monotonic=91.0)
-    state = _state(last_action_monotonic=0.0)
+    state = _state(last_action_monotonic_by_kind={ActionKind.MODEM_RESET: 0.0})
     assert (
         gate_ladder_backoff(state, ActionKind.MODEM_RESET, clock, _settings()) is False
     )
 
 
 def test_gate_ladder_backoff_passes_when_first_action() -> None:
-    """last_action_monotonic=None -> not blocked."""
+    """last_action_monotonic_by_kind={} -> not blocked."""
     clock = FakeClock(start_monotonic=1000.0)
-    state = _state(last_action_monotonic=None)
+    state = _state()  # empty per-kind dict
     assert (
         gate_ladder_backoff(state, ActionKind.MODEM_RESET, clock, _settings()) is False
+    )
+
+
+# --- gate_ladder_backoff: Phase 4 MAX-over-destructive-kinds (B-02) ---
+
+
+def test_gate_ladder_backoff_takes_max_over_destructive_kinds() -> None:
+    """B-02: ladder gate uses MAX(timestamps) over destructive kinds.
+
+    State: SOFT_RESET fired 1000s ago (cheap, ignored), MODEM_RESET fired 50s
+    ago (within 90s ladder window), USB_RESET fired 1000s ago. The MAX over
+    destructive kinds is MODEM_RESET's 50s -- so any destructive action is
+    blocked by the ladder gate even though USB_RESET hasn't fired in 1000s.
+    """
+    clock = FakeClock(start_monotonic=1000.0)
+    state = _state(
+        last_action_monotonic_by_kind={
+            ActionKind.SOFT_RESET: 0.0,  # cheap, NOT in _DESTRUCTIVE_KINDS
+            ActionKind.MODEM_RESET: 950.0,  # 50s ago, within 90s
+            ActionKind.USB_RESET: 0.0,  # 1000s ago
+        }
+    )
+    assert (
+        gate_ladder_backoff(state, ActionKind.USB_RESET, clock, _settings()) is True
+    )
+
+
+def test_gate_ladder_backoff_returns_false_when_no_destructive_history() -> None:
+    """B-02: no destructive timestamps in the dict -> ladder gate doesn't fire.
+
+    Only cheap-kind history present (SOFT_RESET); ladder gate's MAX over
+    destructive kinds is empty -> no backoff for a fresh destructive attempt.
+    """
+    clock = FakeClock(start_monotonic=100.0)
+    state = _state(
+        last_action_monotonic_by_kind={ActionKind.SOFT_RESET: 99.0}
+    )
+    assert (
+        gate_ladder_backoff(state, ActionKind.USB_RESET, clock, _settings()) is False
     )
 
 
