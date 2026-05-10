@@ -43,7 +43,6 @@ from spark_modem.wire.globals import GlobalsState
 from spark_modem.wire.state import ModemState
 from tests.fakes.clock import FakeClock
 
-
 # --- Builders --------------------------------------------------------------
 
 
@@ -229,7 +228,7 @@ def test_driver_reset_eligible_at_3_of_4_hung_with_good_signal() -> None:
 # --- Test 7: 2/4 hung below threshold --------------------------------------
 
 
-def test_driver_reset_NOT_eligible_at_2_of_4_hung() -> None:
+def test_driver_reset_NOT_eligible_at_2_of_4_hung() -> None:  # noqa: N802
     """C-01: 2/4 = 0.5 < 0.75 -> not eligible."""
     diag = _diag(
         [
@@ -246,7 +245,7 @@ def test_driver_reset_NOT_eligible_at_2_of_4_hung() -> None:
 # --- Test 8: denominator is expected, not enumerated -----------------------
 
 
-def test_driver_reset_denominator_is_expected_count_NOT_enumerated() -> None:
+def test_driver_reset_denominator_is_expected_count_NOT_enumerated() -> None:  # noqa: N802
     """C-01 conservative deviation: 3 hung / 4 expected = 0.75 -> eligible.
 
     Only 3 modems are present in the Diag; the 4th is missing (e.g. removed
@@ -264,9 +263,7 @@ def test_driver_reset_denominator_is_expected_count_NOT_enumerated() -> None:
             # 4th modem missing.
         ]
     )
-    eligible = _global_driver_reset_eligible(
-        diag, {}, GlobalsState(), _ctx(expected_modem_count=4)
-    )
+    eligible = _global_driver_reset_eligible(diag, {}, GlobalsState(), _ctx(expected_modem_count=4))
     assert eligible is True
 
 
@@ -296,7 +293,7 @@ def test_driver_reset_denominator_with_zao_active() -> None:
 # --- Test 10: all hung modems below signal floors --------------------------
 
 
-def test_driver_reset_NOT_eligible_when_all_hung_modems_rf_blocked() -> None:
+def test_driver_reset_NOT_eligible_when_all_hung_modems_rf_blocked() -> None:  # noqa: N802
     """FR-24: 4/4 hung but all with weak signal -> no actionable signal.
 
     rsrp=-120 (below -110 floor), rsrq=-20 (below -15 floor), snr=-5 (below

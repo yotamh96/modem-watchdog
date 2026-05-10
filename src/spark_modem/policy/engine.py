@@ -47,7 +47,7 @@ from spark_modem.wire.diag import (
     WhoHost,
     WhoModem,
 )
-from spark_modem.wire.enums import ActionKind
+from spark_modem.wire.enums import ActionKind, IssueCategory, IssueDetail
 from spark_modem.wire.globals import GlobalsState
 from spark_modem.wire.state import ModemState
 
@@ -113,9 +113,7 @@ def run_cycle(
         new_state = transition(prior, snap, ctx)
 
         # Step 2 -- streak update (engine-level; transitions does NOT mutate)
-        new_streak = (
-            (prior.healthy_streak + 1) if new_state.state == "healthy" else 0
-        )
+        new_streak = (prior.healthy_streak + 1) if new_state.state == "healthy" else 0
 
         # Step 3 -- decay check
         decayed_counters: dict[ActionKind, int] = dict(prior.counters)
@@ -283,14 +281,90 @@ def _global_driver_reset_eligible(
     globals_state: GlobalsState,
     ctx: PolicyContext,
 ) -> bool:
-    """RECOVERY_SPEC §6.4 -- Phase 2 placeholder; always False.
+    """RECOVERY_SPEC §6.4 -- Phase 4 real predicate (Plan 04-03).
 
-    Phase 4 wires the real ≥75 % qmi_channel_hung + actionable-signal
-    check end-to-end with the driver_reset action.  Phase 2 returns False
-    so the control flow exists; the replay harness in plan 02-10 still
-    classifies v1 driver_reset traces against this engine.
+    Four gates, evaluated in order; any False short-circuits:
+
+      1. Thermal suppression (C-03 / PITFALLS §17.4): host_issues includes
+         THERMAL_WARN or THERMAL_CRITICAL -> not eligible. Driver_reset
+         doesn't fix thermal throttling; firing it just unbinds 4 modems
+         on a hot box.
+      2. Cooldown (C-05 / RECOVERY_SPEC §6.4): elapsed since last fire <
+         global_driver_reset_backoff_seconds -> not eligible. None
+         last-fire timestamp short-circuits to allow (first-fire path;
+         the comparison must NOT be evaluated against None).
+      3. ≥75% denominator (C-01): hung_count / expected_modem_count >=
+         multi_modem_threshold_fraction. Denominator is the EXPECTED total
+         (Settings.expected_modem_count threaded into PolicyContext by
+         the cycle driver), NOT the enumerated count -- Zao-active and
+         missing modems are counted as 'not-hung' per the user's
+         conservative deviation from the research recommendation.
+      4. Actionable signal (FR-24): at least one hung modem has rsrp >=
+         floor AND rsrq >= floor AND snr >= floor (None readings count as
+         'not above floor' -- conservative; missing-data must not fire a
+         destructive global action).
+
+    PROXY_DIED issues (C-02): the per-modem decision-table row still
+    routes proxy_died -> DRIVER_RESET, but this eligibility predicate
+    gates ALL driver_reset paths on the standard 75% threshold (no
+    per-modem bypass -- user deviation from PITFALLS §1.1).
+
+    Plan 04-04 will land Settings.signal_*_floor_* fields. Until then,
+    this predicate uses ``getattr`` defensive reads against the
+    RECOVERY_SPEC §6.1 verbatim defaults so the test suite is independent
+    of Plan 04-04's merge order. Plan 04-04 will remove the getattr
+    fallback when the Settings fields exist.
     """
-    del diag, prior_states, globals_state, ctx
+    del prior_states  # unused; cycle driver path doesn't depend on prior states
+
+    # Gate 1: thermal suppression (C-03)
+    host_details = {issue.detail for issue in diag.host_issues}
+    if IssueDetail.THERMAL_WARN in host_details or IssueDetail.THERMAL_CRITICAL in host_details:
+        return False
+
+    # Gate 2: cooldown (C-05). None last-fire short-circuits to allow.
+    if globals_state.last_driver_reset_monotonic is not None:
+        elapsed = ctx.clock.monotonic() - globals_state.last_driver_reset_monotonic
+        if elapsed < float(ctx.config.global_driver_reset_backoff_seconds):
+            return False
+
+    # Gate 3: ≥75% denominator (C-01). Denominator is EXPECTED, not enumerated.
+    expected = ctx.expected_modem_count
+    if expected <= 0:
+        return False
+    hung_count = sum(
+        1
+        for snap in diag.per_modem.values()
+        if any(
+            issue.category == IssueCategory.QMI and issue.detail == IssueDetail.QMI_CHANNEL_HUNG
+            for issue in snap.issues
+        )
+    )
+    if (hung_count / expected) < ctx.config.multi_modem_threshold_fraction:
+        return False
+
+    # Gate 4: actionable signal (FR-24). At least one hung modem must clear
+    # all three floors. Plan 04-04 will land the Settings fields; until then
+    # use getattr against RECOVERY_SPEC §6.1 verbatim defaults.
+    rsrp_floor: int = getattr(ctx.config, "signal_rsrp_floor_dbm", -110)
+    rsrq_floor: float = getattr(ctx.config, "signal_rsrq_floor_db", -15.0)
+    snr_floor: float = getattr(ctx.config, "signal_snr_floor_db", 0.0)
+    for snap in diag.per_modem.values():
+        if not any(
+            issue.category == IssueCategory.QMI and issue.detail == IssueDetail.QMI_CHANNEL_HUNG
+            for issue in snap.issues
+        ):
+            continue
+        sig = snap.signal
+        if (
+            sig.rsrp_dbm is not None
+            and sig.rsrp_dbm >= rsrp_floor
+            and sig.rsrq_db is not None
+            and sig.rsrq_db >= rsrq_floor
+            and sig.snr_db is not None
+            and sig.snr_db >= snr_floor
+        ):
+            return True
     return False
 
 
