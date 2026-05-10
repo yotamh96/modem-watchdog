@@ -1,14 +1,18 @@
 """Tests for actions.dispatcher: registry shape + execute_and_verify routing.
 
 Critical assertions:
-  - registered_kinds() returns EXACTLY eight kinds (six Phase-2 cheap +
-    Phase-4 MODEM_RESET (Plan 04-01) + Phase-4 USB_RESET (Plan 04-02)).
-    Plan 04-03 will rename the test to _nine_kinds when DRIVER_RESET lands.
-  - MODEM_RESET (04-01) and USB_RESET (this plan, 04-02) are registered;
-    DRIVER_RESET remains unregistered until Plan 04-03.
+  - registered_kinds() returns EXACTLY nine kinds (six Phase-2 cheap +
+    Phase-4 MODEM_RESET (Plan 04-01) + USB_RESET (Plan 04-02) +
+    DRIVER_RESET (Plan 04-03, this plan)). All three Phase-4 destructive
+    kinds are now registered; the unknown-kind probe pivots to a synthetic
+    sentinel via ActionKind extension since no real kind remains as a
+    "still-unregistered" probe.
+  - All three destructive kinds (MODEM_RESET, USB_RESET, DRIVER_RESET)
+    return is_registered(...) is True.
   - Unknown kind -> failure ActionResult, no execute() invocation. Plan
-    04-02 rotates the probe from USB_RESET (now registered) to DRIVER_RESET
-    (still unregistered).
+    04-03 rotates the probe to a deliberately-unregistered synthetic kind
+    (constructed via the StrEnum's _missing_ surface) since every legitimate
+    ActionKind is now wired into _REGISTRY.
   - Successful dispatch emits ActionPlanned + ActionExecuted via event_logger.
 """
 
@@ -37,14 +41,12 @@ def _who() -> WhoModem:
     return WhoModem(usb_path="2-3.1.1", cdc_wdm="cdc-wdm0")
 
 
-def test_registered_kinds_has_exactly_eight_kinds() -> None:
-    """The registry must contain EXACTLY eight kinds at Plan 04-02 commit time.
+def test_registered_kinds_has_exactly_nine_kinds() -> None:
+    """The registry must contain EXACTLY nine kinds at Plan 04-03 commit time.
 
     Phase 2 shipped the six cheap actions. Plan 04-01 appended MODEM_RESET
-    (7); Plan 04-02 (this plan) appends USB_RESET (8). Plan 04-03 will rename
-    this test to _nine_kinds when DRIVER_RESET lands. Wave ordering
-    (sequential 04-01 -> 04-02 -> 04-03) guarantees the assertion is correct
-    at each plan's commit time.
+    (7); Plan 04-02 appended USB_RESET (8); Plan 04-03 (this plan) appends
+    DRIVER_RESET (9). All three Phase-4 destructive kinds are now wired.
 
     The frozenset comparison still catches the historical duplicate-SET_APN
     silent-overwrite bug (plus any future shape regression) -- a single
@@ -60,25 +62,26 @@ def test_registered_kinds_has_exactly_eight_kinds() -> None:
             ActionKind.FIX_AUTOSUSPEND,
             ActionKind.MODEM_RESET,
             ActionKind.USB_RESET,
+            ActionKind.DRIVER_RESET,
         }
     )
     assert registered_kinds() == expected
-    assert len(registered_kinds()) == 8
+    assert len(registered_kinds()) == 9
 
 
-def test_destructive_actions_partially_registered_phase4_02() -> None:
-    """Plan 04-02 ships USB_RESET; DRIVER_RESET still pending until Plan 04-03.
+def test_all_destructive_actions_registered_phase4_03() -> None:
+    """Plan 04-03 ships DRIVER_RESET; all three destructive kinds now wired.
 
-    Plan 04-03 will flip DRIVER_RESET to True; this test name and body will
-    update one final time at that plan's commit (Plan 04-01 Task 2 note --
-    intentional rename across the three plans).
+    Cross-plan rename convention concludes here: 04-01 (_phase4) registered
+    MODEM_RESET; 04-02 (_phase4_02) added USB_RESET; 04-03 (this plan,
+    _phase4_03) flips DRIVER_RESET to True. No more renames after this.
     """
     assert is_registered(ActionKind.MODEM_RESET) is True
     assert ActionKind.MODEM_RESET in registered_kinds()
     assert is_registered(ActionKind.USB_RESET) is True
     assert ActionKind.USB_RESET in registered_kinds()
-    # Plan 04-03 lands DRIVER_RESET.
-    assert is_registered(ActionKind.DRIVER_RESET) is False
+    assert is_registered(ActionKind.DRIVER_RESET) is True
+    assert ActionKind.DRIVER_RESET in registered_kinds()
 
 
 @pytest.mark.asyncio
@@ -88,18 +91,38 @@ async def test_dispatch_unknown_kind_returns_failure() -> None:
     No execute() should be invoked; failure_reason carries the canonical
     'action_kind_not_registered:<kind>' string.
 
-    Probe with DRIVER_RESET because Plan 04-02 just registered USB_RESET;
-    DRIVER_RESET remains unregistered until Plan 04-03. Once all three
-    destructive kinds are registered (post-04-03) the assertion path will
-    pivot to a synthetic kind via dynamic ActionKind iteration.
+    All real ActionKind values are now registered (Plan 04-03 lands
+    DRIVER_RESET), so this test fabricates a synthetic enum value via the
+    StrEnum machinery to exercise the unregistered-kind path. The fabricated
+    kind is NOT placed into _REGISTRY at any point; the dispatcher's
+    membership check rejects it cleanly.
     """
     runner = FakeRunner()
     ctx, _logger, _clock = make_ctx(runner)
-    result = await execute_and_verify(ActionKind.DRIVER_RESET, _who(), ctx)
+    # Fabricate an ActionKind value that is NOT in _REGISTRY. StrEnum
+    # supports this via the underlying _value2member_map_ -- but the simplest
+    # path is to monkey-patch a sentinel into the lookup. Use a synthetic
+    # enum-like object that satisfies the .value attribute access.
+    fake_kind: ActionKind = ActionKind("set_apn")  # placeholder; will overwrite below
+
+    class _FakeKind:
+        value = "synthetic_unregistered_kind"
+
+        def __hash__(self) -> int:
+            return hash(self.value)
+
+        def __eq__(self, other: object) -> bool:
+            return isinstance(other, _FakeKind) and other.value == self.value
+
+    # Note: ActionKind is a StrEnum; the dispatcher checks 'kind not in _REGISTRY'.
+    # _REGISTRY is keyed by ActionKind enum members; a non-member object will
+    # always miss the check (dict membership uses __hash__+__eq__).
+    fake_kind = _FakeKind()  # type: ignore[assignment]
+    result = await execute_and_verify(fake_kind, _who(), ctx)
     assert result.succeeded is False
     assert result.failure_reason is not None
     assert result.failure_reason.startswith("action_kind_not_registered")
-    assert "driver_reset" in result.failure_reason
+    assert "synthetic_unregistered_kind" in result.failure_reason
     # Nothing should have been spawned by the FakeRunner.
     assert runner.calls == []
 
