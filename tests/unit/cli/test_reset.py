@@ -23,34 +23,59 @@ async def test_reset_unknown_action_returns_2(
         assert valid in err
 
 
-async def test_reset_destructive_action_rejected_in_phase_2(
+async def test_reset_unknown_action_still_rejected(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """`--action=modem_reset` is destructive (Phase 4) → exit 2."""
-    args = Namespace(action="modem_reset", modem="cdc-wdm0", dry_run=False)
+    """Regression: argparse-level unknown action still returns 2.
+
+    This covers the OTHER rejection branch (the ActionKind() ValueError
+    catch), distinct from the is_registered() guard. Plan 04-01 only
+    rewrites the latter; the former must continue to fire on truly-unknown
+    kinds.
+    """
+    args = Namespace(action="quantum_tunnel", modem="cdc-wdm0", dry_run=False)
     rc = await reset_cmd.run(args)
     assert rc == 2
     err = capsys.readouterr().err
-    assert "destructive" in err
-    assert "Phase 4" in err
+    assert "unknown action" in err
 
 
-async def test_reset_usb_reset_rejected_in_phase_2(
+async def test_reset_modem_reset_cli_smoke(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
+    """Plan 04-01: --action=modem_reset is now registered → exit 0 + stub line."""
+    args = Namespace(action="modem_reset", modem="cdc-wdm0", dry_run=False)
+    rc = await reset_cmd.run(args)
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "action=modem_reset" in out
+    assert "modem=cdc-wdm0" in out
+
+
+async def test_reset_usb_reset_still_rejected(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Plan 04-02 lands USB_RESET; until then the new 'is not registered'
+    branch fires on this kind."""
     args = Namespace(action="usb_reset", modem="cdc-wdm0", dry_run=False)
     rc = await reset_cmd.run(args)
     assert rc == 2
-    assert "destructive" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert "is not registered" in err
+    assert "usb_reset" in err
 
 
-async def test_reset_driver_reset_rejected_in_phase_2(
+async def test_reset_driver_reset_still_rejected(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
+    """Plan 04-03 lands DRIVER_RESET; until then the new 'is not registered'
+    branch fires on this kind."""
     args = Namespace(action="driver_reset", modem="cdc-wdm0", dry_run=False)
     rc = await reset_cmd.run(args)
     assert rc == 2
-    assert "destructive" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert "is not registered" in err
+    assert "driver_reset" in err
 
 
 async def test_reset_cheap_action_dispatch_stub_message(

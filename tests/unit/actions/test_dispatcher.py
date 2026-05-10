@@ -1,10 +1,12 @@
 """Tests for actions.dispatcher: registry shape + execute_and_verify routing.
 
 Critical assertions:
-  - registered_kinds() returns EXACTLY the six cheap actions (catches the
-    duplicate-SET_APN bug planted in the planning text).
-  - Destructive actions (MODEM_RESET / USB_RESET / DRIVER_RESET) are NOT
-    registered (Phase 4 lands those).
+  - registered_kinds() returns EXACTLY seven kinds (six Phase-2 cheap +
+    Phase-4 MODEM_RESET as of Plan 04-01). Plan 04-02 will rename the
+    test to _eight_kinds when USB_RESET lands; Plan 04-03 will rename to
+    _nine_kinds when DRIVER_RESET lands.
+  - MODEM_RESET is registered (Plan 04-01); USB_RESET and DRIVER_RESET
+    remain unregistered until Plans 04-02 / 04-03.
   - Unknown kind -> failure ActionResult, no execute() invocation.
   - Successful dispatch emits ActionPlanned + ActionExecuted via event_logger.
 """
@@ -34,13 +36,18 @@ def _who() -> WhoModem:
     return WhoModem(usb_path="2-3.1.1", cdc_wdm="cdc-wdm0")
 
 
-def test_registered_kinds_has_exactly_six_cheap_actions() -> None:
-    """The registry must contain EXACTLY the six cheap-action kinds.
+def test_registered_kinds_has_exactly_seven_kinds() -> None:
+    """The registry must contain EXACTLY seven kinds at Plan 04-01 commit time.
 
-    This catches the deliberate duplicate-SET_APN bug planted in the plan
-    text -- a duplicate would still produce six dict entries by overwrite,
-    but would silently drop one of the other six. The frozenset comparison
-    asserts the precise set.
+    Phase 2 shipped the six cheap actions. Plan 04-01 (this plan) appends
+    MODEM_RESET to bring the total to seven. Plans 04-02 / 04-03 will rename
+    this test to _eight_kinds / _nine_kinds when USB_RESET / DRIVER_RESET
+    land. Wave ordering (sequential 04-01 -> 04-02 -> 04-03) guarantees the
+    assertion is correct at each plan's commit time (PLAN 04-01 Task 2 note).
+
+    The frozenset comparison still catches the historical duplicate-SET_APN
+    silent-overwrite bug (plus any future shape regression) -- a single
+    silent drop would produce an unequal frozenset before the len check fires.
     """
     expected = frozenset(
         {
@@ -50,17 +57,25 @@ def test_registered_kinds_has_exactly_six_cheap_actions() -> None:
             ActionKind.SOFT_RESET,
             ActionKind.SET_OPERATING_MODE,
             ActionKind.FIX_AUTOSUSPEND,
+            ActionKind.MODEM_RESET,
         }
     )
     assert registered_kinds() == expected
-    assert len(registered_kinds()) == 6
+    assert len(registered_kinds()) == 7
 
 
-def test_destructive_actions_not_registered() -> None:
-    """MODEM_RESET / USB_RESET / DRIVER_RESET land in Phase 4 -- not here."""
-    for kind in (ActionKind.MODEM_RESET, ActionKind.USB_RESET, ActionKind.DRIVER_RESET):
-        assert is_registered(kind) is False
-        assert kind not in registered_kinds()
+def test_modem_reset_registered_phase4() -> None:
+    """Plan 04-01 ships MODEM_RESET; USB_RESET / DRIVER_RESET still pending.
+
+    Plans 04-02 / 04-03 each add their own kind to the True-list; this test
+    will need a corresponding update at each of those plans' commit time
+    (Plan 04-01 Task 2 note -- intentional rename across the three plans).
+    """
+    assert is_registered(ActionKind.MODEM_RESET) is True
+    assert ActionKind.MODEM_RESET in registered_kinds()
+    # Plan 04-02 lands USB_RESET; Plan 04-03 lands DRIVER_RESET.
+    assert is_registered(ActionKind.USB_RESET) is False
+    assert is_registered(ActionKind.DRIVER_RESET) is False
 
 
 @pytest.mark.asyncio
@@ -69,14 +84,20 @@ async def test_dispatch_unknown_kind_returns_failure() -> None:
 
     No execute() should be invoked; failure_reason carries the canonical
     'action_kind_not_registered:<kind>' string.
+
+    Probe with USB_RESET because Plan 04-01 just registered MODEM_RESET;
+    USB_RESET remains unregistered until Plan 04-02. Plans 04-02 / 04-03
+    will need to rotate the probe kind as each lands its own destructive
+    action; once all three are registered (post-04-03) the assertion path
+    will pivot to a synthetic kind via dynamic ActionKind iteration.
     """
     runner = FakeRunner()
     ctx, _logger, _clock = make_ctx(runner)
-    result = await execute_and_verify(ActionKind.MODEM_RESET, _who(), ctx)
+    result = await execute_and_verify(ActionKind.USB_RESET, _who(), ctx)
     assert result.succeeded is False
     assert result.failure_reason is not None
     assert result.failure_reason.startswith("action_kind_not_registered")
-    assert "modem_reset" in result.failure_reason
+    assert "usb_reset" in result.failure_reason
     # Nothing should have been spawned by the FakeRunner.
     assert runner.calls == []
 
