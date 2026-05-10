@@ -31,10 +31,36 @@ def _issue(
 def test_every_decision_table_row_resolves() -> None:
     """Every (category, detail) pair has a non-None action or skip:reason."""
     rows = all_table_rows()
-    assert len(rows) >= 18, f"expected >=18 rows; got {len(rows)}"
+    # Plan 04-02 adds (qmi, sierra_bootloader) -> usb_reset, bringing the
+    # row count from >=18 (Plan 04-01) to >=19. Per PATTERNS correction #4:
+    # IssueCategory.ENUMERATION does NOT exist; SIERRA_BOOTLOADER lives
+    # under IssueCategory.QMI because the modem is observed via QMI failures
+    # when stuck in bootloader.
+    assert len(rows) >= 19, f"expected >=19 rows; got {len(rows)}"
     for cat, detail in rows:
         result = lookup_action(cat, detail)
         assert result is not None, f"({cat}, {detail}) returned None"
+
+
+def test_decision_table_has_sierra_bootloader_row() -> None:
+    """Plan 04-02 / A-06: (qmi, sierra_bootloader) -> usb_reset.
+
+    The parent-hub variant (per PITFALLS §1.6) is selected via
+    ``ActionContext.target="parent-hub"``, which in turn is set either by
+    the operator-explicit CLI flag (``spark-modem reset --target=parent-hub``)
+    or by future engine logic that infers the variant from the IssueDetail.
+    The decision-table row itself just routes to USB_RESET; variant
+    selection happens at the action-execution boundary.
+
+    Per PATTERNS correction #4: IssueCategory.ENUMERATION does not exist.
+    SIERRA_BOOTLOADER is observed via QMI failures (the modem stuck in
+    bootloader does not respond to QMI), so the row lives under
+    IssueCategory.QMI -- consistent with the existing decision-table layout.
+    """
+    assert (
+        lookup_action(IssueCategory.QMI, IssueDetail.SIERRA_BOOTLOADER)
+        == ActionKind.USB_RESET
+    )
 
 
 def test_apn_empty_maps_to_set_apn() -> None:
