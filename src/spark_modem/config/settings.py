@@ -88,6 +88,40 @@ class Settings(BaseSettings):
         description="ADR-0006 K consecutive Healthy cycles before counters decay.",
     )
 
+    # --- Phase 4 destructive actions: driver_reset eligibility (RELOAD_DATA) ---
+    #
+    # See .planning/phases/04-destructive-actions-hil/04-CONTEXT.md C-01..C-05.
+    # `expected_modem_count` is RELOAD_DATA (not RELOAD_RESTART): the cycle
+    # driver re-reads it per cycle to populate PolicyContext.expected_modem_count,
+    # so a SIGHUP edit is naturally consumed at the next cycle boundary without
+    # needing a daemon restart.
+    multi_modem_threshold_fraction: float = Field(
+        default=0.75,
+        ge=0.0,
+        le=1.0,
+        json_schema_extra=RELOAD_DATA,
+        description="FR-24 driver_reset eligibility fraction (default 0.75; per C-01).",
+    )
+    expected_modem_count: int = Field(
+        default=4,
+        ge=1,
+        le=99,
+        json_schema_extra=RELOAD_DATA,
+        description="FR-24 driver_reset denominator (total fleet size; per C-01).",
+    )
+    global_driver_reset_backoff_seconds: int = Field(
+        default=3600,
+        ge=1,
+        json_schema_extra=RELOAD_DATA,
+        description="RECOVERY_SPEC §6.4 driver_reset cooldown (default 3600s; per C-05).",
+    )
+    modprobe_timeout_seconds: int = Field(
+        default=30,
+        ge=1,
+        json_schema_extra=RELOAD_DATA,
+        description="A-03 driver_reset modprobe -r/+ qmi_wwan timeout (per RESEARCH A6).",
+    )
+
     # --- Webhook (RELOAD_DATA) ---
 
     webhook_url: str | None = Field(
