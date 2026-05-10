@@ -370,3 +370,45 @@ def test_driver_reset_predicate_is_pure_no_side_effects() -> None:
     a = _global_driver_reset_eligible(diag, prior_states, g, ctx)
     b = _global_driver_reset_eligible(diag, prior_states, g, ctx)
     assert a == b
+
+
+# --- Plan 04-04 Task 1 integration: predicate reads signal floors from Settings
+
+
+def test_engine_reads_signal_floors_from_settings_directly() -> None:
+    """Plan 04-04 B-03: predicate reads signal floors from Settings, not from
+    deleted module-level Final constants in transitions.py.
+
+    Construct a Diag with 4/4 hung modems whose signal sits exactly AT the
+    default floors (-110 / -15.0 / 0.0). Default Settings -> all hung modems
+    clear the floors (>= comparison) -> eligible.
+
+    Then construct Settings with a stricter rsrp floor of -100; the same
+    snapshot now FAILS the floor (rsrp=-110 < -100) -> not eligible. Proves
+    the predicate is reading from `ctx.config.signal_*_floor_*` directly,
+    not from the (now-deleted, post-Plan-04-04 Task-3) module-level Finals.
+    """
+    diag = _diag(
+        [
+            _hung_modem("2-3.1.1", "cdc-wdm0", rsrp=-110, rsrq=-15.0, snr=0.0),
+            _hung_modem("2-3.1.2", "cdc-wdm1", rsrp=-110, rsrq=-15.0, snr=0.0),
+            _hung_modem("2-3.1.3", "cdc-wdm2", rsrp=-110, rsrq=-15.0, snr=0.0),
+            _hung_modem("2-3.1.4", "cdc-wdm3", rsrp=-110, rsrq=-15.0, snr=0.0),
+        ]
+    )
+
+    # Default floors -- all 4 modems are AT the floor (>= passes) -> eligible.
+    eligible_default = _global_driver_reset_eligible(
+        diag, {}, GlobalsState(), _ctx()
+    )
+    assert eligible_default is True
+
+    # Stricter rsrp floor -- now rsrp=-110 < -100, so no modem clears the
+    # actionable-signal gate. Predicate must consult ctx.config to see this.
+    eligible_strict = _global_driver_reset_eligible(
+        diag,
+        {},
+        GlobalsState(),
+        _ctx(config_overrides={"signal_rsrp_floor_dbm": -100}),
+    )
+    assert eligible_strict is False

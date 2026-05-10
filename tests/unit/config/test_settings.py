@@ -206,3 +206,112 @@ def test_phase4_driver_reset_fields_yaml_roundtrip() -> None:
     assert s.expected_modem_count == 2
     assert s.global_driver_reset_backoff_seconds == 1800
     assert s.modprobe_timeout_seconds == 60
+
+
+# --- Phase 4 Plan 04-04 signal-floor fields (RELOAD_DATA, per B-03) ---
+
+
+def test_default_signal_rsrp_floor_dbm_is_neg_110() -> None:
+    """B-03 / RECOVERY_SPEC §6.1 verbatim: -110 dBm RSRP floor."""
+    s = Settings()
+    assert s.signal_rsrp_floor_dbm == -110
+
+
+def test_default_signal_rsrq_floor_db_is_neg_15() -> None:
+    """B-03 / RECOVERY_SPEC §6.1 verbatim: -15.0 dB RSRQ floor."""
+    s = Settings()
+    assert s.signal_rsrq_floor_db == -15.0
+
+
+def test_default_signal_snr_floor_db_is_zero() -> None:
+    """B-03 / RECOVERY_SPEC §6.1 verbatim: 0.0 dB SNR floor."""
+    s = Settings()
+    assert s.signal_snr_floor_db == 0.0
+
+
+def test_signal_thresholds_reload_data() -> None:
+    """B-03: each signal-floor field is RELOAD_DATA-tagged for SIGHUP retune."""
+    data_fields = data_reloadable_fields(Settings)
+    assert "signal_rsrp_floor_dbm" in data_fields
+    assert "signal_rsrq_floor_db" in data_fields
+    assert "signal_snr_floor_db" in data_fields
+    # Spot-check the marker dict shape on one of them.
+    schema_extra = Settings.model_fields["signal_rsrp_floor_dbm"].json_schema_extra
+    assert isinstance(schema_extra, dict)
+    assert schema_extra == RELOAD_DATA
+
+
+# --- Phase 4 Plan 04-04 ladder-ceiling fields (RELOAD_DATA, per B-01) ---
+
+
+def test_default_max_soft_is_3() -> None:
+    """B-01 / RECOVERY_SPEC §4.1: SOFT_RESET ladder ceiling default is 3."""
+    s = Settings()
+    assert s.max_soft == 3
+
+
+def test_default_max_modem_is_2() -> None:
+    """B-01 / RECOVERY_SPEC §4.1: MODEM_RESET ladder ceiling default is 2."""
+    s = Settings()
+    assert s.max_modem == 2
+
+
+def test_default_max_usb_is_1() -> None:
+    """B-01 / RECOVERY_SPEC §4.1: USB_RESET ladder ceiling default is 1."""
+    s = Settings()
+    assert s.max_usb == 1
+
+
+def test_max_soft_must_be_positive() -> None:
+    """ge=1: a 0 ceiling would short-circuit ladder progression at the base."""
+    with pytest.raises(ValidationError):
+        Settings(max_soft=0)
+
+
+def test_max_modem_must_be_positive() -> None:
+    """ge=1: a 0 ceiling would short-circuit ladder progression."""
+    with pytest.raises(ValidationError):
+        Settings(max_modem=0)
+
+
+def test_max_usb_must_be_positive() -> None:
+    """ge=1: a 0 ceiling would short-circuit ladder progression."""
+    with pytest.raises(ValidationError):
+        Settings(max_usb=0)
+
+
+def test_ladder_ceiling_fields_reload_data() -> None:
+    """B-01: each ladder-ceiling field is RELOAD_DATA-tagged."""
+    data_fields = data_reloadable_fields(Settings)
+    assert "max_soft" in data_fields
+    assert "max_modem" in data_fields
+    assert "max_usb" in data_fields
+    schema_extra = Settings.model_fields["max_soft"].json_schema_extra
+    assert isinstance(schema_extra, dict)
+    assert schema_extra == RELOAD_DATA
+
+
+def test_phase4_signal_floor_fields_yaml_roundtrip() -> None:
+    """from_yaml_layer applies the 3 signal-floor fields when present in YAML."""
+    yaml_dict = {
+        "signal_rsrp_floor_dbm": -100,
+        "signal_rsrq_floor_db": -12.0,
+        "signal_snr_floor_db": 3.0,
+    }
+    s = Settings.from_yaml_layer(yaml_dict)
+    assert s.signal_rsrp_floor_dbm == -100
+    assert s.signal_rsrq_floor_db == -12.0
+    assert s.signal_snr_floor_db == 3.0
+
+
+def test_phase4_ladder_ceiling_fields_yaml_roundtrip() -> None:
+    """from_yaml_layer applies the 3 ladder-ceiling fields when present in YAML."""
+    yaml_dict = {
+        "max_soft": 5,
+        "max_modem": 3,
+        "max_usb": 2,
+    }
+    s = Settings.from_yaml_layer(yaml_dict)
+    assert s.max_soft == 5
+    assert s.max_modem == 3
+    assert s.max_usb == 2
