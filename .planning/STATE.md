@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-destructive-actions-hil/02-usb-reset-action
-last_updated: "2026-05-10T11:51:38.612Z"
+stopped_at: Completed 04-destructive-actions-hil/03-driver-reset-and-eligibility
+last_updated: "2026-05-10T12:10:54.621Z"
 last_activity: 2026-05-10
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 33
-  completed_plans: 29
-  percent: 88
+  completed_plans: 30
+  percent: 91
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 04 (destructive-actions-hil) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Ready to execute
 Last activity: 2026-05-10
 
-Progress: [█████████░] 88%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
@@ -82,6 +82,7 @@ Progress: [█████████░] 88%
 | Phase 04-destructive-actions-hil P01-modem-reset | 6min | 2 tasks tasks | 7 files files |
 | Phase 04-destructive-actions-hil P06-hil-infra-scaffold | 7min | 2 tasks tasks | 8 files files |
 | Phase 04 P02 | 10min | 2 tasks tasks | 16 files files |
+| Phase 04 P03 | 11min (683s) | 3 tasks tasks | 9 files files |
 
 ## Accumulated Context
 
@@ -258,6 +259,10 @@ Recent decisions affecting current work:
 - Plan 04-02: --target=parent-hub argparse choices flag (RESEARCH Q9) over --parent-hub boolean -- self-documenting --help, type-checkable, extends to additional variants without script breakage
 - Plan 04-02: ActionContext gains target: Literal['child-port', 'parent-hub']='child-port' field -- read only by usb_reset; backwards-compat preserved (every other action ignores it); engine swaps via dataclasses.replace
 - Plan 04-02: dispatcher contract test rename _seven_kinds -> _eight_kinds + unknown-kind probe rotation USB_RESET -> DRIVER_RESET; cross-plan test convention continues 04-01->04-02->04-03
+- Plan 04-03: driver_reset is two subproc.run calls (modprobe -r qmi_wwan + modprobe qmi_wwan) flowing through subproc.runner -- SP-04 lint clean; PATTERNS correction #1 honored (subproc_run direct module import; ActionContext has no runner field)
+- Plan 04-03: _global_driver_reset_eligible 4-gate predicate replaces Phase 2 placeholder -- thermal -> cooldown -> 75% denominator -> actionable-signal; first-fire (None last_driver_reset_monotonic) handled via explicit is-not-None guard; PROXY_DIED does NOT bypass 75% gate (C-02 user deviation)
+- Plan 04-03: 4 RELOAD_DATA Settings fields land (multi_modem_threshold_fraction=0.75, expected_modem_count=4, global_driver_reset_backoff_seconds=3600, modprobe_timeout_seconds=30); expected_modem_count is RELOAD_DATA not RELOAD_RESTART because cycle driver re-reads it per cycle; signal-floor fields read defensively via getattr until Plan 04-04 lands them in Settings
+- Plan 04-03: dispatcher contract concludes cross-plan rename convention -- _seven_kinds (04-01) -> _eight_kinds (04-02) -> _nine_kinds (04-03); unknown-kind probe rotated to a synthetic non-ActionKind sentinel since every legitimate ActionKind is now registered
 
 ### Pending Todos
 
@@ -275,8 +280,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-10T11:51:38.590Z
-Stopped at: Completed 04-destructive-actions-hil/02-usb-reset-action
+Last session: 2026-05-10T12:10:34.174Z
+Stopped at: Completed 04-destructive-actions-hil/03-driver-reset-and-eligibility
 Resume file: None
 
 **Planned Phase:** 04 (destructive-actions-hil) — 7 plans — 2026-05-10T09:43:20.063Z
