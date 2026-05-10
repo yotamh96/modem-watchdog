@@ -295,14 +295,14 @@ Mapped during ROADMAP creation 2026-05-06. Every v1 REQ-ID maps to exactly one p
 | FR-20 | Phase 2 | Pending |
 | FR-21 | Phase 2 | Pending |
 | FR-22 | Phase 2 | Pending |
-| FR-23 | Phase 4 | Pending |
-| FR-24 | Phase 4 | Pending |
+| FR-23 | Phase 4 | Done (Plan 04-04 signal-gate Settings migration + is_signal_below_gate read from PolicyContext.config; Plan 04-05 ActionSkipped(reason=signal_below_gate); Plan 04-07 HIL test_rf_event_no_destructive scenario validates end-to-end via config-injected forced rf_blocked) |
+| FR-24 | Phase 4 | Done (Plan 04-03 _global_driver_reset_eligible 4-gate predicate: thermal -> cooldown -> 75% denominator -> actionable-signal; Plan 04-07 HIL test_three_modem_hang + test_proxy_died_recovery scenarios validate end-to-end on bench Jetson with replay-harness 30-day >=95% gate) |
 | FR-25 | Phase 2 | Pending |
 | FR-25.1 | Phase 2 | Pending |
 | FR-26 | Phase 2 | Pending |
 | FR-26.1 | Phase 2 | Pending |
 | FR-26.2 | Phase 2 | Pending |
-| FR-27 | Phase 4 | Pending |
+| FR-27 | Phase 4 | Done (Plan 04-01 modem_reset + Plan 04-02 usb_reset + Plan 04-03 driver_reset all idempotent CLI-runnable functions; Plan 04-07 tests/property/test_destructive_idempotency.py 5 hypothesis tests + tests/hil/scenarios/test_destructive_actions.py bench-Jetson end-to-end validate FR-27 / SC#1 idempotency) |
 | FR-28 | Phase 2 | Pending |
 | FR-28.1 | Phase 2 | Pending |
 | FR-30 | Phase 2 | Pending |

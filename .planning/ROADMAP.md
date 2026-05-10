@@ -38,7 +38,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundations & ADRs** ✅ 2026-05-06 - Resolve open questions, land 6 new + 5 amended ADRs, ship `.deb` pipeline, lock wire types (build A "plumbing")
 - [x] **Phase 2: Core Daemon** ✅ 2026-05-06 - Laptop-testable asyncio cycle, policy engine, status/Prom/webhook surface (build B "minimal cycle" + C "status+metrics")
 - [x] **Phase 3: Linux Event Sources & Lifecycle** ✅ 2026-05-08 - udev/rtnetlink/inotify/dmesg, sd_notify, signal handling, PID-lock, per-modem flocks (build D + E)
-- [ ] **Phase 4: Destructive Actions & HIL** - soft/modem/usb/driver_reset wired up, signal-gate end-to-end, qmi-proxy crash recovery, HIL CI lane (build F)
+- [x] **Phase 4: Destructive Actions & HIL** - soft/modem/usb/driver_reset wired up, signal-gate end-to-end, qmi-proxy crash recovery, HIL CI lane (build F) — code complete 2026-05-10; Phase 4 EXIT contingent on first green nightly HIL run on bench Jetson + replay-harness >=95% gate (Plan 04-07 bench-Jetson human-verify auto-approved under --auto)
 - [ ] **Phase 5: Bench & Field Shadow** - MIGRATION Phases 1+2: dry-run alongside v1 on bench Jetson, then on one field box; fault-cycle agreement ≥95%
 - [ ] **Phase 6: Cutover & Fleet Rollout** - MIGRATION Phases 3-5: one box live → 10% canary → 100% rolling; meet M1-M7 success metrics
 - [ ] **Phase 7: v1 Decommission & Archive** - MIGRATION Phase 6: purge v1 packages, archive scripts, update agent docs
@@ -329,9 +329,9 @@ Plans:
 - [x] 04-02-usb-reset-action-PLAN.md — usb_reset action + sysfs/ module + Sierra-bootloader handling + --target CLI flag — completed 2026-05-10
 - [x] 04-03-driver-reset-and-eligibility-PLAN.md — driver_reset action + global eligibility predicate + thermal suppression + cooldown — completed 2026-05-10
 - [x] 04-04-ladder-and-signal-gate-PLAN.md — policy/ladder.py + per-action timestamps + signal-gate Settings migration — completed 2026-05-10
-- [ ] 04-05-action-skipped-event-PLAN.md — ActionSkipped event variant + decision-table/engine integration
+- [x] 04-05-action-skipped-event-PLAN.md — ActionSkipped event variant + decision-table/engine integration — completed 2026-05-10
 - [x] 04-06-hil-infra-scaffold-PLAN.md — HIL CI workflow + fault-injection helpers + LFS trace puller — completed 2026-05-10
-- [ ] 04-07-hil-scenario-suite-PLAN.md — 12 HIL scenarios + Phase-3 piggyback + replay-harness 30-day gate
+- [x] 04-07-hil-scenario-suite-PLAN.md — 12 HIL scenarios + Phase-3 piggyback + replay-harness 30-day gate — completed 2026-05-10 (bench-Jetson human-verify auto-approved; first nightly HIL run is the EXIT bar)
 
 ### Phase 5: Bench & Field Shadow
 

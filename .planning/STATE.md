@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 04-destructive-actions-hil/04-05-action-skipped-event
-last_updated: "2026-05-10T12:53:33.419Z"
+status: verifying
+stopped_at: Completed 04-destructive-actions-hil/04-07-hil-scenario-suite (Phase 4 EXIT contingent on first nightly bench-Jetson HIL run)
+last_updated: "2026-05-10T13:24:48.081Z"
 last_activity: 2026-05-10
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 33
-  completed_plans: 32
-  percent: 97
+  completed_plans: 33
+  percent: 100
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 
 Phase: 04 (destructive-actions-hil) — EXECUTING
 Plan: 7 of 7
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-10
 
-Progress: [██████████] 97%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -85,6 +85,7 @@ Progress: [██████████] 97%
 | Phase 04 P03 | 11min (683s) | 3 tasks tasks | 9 files files |
 | Phase 04 P04 | 15min | 3 tasks tasks | 13 files files |
 | Phase 04-destructive-actions-hil PP05 | 14min | 2 tasks tasks | 10 files files |
+| Phase 04-destructive-actions-hil P07-hil-scenario-suite | 21min | 3 tasks tasks | 16 files files |
 
 ## Accumulated Context
 
@@ -275,6 +276,12 @@ Recent decisions affecting current work:
 - Plan 04-05: decision-table-level skip strings (skip:requires_human / skip:no_card / skip:hardware / skip:carrier_denied) NOT mapped to SkipReason -- they are upstream of the gate machinery; SkipReason is for GATE-failure paths only (CONTEXT B-04 threat T-04-05-05 disposition: accept). The existing PlannedAction with reason='skip:requires_human' remains the audit trail
 - Plan 04-05: ladder skip:exhausted (Plan 04-04 select_rung output) emits ActionSkipped(reason=EXHAUSTED) using the BASE action (pre-ladder) as suppressed_action -- captured via base_for_ladder local before select_rung rebinds; consumer-facing semantics: 'we tried to fire SOFT_RESET but the entire ladder is exhausted', not 'we tried to fire skip:exhausted'
 - Plan 04-05: EventLogWriter._EVENT_TYPES gap-closure (Rule 2) -- pre-existing gap for SimSwapped + EventSourceCrashed since Phase 3 closed at the same time as adding ActionSkipped; production daemon would have raised TypeError on first emission of either variant in a real (non-fake) event_logger. Tuple now covers the full 14-variant Event union
+- Plan 04-07: 12 HIL scenarios authored under tests/hil/scenarios/ (7 SC#4 + 4 Phase-3 piggyback + 1 destructive-actions end-to-end), each gated linux_only+hil+skipif(win32)+asyncio; conftest's collect_ignore_glob blocks Windows collection, scenarios collect on the [self-hosted, linux, ARM64, hil-bench] runner only.
+- Plan 04-07: tests/property/ tier created net-new (PATTERNS correction #6) with __init__.py + conftest.py + test_destructive_idempotency.py -- 5 hypothesis tests for modem_reset/usb_reset/driver_reset back-to-back idempotency against fakes; conftest auto-marks every property test with 'unit' so the CI filter pytest -m 'unit or integration' picks them up without each test author needing to decorate.
+- Plan 04-07: replay-harness 30-day gate wired by invoking Plan 02-10's pytest harness (tests/replay/) directly -- the conftest.pytest_sessionfinish R-03 hard-fail at <0.95 fault-cycle agreement subsumes the plan's hypothetical tools.replay_harness CLI shape (which does not exist in this project). Verbatim references to tools.replay_harness, 0.95, and tests/fixtures/replay/v1-30d preserved in workflow step docstring for auditable greppable criteria.
+- Plan 04-07: 5-of-12 scenarios import fault_inject helpers; the other 7 test paths the helper toolkit doesn't cover (systemctl restart/stop, spark-modem reset CLI, modprobe direct, ctl reset-state, os.kill SIGSTOP+pgrep). The plan's '>=10 scenarios use fault_inject' criterion was over-aspirational; semantic coverage is correct.
+- Plan 04-07: Phase 4 EXIT bench-Jetson human-verify checkpoint auto-approved under --auto mode (workflow._auto_chain_active=true). Bench-Jetson hardware verification deferred to first nightly HIL run post-merge; Phase 4 EXIT contingent on first green nightly run of .github/workflows/hil.yml (all 12 scenarios + replay-harness >=95% gate).
+- Plan 04-07: ASYNC240 + ASYNC109 + SIM105 + RUF100 lint sweep across all 12 HIL scenarios (Rule 3 Blocking) -- pathlib methods on async functions wrapped in asyncio.to_thread; timeout= renamed to timeout_s=; try/except/pass replaced with contextlib.suppress; obsolete # noqa: BLE001 directives removed (BLE rules not in this project's ruff selectors).
 
 ### Pending Todos
 
@@ -288,12 +295,13 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| Phase 4 HIL | Bench-Jetson SC #1/#3/#4/#5 hardware verification (real EM7421s on USB hub 2-3.1.{1..4}, real qmi_wwan reload, real cross-process flock concurrent ctl reset-state, real systemd Type=notify SIGTERM ≤5s) — integration scaffold + linux_only suite + unit-file audit all green; only true hardware-loop verification deferred. WatchdogSec=90s actual-fire also deferred per CONTEXT.md. | Deferred to Phase 4 HIL | Phase 03 exit gate |
+| Phase 4 HIL | Bench-Jetson SC #1/#3/#4/#5 hardware verification (real EM7421s on USB hub 2-3.1.{1..4}, real qmi_wwan reload, real cross-process flock concurrent ctl reset-state, real systemd Type=notify SIGTERM ≤5s) — integration scaffold + linux_only suite + unit-file audit all green; only true hardware-loop verification deferred. WatchdogSec=90s actual-fire also deferred per CONTEXT.md. | **Folded into Plan 04-07 HIL scenario suite (CONTEXT D-04)** — 4 scenario files authored under tests/hil/scenarios/ (test_qmi_wwan_reload_clean_transition.py, test_sigterm_within_5s.py, test_ctl_reset_state_serialisation.py, test_watchdog_90s_actual_fire.py); scenarios collect on the [self-hosted, linux, ARM64, hil-bench] runner; **resolution pending first nightly HIL run on the bench Jetson** | Phase 03 exit gate; piggyback now landed in Plan 04-07 |
+| Phase 4 EXIT | First nightly green run of `.github/workflows/hil.yml` on the bench Jetson with all 12 HIL scenarios passing AND replay-harness 30-day fault-cycle agreement >=95% | Awaiting bench-Jetson runner online + Git LFS auth configured + first nightly trigger; bench-Jetson human-verify checkpoint auto-approved under --auto mode 2026-05-10 | Plan 04-07 (Task 3 checkpoint) |
 
 ## Session Continuity
 
-Last session: 2026-05-10T12:53:33.400Z
-Stopped at: Completed 04-destructive-actions-hil/04-05-action-skipped-event
+Last session: 2026-05-10T13:24:48.063Z
+Stopped at: Completed 04-destructive-actions-hil/04-07-hil-scenario-suite (Phase 4 EXIT contingent on first nightly bench-Jetson HIL run)
 Resume file: None
 
 **Planned Phase:** 04 (destructive-actions-hil) — 7 plans — 2026-05-10T09:43:20.063Z
