@@ -122,6 +122,56 @@ class Settings(BaseSettings):
         description="A-03 driver_reset modprobe -r/+ qmi_wwan timeout (per RESEARCH A6).",
     )
 
+    # --- Phase 4 destructive actions: signal floors (RELOAD_DATA, per B-03) ---
+    #
+    # Migrated from module-level Final constants in policy/transitions.py
+    # (Plan 04-04 Task 3 deletes those). RELOAD_DATA so SIGHUP can retune
+    # per cohort without daemon restart; defaults are RECOVERY_SPEC §6.1
+    # verbatim. is_signal_below_gate(snap, config) reads these.
+
+    signal_rsrp_floor_dbm: int = Field(
+        default=-110,
+        json_schema_extra=RELOAD_DATA,
+        description="RECOVERY_SPEC §6.1 RSRP floor for rf_blocked (per B-03).",
+    )
+    signal_rsrq_floor_db: float = Field(
+        default=-15.0,
+        json_schema_extra=RELOAD_DATA,
+        description="RECOVERY_SPEC §6.1 RSRQ floor for rf_blocked (per B-03).",
+    )
+    signal_snr_floor_db: float = Field(
+        default=0.0,
+        json_schema_extra=RELOAD_DATA,
+        description="RECOVERY_SPEC §6.1 SNR floor for rf_blocked (per B-03).",
+    )
+
+    # --- Phase 4 destructive actions: ladder ceilings (RELOAD_DATA, per B-01) ---
+    #
+    # RECOVERY_SPEC §4.1 escalation ladder: SOFT_RESET (rung 1) -> MODEM_RESET
+    # (rung 2) -> USB_RESET (rung 3) -> "skip:exhausted". Per-action counters
+    # accumulate; at-or-above ceiling promotes to the next rung. Decision
+    # table stays flat ((category, detail) -> base ActionKind); policy/ladder.py
+    # owns rung selection. ge=1 -- a ceiling of 0 would short-circuit progression.
+
+    max_soft: int = Field(
+        default=3,
+        ge=1,
+        json_schema_extra=RELOAD_DATA,
+        description="RECOVERY_SPEC §4.1 ladder ceiling for SOFT_RESET (per B-01).",
+    )
+    max_modem: int = Field(
+        default=2,
+        ge=1,
+        json_schema_extra=RELOAD_DATA,
+        description="RECOVERY_SPEC §4.1 ladder ceiling for MODEM_RESET (per B-01).",
+    )
+    max_usb: int = Field(
+        default=1,
+        ge=1,
+        json_schema_extra=RELOAD_DATA,
+        description="RECOVERY_SPEC §4.1 ladder ceiling for USB_RESET (per B-01).",
+    )
+
     # --- Webhook (RELOAD_DATA) ---
 
     webhook_url: str | None = Field(

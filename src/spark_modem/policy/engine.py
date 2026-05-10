@@ -308,12 +308,6 @@ def _global_driver_reset_eligible(
     routes proxy_died -> DRIVER_RESET, but this eligibility predicate
     gates ALL driver_reset paths on the standard 75% threshold (no
     per-modem bypass -- user deviation from PITFALLS §1.1).
-
-    Plan 04-04 will land Settings.signal_*_floor_* fields. Until then,
-    this predicate uses ``getattr`` defensive reads against the
-    RECOVERY_SPEC §6.1 verbatim defaults so the test suite is independent
-    of Plan 04-04's merge order. Plan 04-04 will remove the getattr
-    fallback when the Settings fields exist.
     """
     del prior_states  # unused; cycle driver path doesn't depend on prior states
 
@@ -344,11 +338,11 @@ def _global_driver_reset_eligible(
         return False
 
     # Gate 4: actionable signal (FR-24). At least one hung modem must clear
-    # all three floors. Plan 04-04 will land the Settings fields; until then
-    # use getattr against RECOVERY_SPEC §6.1 verbatim defaults.
-    rsrp_floor: int = getattr(ctx.config, "signal_rsrp_floor_dbm", -110)
-    rsrq_floor: float = getattr(ctx.config, "signal_rsrq_floor_db", -15.0)
-    snr_floor: float = getattr(ctx.config, "signal_snr_floor_db", 0.0)
+    # all three floors. Plan 04-04 landed the Settings fields; direct read
+    # (RECOVERY_SPEC §6.1 verbatim defaults are now Settings defaults).
+    rsrp_floor = ctx.config.signal_rsrp_floor_dbm
+    rsrq_floor = ctx.config.signal_rsrq_floor_db
+    snr_floor = ctx.config.signal_snr_floor_db
     for snap in diag.per_modem.values():
         if not any(
             issue.category == IssueCategory.QMI and issue.detail == IssueDetail.QMI_CHANNEL_HUNG
