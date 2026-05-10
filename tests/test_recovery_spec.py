@@ -112,7 +112,7 @@ def test_recovery_spec_row(
         clock=FakeClock(),
         config=settings,
         maintenance_active=False,
-        expected_modem_count=1,
+        expected_modem_count=4,
     )
     result = run_cycle(diag, {"2-3.1.1": _make_state()}, GlobalsState(), ctx)
     assert len(result.plans) == 1, f"expected one plan for ({cat}, {detail})"
