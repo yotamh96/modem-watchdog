@@ -46,6 +46,42 @@ jobs:
       - name: Run HIL scenario suite
         run: .venv/bin/pytest -m hil tests/hil/ -ra --tb=short
 
+      - name: Replay-harness 30-day fault-cycle agreement gate
+        # Phase 4 EXIT bar (CONTEXT D-03 / FR-24 SC#4 #8): the v2 policy
+        # engine MUST agree with v1's chosen action on >= 0.95 (95%) of
+        # historical fault cycles drawn from the LFS-pulled v1-30d
+        # snapshot at tests/fixtures/replay/v1-30d/.
+        #
+        # Plan 02-10's pytest-driven harness (tests/replay/conftest.py +
+        # test_v1_agreement.py) is the canonical entry point; its
+        # pytest_sessionfinish hook HARD FAILS the build at agreement
+        # < 0.95 (R-03 gate) and writes artifacts/replay-summary.json
+        # with the per-fixture verdict breakdown for diagnostics.
+        #
+        # The harness auto-discovers every tests/fixtures/replay/<scenario>/<NNN>.json
+        # under the fixture root -- including the v1-30d directory the
+        # `Pull v1-30d replay traces` step populated. No flag plumbing
+        # needed; pointing pytest at tests/replay/ is sufficient.
+        #
+        # The plan's stand-alone tools.replay_harness shape (a CLI with
+        # --fixtures-dir / --min-fault-cycle-agreement flags) does not
+        # exist in this project; the harness was implemented as a pytest
+        # suite in Plan 02-10. The pytest invocation below subsumes the
+        # tools.replay_harness intent (>= 0.95 fault-cycle agreement gate
+        # against tests/fixtures/replay/v1-30d/) without code duplication.
+        run: .venv/bin/pytest tests/replay/ -ra --tb=short
+
+      - name: Upload replay-harness report
+        # Always upload the report (whether the gate passed or failed)
+        # so post-run diagnostics have the per-fixture breakdown.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: replay-harness-report-${{ github.run_id }}
+          path: artifacts/replay-summary.json
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Collect support bundle on failure
         if: failure()
         run: |
