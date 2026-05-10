@@ -7,11 +7,20 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from spark_modem.wire.enums import ActionKind, ActionResult, DaemonStopReason, DowngradeReason
+from spark_modem.wire.enums import (
+    ActionKind,
+    ActionResult,
+    DaemonStopReason,
+    DowngradeReason,
+    IssueCategory,
+    IssueDetail,
+    SkipReason,
+)
 from spark_modem.wire.events import (
     ActionExecuted,
     ActionFailed,
     ActionPlanned,
+    ActionSkipped,
     DaemonStarted,
     DaemonStopped,
     EventAdapter,
@@ -366,3 +375,33 @@ def test_event_adapter_dispatches_sim_swapped() -> None:
     }
     event = EventAdapter.validate_python(raw)
     assert isinstance(event, SimSwapped)
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 Plan 04-05: ActionSkipped variant in the discriminated Event union
+# ---------------------------------------------------------------------------
+
+
+def test_event_tagged_union_includes_action_skipped() -> None:
+    """The Event tagged union routes kind='action_skipped' to ActionSkipped.
+
+    Phase 4 B-04: ActionSkipped is a first-class event variant alongside
+    PlannedAction.suppressed_* flags (back-compat preserved per CONTEXT B-04).
+    The Event union grew from 13 to 14 variants when this test was added.
+    """
+    raw = {
+        "kind": "action_skipped",
+        "ts_iso": "2026-05-10T12:00:00Z",
+        "usb_path": "2-3.1.1",
+        "suppressed_action": "modem_reset",
+        "reason": "signal_below_gate",
+        "cause_category": "registration",
+        "cause_detail": "not_registered_searching",
+        "schema_version": 1,
+    }
+    event = EventAdapter.validate_python(raw)
+    assert isinstance(event, ActionSkipped)
+    assert event.reason == SkipReason.SIGNAL_BELOW_GATE
+    assert event.suppressed_action == ActionKind.MODEM_RESET
+    assert event.cause_category == IssueCategory.REGISTRATION
+    assert event.cause_detail == IssueDetail.NOT_REGISTERED_SEARCHING
