@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Phase 4 context gathered
-last_updated: "2026-05-10T09:43:20.086Z"
-last_activity: 2026-05-08
+status: executing
+stopped_at: Completed 04-destructive-actions-hil/01-modem-reset-action
+last_updated: "2026-05-10T11:20:05.676Z"
+last_activity: 2026-05-10
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 33
-  completed_plans: 26
-  percent: 79
+  completed_plans: 27
+  percent: 82
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-05)
 
 **Core value:** Maximize end-user uplink availability across the four bonded modems by applying minimum-impact recovery actions — and never running a destructive recovery that has zero chance of fixing the observed issue.
-**Current focus:** Phase 03 — linux-event-sources-lifecycle
+**Current focus:** Phase 04 — destructive-actions-hil
 
 ## Current Position
 
-Phase: 4
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-08
+Phase: 04 (destructive-actions-hil) — EXECUTING
+Plan: 2 of 7
+Status: Ready to execute
+Last activity: 2026-05-10
 
-Progress: [██████████] 100%
+Progress: [████████░░] 82%
 
 ## Performance Metrics
 
@@ -79,6 +79,7 @@ Progress: [██████████] 100%
 | Phase 03-linux-event-sources-lifecycle P07 | 9min | 2 tasks | 6 files |
 | Phase 03-linux-event-sources-lifecycle P08 | 4min | 1 tasks | 3 files |
 | Phase 03-linux-event-sources-lifecycle P09 | ~8min | 3 tasks | 4 files (3 integration tests + SUMMARY) |
+| Phase 04-destructive-actions-hil P01-modem-reset | 6min | 2 tasks tasks | 7 files files |
 
 ## Accumulated Context
 
@@ -241,6 +242,9 @@ Recent decisions affecting current work:
 - Plan 03-09: real-logrotate cron exercise in test_logrotate_create.py wraps subprocess.run in asyncio.to_thread (ASYNC221); per-test pytest.mark.skipif on /usr/sbin/logrotate presence so Linux dev hosts without the binary skip cleanly; tests/ tier is SP-04-exempt for direct subprocess.run usage
 - Plan 03-09: Phase 3 EXIT — bench-Jetson SC #1/#3/#4/#5 hardware verification deferred to Phase 4 HIL via approved-with-deferral resume signal (hardware not accessible at Phase 3 exit; integration scaffold + linux_only suite + unit-file audit all green at 1835 pass / 88 skip / 0 fail in 17.94s); WatchdogSec=90s actual-fire under deliberate qmicli wedge already deferred per CONTEXT.md
 - Plan 03-09: Phase 3 status COMPLETE — 9/9 plans shipped; integration tier established as the regression-gate substrate for Phase 4 destructive-action lifecycle tests + Phase 5 shadow-mode no-regression contract
+- Plan 04-01: ActionKind.MODEM_RESET registered as ladder rung 2 destructive action; same dms_set_operating_mode('reset') verb as soft_reset (CONTEXT A-01 policy distinction); deferred-verify shape per A-04; dispatcher registry size 6→7; cli/reset.py guard wording rewritten kind-agnostic 'is not registered; valid: ...'.
+- Plan 04-01: cross-plan test rename convention encoded in test names — _seven_kinds (this plan) → _eight_kinds (04-02) → _nine_kinds (04-03). Wave ordering guarantees correctness at each plan's commit time; greppable across the codebase.
+- Plan 04-01: pivoted test_dispatch_unknown_kind_returns_failure probe MODEM_RESET → USB_RESET (Rule 1 deviation — cascading test missed by planner); Plans 04-02/04-03 will rotate again.
 
 ### Pending Todos
 
@@ -258,9 +262,9 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: --stopped-at
-Stopped at: Phase 4 context gathered
-Resume file: --resume-file
+Last session: 2026-05-10T11:20:05.659Z
+Stopped at: Completed 04-destructive-actions-hil/01-modem-reset-action
+Resume file: None
 
 **Planned Phase:** 04 (destructive-actions-hil) — 7 plans — 2026-05-10T09:43:20.063Z
 **Phase 2 status:** ✅ COMPLETE — all 10 plans shipped, replay harness 100% v1 agreement, 1675-test suite green in 11.82s
