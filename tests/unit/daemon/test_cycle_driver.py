@@ -33,6 +33,8 @@ from spark_modem.subproc.result import CompletedProcess
 from spark_modem.wire.carriers import CarrierTable
 from spark_modem.wire.diag import WhoModem
 from spark_modem.wire.enums import ActionKind
+from spark_modem.wire.enums import IssueCategory, IssueDetail, SkipReason
+from spark_modem.wire.events import ActionSkipped
 from spark_modem.wire.events import StateTransition as StateTransitionEvent
 from spark_modem.wire.globals import GlobalsState
 from spark_modem.wire.state import ModemState
@@ -615,6 +617,139 @@ async def test_run_one_cycle_returns_run_cycle_result(
     assert result.diag.cycle_id == 3
     assert result.cycle_result is not None
     assert result.policy_exception is None
+
+
+# ---------------------------------------------------------------------------
+# Plan 04-05: ActionSkipped events flow through cycle_driver to event_logger
+# ---------------------------------------------------------------------------
+
+
+def _patched_run_cycle_with_skipped(
+    transitions: list[StateTransition],
+    new_states: dict[str, ModemState],
+    skipped: list[ActionSkipped],
+) -> Callable[..., CycleResult]:
+    """Return a stub run_cycle that returns a CycleResult with the given
+    transitions/new_states/skipped list -- exercises the cycle_driver's
+    ActionSkipped flush arm without depending on the real engine wiring."""
+
+    def _stub(
+        diag: object,
+        prior_states: dict[str, ModemState],
+        globals_state: GlobalsState,
+        ctx: object,
+    ) -> CycleResult:
+        del diag, prior_states, ctx
+        return CycleResult(
+            plans=[],
+            transitions=list(transitions),
+            new_states=dict(new_states),
+            new_globals=globals_state,
+            skipped=list(skipped),
+        )
+
+    return _stub
+
+
+async def test_cycle_driver_appends_action_skipped_to_event_logger(
+    tmp_path: Path,
+    metrics: tuple[MetricRegistry, CollectorRegistry],
+    store: StateStore,
+) -> None:
+    """Plan 04-05 / RECOVERY_SPEC §8: cycle_driver flushes CycleResult.skipped
+    to event_logger.append AFTER the atomic state write.
+
+    Use a one-modem inventory + a stubbed run_cycle that returns a CycleResult
+    carrying a single ActionSkipped event; assert events.jsonl contains the
+    line with kind='action_skipped' and the canonical reason string."""
+    inventory_path = _make_one_modem_inventory(tmp_path)
+    runner = FakeRunner()
+    _register_healthy(runner, "cdc-wdm0")
+
+    driver, _clock, event_logger, settings = _make_driver(
+        tmp_path=tmp_path,
+        runner=runner,
+        metrics=metrics[0],
+        store=store,
+        inventory_path=inventory_path,
+    )
+
+    pretend_state = ModemState.model_validate(
+        {
+            "state": "healthy",
+            "present": True,
+            "rf_blocked": False,
+            "recovering_level": None,
+            "_healthy_streak": 0,
+            "counters": {},
+            "last_action_monotonic": None,
+            "last_state_transition_iso": None,
+        },
+    )
+    skipped = [
+        ActionSkipped(
+            ts_iso="2026-05-10T12:00:00Z",
+            usb_path="2-3.1.1",
+            suppressed_action=ActionKind.MODEM_RESET,
+            reason=SkipReason.SIGNAL_BELOW_GATE,
+            cause_category=IssueCategory.QMI,
+            cause_detail=IssueDetail.QMI_CHANNEL_HUNG,
+        ),
+    ]
+
+    try:
+        with patch(
+            "spark_modem.daemon.cycle_driver.policy_engine.run_cycle",
+            new=_patched_run_cycle_with_skipped([], {"2-3.1.1": pretend_state}, skipped),
+        ):
+            await driver.run_one_cycle(cycle_id=0)
+    finally:
+        event_logger.close()
+
+    raw = _read_text(Path(settings.events_log_path))
+    skipped_lines = [
+        json.loads(line)
+        for line in raw.splitlines()
+        if line and json.loads(line).get("kind") == "action_skipped"
+    ]
+    assert len(skipped_lines) == 1
+    s = skipped_lines[0]
+    assert s["reason"] == "signal_below_gate"
+    assert s["suppressed_action"] == "modem_reset"
+    assert s["usb_path"] == "2-3.1.1"
+    assert s["cause_category"] == "qmi"
+    assert s["cause_detail"] == "qmi_channel_hung"
+
+
+async def test_cycle_driver_does_not_emit_action_skipped_when_skipped_list_empty(
+    tmp_path: Path,
+    metrics: tuple[MetricRegistry, CollectorRegistry],
+    store: StateStore,
+) -> None:
+    """Plan 04-05: empty CycleResult.skipped -> no action_skipped lines in
+    events.jsonl. State-transition + other lines still flow through normally."""
+    runner = FakeRunner()
+    for cdc in ("cdc-wdm0", "cdc-wdm1", "cdc-wdm2", "cdc-wdm3"):
+        _register_healthy(runner, cdc)
+
+    driver, _clock, event_logger, settings = _make_driver(
+        tmp_path=tmp_path,
+        runner=runner,
+        metrics=metrics[0],
+        store=store,
+    )
+    try:
+        await driver.run_one_cycle(cycle_id=0)
+    finally:
+        event_logger.close()
+
+    raw = _read_text(Path(settings.events_log_path))
+    lines = [json.loads(line) for line in raw.splitlines() if line]
+    skipped_lines = [line for line in lines if line.get("kind") == "action_skipped"]
+    transition_lines = [line for line in lines if line.get("kind") == "state_transition"]
+    assert skipped_lines == []
+    # All-healthy fixture path still emits unknown -> healthy state transitions.
+    assert len(transition_lines) == 4
 
 
 # Silence unused import warnings.

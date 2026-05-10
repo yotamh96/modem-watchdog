@@ -22,7 +22,8 @@ from spark_modem.config.settings import Settings
 from spark_modem.policy.context import PolicyContext
 from spark_modem.policy.engine import run_cycle
 from spark_modem.wire.diag import Diag, Issue, ModemSnapshot, SignalSnapshot, WhoModem
-from spark_modem.wire.enums import ActionKind, IssueCategory, IssueDetail
+from spark_modem.wire.enums import ActionKind, IssueCategory, IssueDetail, SkipReason
+from spark_modem.wire.events import ActionSkipped
 from spark_modem.wire.globals import GlobalsState
 from spark_modem.wire.state import ModemState
 from tests.fakes.clock import FakeClock
@@ -642,3 +643,271 @@ def test_engine_phase_2_states_load_and_run_cleanly() -> None:
     new_state = result.new_states["2-3.1.1"]
     assert new_state.last_action_monotonic_by_kind[ActionKind.SET_APN] == 999.0
     assert new_state.last_action_monotonic == 999.0
+
+
+# --- Plan 04-05: ActionSkipped event emission on every gate-failure path -----
+
+
+def test_engine_emits_action_skipped_on_signal_gate() -> None:
+    """B-04 / FR-23 SC#2: rf_blocked + destructive issue -> ActionSkipped with
+    reason=SIGNAL_BELOW_GATE. Emitted ALONGSIDE PlannedAction.suppressed_by_signal_gate
+    (back-compat for replay harness).
+    """
+    diag = _diag(
+        [
+            _snap(
+                rsrp_dbm=-115,  # below -110 -> rf_blocked
+                issues=[_issue(IssueCategory.QMI, IssueDetail.QMI_CHANNEL_HUNG)],
+            )
+        ]
+    )
+    result = run_cycle(diag, {"2-3.1.1": _state()}, GlobalsState(), _ctx())
+    assert len(result.skipped) == 1
+    s = result.skipped[0]
+    assert isinstance(s, ActionSkipped)
+    assert s.reason == SkipReason.SIGNAL_BELOW_GATE
+    assert s.suppressed_action == ActionKind.USB_RESET
+    assert s.cause_category == IssueCategory.QMI
+    assert s.cause_detail == IssueDetail.QMI_CHANNEL_HUNG
+    assert s.usb_path == "2-3.1.1"
+
+
+def test_engine_preserves_planned_action_suppressed_flags_alongside_action_skipped() -> None:
+    """CONTEXT B-04 'back-compat horizon': PlannedAction.suppressed_by_signal_gate
+    is STILL set even though ActionSkipped is now emitted. Replay harness from
+    Plan 02-10 reads suppressed_* flags and must not regress.
+    """
+    diag = _diag(
+        [
+            _snap(
+                rsrp_dbm=-115,
+                issues=[_issue(IssueCategory.QMI, IssueDetail.QMI_CHANNEL_HUNG)],
+            )
+        ]
+    )
+    result = run_cycle(diag, {"2-3.1.1": _state()}, GlobalsState(), _ctx())
+    # Both surfaces fire on the same skip:
+    assert len(result.skipped) == 1
+    assert result.skipped[0].reason == SkipReason.SIGNAL_BELOW_GATE
+    assert len(result.plans) == 1
+    assert result.plans[0].suppressed_by_signal_gate is True
+
+
+def test_engine_emits_action_skipped_on_same_action_backoff() -> None:
+    """B-04: same-action backoff fires -> ActionSkipped(reason=SAME_ACTION_BACKOFF)."""
+    state = _state(
+        state="degraded",
+        last_action_monotonic_by_kind={ActionKind.SET_APN: 0.0},
+    )
+    diag = _diag(
+        [_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])]
+    )
+    clock = FakeClock(start_monotonic=100.0)  # within 300s default backoff window
+    result = run_cycle(
+        diag, {"2-3.1.1": state}, GlobalsState(), _ctx(clock=clock)
+    )
+    assert len(result.skipped) == 1
+    s = result.skipped[0]
+    assert s.reason == SkipReason.SAME_ACTION_BACKOFF
+    assert s.suppressed_action == ActionKind.SET_APN
+    # Back-compat: PlannedAction.suppressed_by_backoff still True.
+    assert result.plans[0].suppressed_by_backoff is True
+
+
+def test_engine_emits_action_skipped_on_ladder_backoff() -> None:
+    """B-04: cross-action ladder backoff fires -> ActionSkipped(reason=LADDER_BACKOFF).
+
+    Setup: prior SOFT_RESET timestamp 50s ago, 90s ladder window not yet expired;
+    new cycle wants to fire MODEM_RESET (different destructive kind) -- the
+    ladder gate suppresses it.
+    """
+    state = _state(
+        state="degraded",
+        last_action_monotonic_by_kind={ActionKind.SOFT_RESET: 0.0},
+    )
+    diag = _diag(
+        [
+            _snap(
+                issues=[
+                    _issue(IssueCategory.DATAPATH, IssueDetail.SESSION_DISCONNECTED)
+                ]
+            )
+        ]
+    )
+    clock = FakeClock(start_monotonic=50.0)  # 50s < 90s default ladder window
+    result = run_cycle(
+        diag, {"2-3.1.1": state}, GlobalsState(), _ctx(clock=clock)
+    )
+    assert len(result.skipped) == 1
+    s = result.skipped[0]
+    assert s.reason == SkipReason.LADDER_BACKOFF
+    assert s.suppressed_action == ActionKind.MODEM_RESET
+    assert result.plans[0].suppressed_by_backoff is True
+
+
+def test_engine_emits_action_skipped_on_exhausted_state() -> None:
+    """B-04: state==exhausted + destructive kind -> ActionSkipped(reason=EXHAUSTED).
+
+    The hard-skip exhausted gate fires when ModemState.state == 'exhausted'
+    AND the chosen action is not in the cheap allowlist (set_apn / fix_raw_ip).
+    """
+    state = _state(state="exhausted")
+    diag = _diag(
+        [_snap(issues=[_issue(IssueCategory.QMI, IssueDetail.QMI_CHANNEL_HUNG)])]
+    )
+    result = run_cycle(diag, {"2-3.1.1": state}, GlobalsState(), _ctx())
+    assert len(result.skipped) == 1
+    s = result.skipped[0]
+    assert s.reason == SkipReason.EXHAUSTED
+    assert s.suppressed_action == ActionKind.USB_RESET
+
+
+def test_engine_emits_action_skipped_on_disconnected() -> None:
+    """B-04: state.present=False -> ActionSkipped(reason=DISCONNECTED) for
+    any kind chosen by the decision table."""
+    payload: dict[str, object] = {
+        "state": "degraded",
+        "present": False,  # disconnected gate fires
+        "rf_blocked": False,
+        "recovering_level": None,
+        "_healthy_streak": 0,
+        "counters": {},
+        "last_action_monotonic": None,
+        "last_action_monotonic_by_kind": {},
+        "last_state_transition_iso": None,
+    }
+    state = ModemState.model_validate(payload)
+    diag = _diag(
+        [_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])]
+    )
+    result = run_cycle(diag, {"2-3.1.1": state}, GlobalsState(), _ctx())
+    assert len(result.skipped) == 1
+    s = result.skipped[0]
+    assert s.reason == SkipReason.DISCONNECTED
+    assert s.suppressed_action == ActionKind.SET_APN
+
+
+def test_engine_emits_action_skipped_on_maintenance() -> None:
+    """B-04: maintenance_active + destructive -> ActionSkipped(reason=MAINTENANCE).
+
+    Cheap actions still run during maintenance: ensure NO ActionSkipped for SET_APN.
+    """
+    diag = _diag(
+        [
+            _snap(
+                usb_path="2-3.1.1",
+                issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)],
+            ),
+            _snap(
+                usb_path="2-3.1.2",
+                issues=[
+                    _issue(
+                        IssueCategory.DATAPATH,
+                        IssueDetail.SESSION_DISCONNECTED,
+                        usb_path="2-3.1.2",
+                    )
+                ],
+            ),
+        ]
+    )
+    states = {"2-3.1.1": _state(), "2-3.1.2": _state()}
+    result = run_cycle(
+        diag, states, GlobalsState(), _ctx(maintenance_active=True)
+    )
+    # Only the destructive (modem_reset) modem should produce an ActionSkipped.
+    assert len(result.skipped) == 1
+    s = result.skipped[0]
+    assert s.reason == SkipReason.MAINTENANCE
+    assert s.suppressed_action == ActionKind.MODEM_RESET
+    assert s.usb_path == "2-3.1.2"
+
+
+def test_engine_emits_action_skipped_on_dry_run() -> None:
+    """B-04: dry_run=True (and no other gate) -> ActionSkipped(reason=DRY_RUN)."""
+    diag = _diag(
+        [_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])]
+    )
+    settings = _settings(dry_run=True)
+    result = run_cycle(
+        diag, {"2-3.1.1": _state()}, GlobalsState(), _ctx(settings=settings)
+    )
+    assert len(result.skipped) == 1
+    s = result.skipped[0]
+    assert s.reason == SkipReason.DRY_RUN
+    assert s.suppressed_action == ActionKind.SET_APN
+    # Back-compat: suppressed_by_dry_run flag still True on PlannedAction.
+    assert result.plans[0].suppressed_by_dry_run is True
+
+
+def test_engine_emits_action_skipped_on_ladder_skip_exhausted() -> None:
+    """B-04: ladder.select_rung returns 'skip:exhausted' (Plan 04-04) ->
+    ActionSkipped(reason=EXHAUSTED).
+
+    Setup per RECOVERY_SPEC §4.1: SOFT_RESET counter at max_soft (3),
+    MODEM_RESET counter at max_modem (2), USB_RESET counter at max_usb (1) ->
+    ladder returns skip:exhausted on a registration issue.
+    """
+    state = _state(
+        state="degraded",
+        counters={
+            ActionKind.SOFT_RESET: 3,
+            ActionKind.MODEM_RESET: 2,
+            ActionKind.USB_RESET: 1,
+        },
+    )
+    diag = _diag(
+        [
+            _snap(
+                issues=[
+                    _issue(IssueCategory.REGISTRATION, IssueDetail.NOT_REGISTERED_SEARCHING)
+                ]
+            )
+        ]
+    )
+    result = run_cycle(diag, {"2-3.1.1": state}, GlobalsState(), _ctx())
+    assert len(result.skipped) == 1
+    s = result.skipped[0]
+    assert s.reason == SkipReason.EXHAUSTED
+    # The ladder.select_rung path uses the BASE action (SOFT_RESET for
+    # registration) as the suppressed_action -- this is the rung the engine
+    # would have selected before the ladder said "no further rung available".
+    assert s.suppressed_action == ActionKind.SOFT_RESET
+
+
+def test_engine_skipped_list_empty_when_no_gate_fires() -> None:
+    """B-04: clean cycle with executable action -> CycleResult.skipped == []."""
+    diag = _diag(
+        [_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])]
+    )
+    result = run_cycle(diag, {"2-3.1.1": _state()}, GlobalsState(), _ctx())
+    assert result.skipped == []
+
+
+def test_engine_skipped_list_empty_on_no_issues() -> None:
+    """B-04: no issues -> no plans, no skipped events."""
+    diag = _diag([_snap()])
+    result = run_cycle(diag, {"2-3.1.1": _state()}, GlobalsState(), _ctx())
+    assert result.plans == []
+    assert result.skipped == []
+
+
+def test_engine_skipped_list_empty_on_decision_table_skip() -> None:
+    """B-04: decision-table-level skip strings (skip:requires_human, etc.) are
+    NOT mapped to SkipReason -- they are upstream of the gate machinery.
+
+    A SIM_APP_PIN_REQUIRED issue routes to skip:requires_human (decision table);
+    no ActionSkipped is emitted because no gate fired (no action was selected).
+    """
+    diag = _diag(
+        [
+            _snap(
+                issues=[_issue(IssueCategory.SIM, IssueDetail.SIM_APP_PIN_REQUIRED)]
+            )
+        ]
+    )
+    result = run_cycle(diag, {"2-3.1.1": _state()}, GlobalsState(), _ctx())
+    # The PlannedAction with reason='skip:requires_human' is still emitted
+    # (back-compat); ActionSkipped list is empty.
+    assert len(result.plans) == 1
+    assert result.plans[0].reason == "skip:requires_human"
+    assert result.skipped == []
