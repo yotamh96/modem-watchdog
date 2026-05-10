@@ -6,7 +6,11 @@ import pydantic_settings
 import pytest
 from pydantic import ValidationError
 
-from spark_modem.config.reload_marker import restart_required_fields
+from spark_modem.config.reload_marker import (
+    RELOAD_DATA,
+    data_reloadable_fields,
+    restart_required_fields,
+)
 from spark_modem.config.settings import Settings
 
 
@@ -133,3 +137,72 @@ def test_settings_frozen_immutable() -> None:
     s = Settings()
     with pytest.raises(ValidationError):
         s.backoff_seconds = 999  # type: ignore[misc]
+
+
+# --- Phase 4 Plan 04-03 driver_reset eligibility fields (RELOAD_DATA) ---
+
+
+def test_default_multi_modem_threshold_fraction_is_0_75() -> None:
+    """C-01: 0.75 (3 of 4 modems) is the default driver_reset threshold."""
+    s = Settings()
+    assert s.multi_modem_threshold_fraction == 0.75
+
+
+def test_multi_modem_threshold_fraction_must_be_0_to_1() -> None:
+    """ge=0.0 / le=1.0 -- a fraction outside [0,1] is structurally invalid."""
+    with pytest.raises(ValidationError):
+        Settings(multi_modem_threshold_fraction=1.5)
+
+
+def test_default_expected_modem_count_is_4() -> None:
+    """C-01: total fleet size for the conservative denominator."""
+    s = Settings()
+    assert s.expected_modem_count == 4
+
+
+def test_expected_modem_count_must_be_positive() -> None:
+    """ge=1 -- 0 modems is structurally invalid (denominator would be zero)."""
+    with pytest.raises(ValidationError):
+        Settings(expected_modem_count=0)
+
+
+def test_default_global_driver_reset_backoff_seconds_is_3600() -> None:
+    """C-05 / RECOVERY_SPEC §6.4 verbatim: 3600s cooldown between fires."""
+    s = Settings()
+    assert s.global_driver_reset_backoff_seconds == 3600
+
+
+def test_default_modprobe_timeout_seconds_is_30() -> None:
+    """A-03 / RESEARCH A6: per-call modprobe timeout default."""
+    s = Settings()
+    assert s.modprobe_timeout_seconds == 30
+
+
+def test_phase4_driver_reset_fields_are_reload_data() -> None:
+    """All four new fields tagged RELOAD_DATA so SIGHUP can re-tune mid-flight."""
+    data_fields = data_reloadable_fields(Settings)
+    assert "multi_modem_threshold_fraction" in data_fields
+    assert "expected_modem_count" in data_fields
+    assert "global_driver_reset_backoff_seconds" in data_fields
+    assert "modprobe_timeout_seconds" in data_fields
+    # Spot-check the marker dict shape.
+    schema_extra = Settings.model_fields[
+        "multi_modem_threshold_fraction"
+    ].json_schema_extra
+    assert isinstance(schema_extra, dict)
+    assert schema_extra == RELOAD_DATA
+
+
+def test_phase4_driver_reset_fields_yaml_roundtrip() -> None:
+    """from_yaml_layer applies the four fields when present in the YAML dict."""
+    yaml_dict = {
+        "multi_modem_threshold_fraction": 0.5,
+        "expected_modem_count": 2,
+        "global_driver_reset_backoff_seconds": 1800,
+        "modprobe_timeout_seconds": 60,
+    }
+    s = Settings.from_yaml_layer(yaml_dict)
+    assert s.multi_modem_threshold_fraction == 0.5
+    assert s.expected_modem_count == 2
+    assert s.global_driver_reset_backoff_seconds == 1800
+    assert s.modprobe_timeout_seconds == 60
