@@ -1,0 +1,62 @@
+name: HIL
+
+# Hardware-in-the-loop: nightly run on the bench Jetson tethered runner.
+# Per Phase 4 CONTEXT D-01: self-hosted aarch64 + 4 EM7421s on USB hub
+# 2-3.1.{1..4}. Serial concurrency (single bench Jetson; never parallel).
+# 90 min wall budget per nightly run.
+#
+# IMPORTANT: triggers are intentionally limited to schedule + workflow_dispatch
+# only -- never pull_request_target (would expose CAP_SYS_MODULE on the bench
+# Jetson to fork PR authors; T-04-06-01).
+
+on:
+  schedule:
+    - cron: "0 4 * * *"   # 04:00 UTC nightly
+  workflow_dispatch:
+
+concurrency:
+  group: hil-bench
+  cancel-in-progress: false   # serial; current run completes before next
+
+jobs:
+  hil:
+    name: HIL scenario suite (bench Jetson)
+    runs-on: [self-hosted, linux, ARM64, hil-bench]
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false   # explicit pull via tools/pull_replay_traces below
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Set up Python 3.12 + venv
+        run: |
+          uv python install 3.12
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/bin/python -e ".[dev]"
+          uv pip install --python .venv/bin/python --no-deps -r packaging/requirements.lock
+
+      - name: Pull v1-30d replay traces (Git LFS)
+        run: .venv/bin/python -m tools.pull_replay_traces
+
+      - name: Run HIL scenario suite
+        run: .venv/bin/pytest -m hil tests/hil/ -ra --tb=short
+
+      - name: Collect support bundle on failure
+        if: failure()
+        run: |
+          sudo /opt/spark-modem-watchdog/python/bin/spark-modem ctl support-bundle \
+            --output /tmp/spark-modem-support-bundle.tar.gz || true
+
+      - name: Upload support bundle artefact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hil-support-bundle-${{ github.run_id }}
+          path: /tmp/spark-modem-support-bundle.tar.gz
+          if-no-files-found: warn
+          retention-days: 14
