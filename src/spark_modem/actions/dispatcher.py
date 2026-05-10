@@ -20,6 +20,7 @@ from collections.abc import Awaitable, Callable
 from spark_modem.actions import (
     fix_autosuspend,
     fix_raw_ip,
+    modem_reset,
     set_apn,
     set_operating_mode,
     sim_power_on,
@@ -43,6 +44,7 @@ _REGISTRY: dict[ActionKind, tuple[ExecuteFn, VerifyFn]] = {
     ActionKind.SOFT_RESET: (soft_reset.execute, soft_reset.verify),
     ActionKind.SET_OPERATING_MODE: (set_operating_mode.execute, set_operating_mode.verify),
     ActionKind.FIX_AUTOSUSPEND: (fix_autosuspend.execute, fix_autosuspend.verify),
+    ActionKind.MODEM_RESET: (modem_reset.execute, modem_reset.verify),
 }
 
 

@@ -47,9 +47,7 @@ async def test_modem_reset_invokes_dms_set_operating_mode_reset() -> None:
     runner.register(_argv(), ok(_argv()))
     ctx, _logger, _clock = make_ctx(runner)
     result = await modem_reset.execute(_who(), ctx)
-    assert any(
-        "--dms-set-operating-mode=reset" in arg for call in runner.calls for arg in call
-    )
+    assert any("--dms-set-operating-mode=reset" in arg for call in runner.calls for arg in call)
     assert result.kind == ActionKind.MODEM_RESET
     assert result.succeeded is True
     assert result.failure_reason is None
