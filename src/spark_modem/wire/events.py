@@ -16,6 +16,9 @@ from spark_modem.wire.enums import (
     ActionResult,
     DaemonStopReason,
     DowngradeReason,
+    IssueCategory,
+    IssueDetail,
+    SkipReason,
 )
 from spark_modem.wire.versioning import CURRENT_SCHEMA_VERSION
 
@@ -58,6 +61,36 @@ class ActionFailed(_EventBase):
     usb_path: str
     action: ActionKind
     failure_reason: str
+
+
+class ActionSkipped(_EventBase):
+    """A planned action was suppressed by a gate (Phase 4 B-04 / FR-23).
+
+    Emitted alongside the existing PlannedAction.suppressed_* flags for
+    backwards compat with Plan 02-10's replay harness. The `reason` field
+    maps 1:1 to gate-failure paths in policy/engine.py:
+
+      - signal_below_gate    : gate_signal fired (rf_blocked + destructive)
+      - same_action_backoff  : gate_same_action_backoff fired (FR-25)
+      - ladder_backoff       : gate_ladder_backoff fired (FR-25.1)
+      - exhausted            : gate_exhausted fired OR ladder.select_rung
+                               returned 'skip:exhausted' (RECOVERY_SPEC §4.1)
+      - disconnected         : gate_disconnected fired (state.present=False)
+      - maintenance          : gate_maintenance fired on a destructive action
+      - dry_run              : ctx.config.dry_run=True (FR-28)
+
+    Decision-table-level skip strings (skip:requires_human / skip:no_card
+    / skip:hardware / skip:carrier_denied) are NOT mapped to SkipReason --
+    they are upstream of the gate machinery; the existing PlannedAction
+    with reason='skip:requires_human' remains the audit trail.
+    """
+
+    kind: Literal["action_skipped"] = "action_skipped"
+    usb_path: str
+    suppressed_action: ActionKind
+    reason: SkipReason
+    cause_category: IssueCategory
+    cause_detail: IssueDetail
 
 
 class StateTransition(_EventBase):
@@ -199,6 +232,7 @@ Event = Annotated[
     ActionPlanned
     | ActionExecuted
     | ActionFailed
+    | ActionSkipped
     | StateTransition
     | DaemonStarted
     | DaemonStopped

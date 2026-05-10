@@ -24,7 +24,6 @@ from spark_modem.wire.enums import (
 )
 from spark_modem.wire.events import ActionSkipped, EventAdapter
 
-
 # ---------------------------------------------------------------------------
 # SkipReason closed StrEnum (W-04)
 # ---------------------------------------------------------------------------

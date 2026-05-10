@@ -138,6 +138,7 @@ class EventKind(StrEnum):
     ACTION_PLANNED = "action_planned"
     ACTION_EXECUTED = "action_executed"
     ACTION_FAILED = "action_failed"
+    ACTION_SKIPPED = "action_skipped"  # Phase 4 B-04 / FR-23
     STATE_TRANSITION = "state_transition"
     DAEMON_STARTED = "daemon_started"
     DAEMON_STOPPED = "daemon_stopped"
@@ -145,6 +146,28 @@ class EventKind(StrEnum):
     USB_PATH_MISMATCH = "usb_path_mismatch"
     MAINTENANCE_WINDOW_STARTED = "maintenance_window_started"
     MAINTENANCE_WINDOW_ENDED = "maintenance_window_ended"
+
+
+class SkipReason(StrEnum):
+    """ActionSkipped event reason field (Phase 4 B-04 / FR-23).
+
+    Closed-enum discipline (W-04): adding a new value is a deliberate
+    schema extension, never a runtime string. Engine maps gate-failure
+    paths to these values 1:1 -- see policy/engine.py for the mapping.
+
+    Coexistence with PlannedAction.suppressed_* flags: Phase 4 emits BOTH
+    the ActionSkipped event AND the legacy boolean flags on PlannedAction
+    so the Plan 02-10 replay harness keeps reading suppressed_* without
+    modification (CONTEXT B-04 'back-compat horizon' decision).
+    """
+
+    SIGNAL_BELOW_GATE = "signal_below_gate"
+    LADDER_BACKOFF = "ladder_backoff"
+    SAME_ACTION_BACKOFF = "same_action_backoff"
+    EXHAUSTED = "exhausted"
+    DISCONNECTED = "disconnected"
+    MAINTENANCE = "maintenance"
+    DRY_RUN = "dry_run"
 
 
 class WebhookEventKind(StrEnum):
