@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-destructive-actions-hil/01-modem-reset-action
-last_updated: "2026-05-10T11:20:05.676Z"
+stopped_at: Completed 04-destructive-actions-hil/06-hil-infra-scaffold
+last_updated: "2026-05-10T11:33:46.835Z"
 last_activity: 2026-05-10
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 33
-  completed_plans: 27
-  percent: 82
+  completed_plans: 28
+  percent: 85
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 04 (destructive-actions-hil) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-05-10
 
-Progress: [████████░░] 82%
+Progress: [█████████░] 85%
 
 ## Performance Metrics
 
@@ -80,6 +80,7 @@ Progress: [████████░░] 82%
 | Phase 03-linux-event-sources-lifecycle P08 | 4min | 1 tasks | 3 files |
 | Phase 03-linux-event-sources-lifecycle P09 | ~8min | 3 tasks | 4 files (3 integration tests + SUMMARY) |
 | Phase 04-destructive-actions-hil P01-modem-reset | 6min | 2 tasks tasks | 7 files files |
+| Phase 04-destructive-actions-hil P06-hil-infra-scaffold | 7min | 2 tasks tasks | 8 files files |
 
 ## Accumulated Context
 
@@ -245,6 +246,12 @@ Recent decisions affecting current work:
 - Plan 04-01: ActionKind.MODEM_RESET registered as ladder rung 2 destructive action; same dms_set_operating_mode('reset') verb as soft_reset (CONTEXT A-01 policy distinction); deferred-verify shape per A-04; dispatcher registry size 6→7; cli/reset.py guard wording rewritten kind-agnostic 'is not registered; valid: ...'.
 - Plan 04-01: cross-plan test rename convention encoded in test names — _seven_kinds (this plan) → _eight_kinds (04-02) → _nine_kinds (04-03). Wave ordering guarantees correctness at each plan's commit time; greppable across the codebase.
 - Plan 04-01: pivoted test_dispatch_unknown_kind_returns_failure probe MODEM_RESET → USB_RESET (Rule 1 deviation — cascading test missed by planner); Plans 04-02/04-03 will rotate again.
+- Plan 04-06: HIL workflow uses [self-hosted, linux, ARM64, hil-bench] label specialisation; ci.yml's [self-hosted, linux, ARM64] is the analog. Bench Jetson is the only physical runner that picks up HIL jobs. Serial concurrency via group: hil-bench / cancel-in-progress: false; never two simultaneous fault-injection sessions.
+- Plan 04-06: trigger discipline against T-04-06-01 — hil.yml uses ONLY schedule (cron 0 4 * * *) + workflow_dispatch; explicitly NOT pull_request_target (would expose CAP_SYS_MODULE on bench Jetson to fork PR authors).
+- Plan 04-06: 7 module-level async fault-injection helpers (sim_power_off/on, qmi_proxy_kill, kmsg, offline/online, thermal_critical) — software-only per CONTEXT D-02 (NO real RF detuning hardware). tests/ tier is SP-04-exempt; direct subprocess.run is the canonical pattern for fault injection.
+- Plan 04-06: ASYNC240 fix in fault_inject.py:inject_kmsg — _KMSG.exists() and _KMSG.write_text() wrapped in asyncio.to_thread (pathlib methods on async functions are blocking I/O; ruff ASYNC240 enforces this). Plan 04-07 scenarios will follow the same pattern.
+- Plan 04-06: v1-30d trace directory ships .gitkeep + .gitattributes (*.json + *.jsonl LFS) + README today; actual JSON shards land via git lfs track + commit when first quarterly refresh produces real fixtures. README's redaction contract is verbatim sha256[:8] hash (deterministic per identity) — same shape as Plan 02-09's ctl support-bundle.
+- Plan 04-06: pyproject.toml NOT modified — hil pytest marker already registered at line 78 (Plan 03-01 era). PATTERNS correction #3 honored.
 
 ### Pending Todos
 
@@ -262,8 +269,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-10T11:20:05.659Z
-Stopped at: Completed 04-destructive-actions-hil/01-modem-reset-action
+Last session: 2026-05-10T11:33:46.820Z
+Stopped at: Completed 04-destructive-actions-hil/06-hil-infra-scaffold
 Resume file: None
 
 **Planned Phase:** 04 (destructive-actions-hil) — 7 plans — 2026-05-10T09:43:20.063Z
