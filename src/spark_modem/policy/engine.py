@@ -37,6 +37,7 @@ from spark_modem.policy.gates import (
     gate_same_action_backoff,
     gate_signal,
 )
+from spark_modem.policy.ladder import select_rung
 from spark_modem.policy.result import CycleResult, StateTransition
 from spark_modem.policy.transitions import transition
 from spark_modem.wire.diag import (
@@ -129,6 +130,19 @@ def run_cycle(
         if issue is not None:
             action_or_skip = lookup_action(issue.category, issue.detail)
 
+        # Step 5.5 -- ladder rung selection (Plan 04-04 B-01).
+        # Decision table is flat; ladder.select_rung() picks the actual rung
+        # for ladder-eligible base ActionKinds (SOFT/MODEM/USB_RESET) based
+        # on per-kind counters vs. config ceilings. Non-ladder kinds pass
+        # through unchanged. Returns ActionKind | "skip:exhausted" -- both
+        # shapes are accepted by the Step-6 isinstance dispatch below.
+        if isinstance(action_or_skip, ActionKind):
+            action_or_skip = select_rung(
+                base=action_or_skip,
+                counters=decayed_counters,
+                config=ctx.config,
+            )
+
         # Step 6 -- gates and PlannedAction
         counter_bump: ActionKind | None = None
         if isinstance(action_or_skip, ActionKind):
@@ -142,7 +156,8 @@ def run_cycle(
             if would_execute:
                 counter_bump = action_or_skip
         elif isinstance(action_or_skip, str) and action_or_skip.startswith("skip:"):
-            # Decision-table-level skip (e.g. skip:requires_human).
+            # Decision-table-level skip (e.g. skip:requires_human) OR
+            # ladder-level skip (skip:exhausted from select_rung).
             # We use a nominal ActionKind in PlannedAction.kind because the
             # field is non-nullable; the canonical truth is the `reason`.
             plans.append(
@@ -156,15 +171,27 @@ def run_cycle(
                 )
             )
 
-        # Step 7 -- counter bump (only if action will actually execute)
+        # Step 7 -- counter bump + per-kind timestamp bump (only if action
+        # will actually execute). Per RECOVERY_SPEC §8 / CLAUDE.md invariant 8:
+        # ONE atomic model_copy writes streak + counters + BOTH timestamp
+        # fields together. The legacy last_action_monotonic is bumped even
+        # though no gate reads it -- back-compat contract for Phase 2 state
+        # files (a future engineer must NOT delete this bump as dead code).
         new_counters: dict[ActionKind, int] = dict(decayed_counters)
+        new_ts_by_kind: dict[ActionKind, float] = dict(prior.last_action_monotonic_by_kind)
+        new_last_action_monotonic: float | None = prior.last_action_monotonic
         if counter_bump is not None:
             new_counters[counter_bump] = new_counters.get(counter_bump, 0) + 1
+            now = ctx.clock.monotonic()
+            new_ts_by_kind[counter_bump] = now
+            new_last_action_monotonic = now
 
         new_state_with_counters = new_state.model_copy(
             update={
                 "healthy_streak": new_streak,
                 "counters": new_counters,
+                "last_action_monotonic": new_last_action_monotonic,
+                "last_action_monotonic_by_kind": new_ts_by_kind,
             }
         )
         new_states[usb_path] = new_state_with_counters
@@ -388,6 +415,7 @@ def _fresh_initial_state() -> ModemState:
             "_healthy_streak": 0,
             "counters": {},
             "last_action_monotonic": None,
+            "last_action_monotonic_by_kind": {},
             "last_state_transition_iso": None,
         }
     )

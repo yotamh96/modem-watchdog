@@ -13,33 +13,30 @@ copy that goes into CycleResult.new_states (RECOVERY_SPEC §8).
 
 from __future__ import annotations
 
-from typing import Final
-
+from spark_modem.config.settings import Settings
 from spark_modem.policy.context import PolicyContext
 from spark_modem.wire.diag import ModemSnapshot
 from spark_modem.wire.state import ModemState
 
-# RECOVERY_SPEC §6.1 signal-quality thresholds (Phase 4 may move these
-# into Settings; Phase 2 ships them as policy-package constants).
-_RSRP_FLOOR_DBM: Final[int] = -110
-_RSRQ_FLOOR_DB: Final[float] = -15.0
-_SNR_FLOOR_DB: Final[float] = 0.0
 
-
-def is_signal_below_gate(snap: ModemSnapshot) -> bool:
-    """RECOVERY_SPEC §6.1: rsrp < -110 OR rsrq < -15 OR snr < 0.
+def is_signal_below_gate(snap: ModemSnapshot, config: Settings) -> bool:
+    """RECOVERY_SPEC §6.1: rsrp < floor OR rsrq < floor OR snr < floor.
 
     rf_blocked is True when the signal is measurably below threshold.
     Missing readings (None) -> return False (not blocked; absence of data
     is not the same as "below threshold" -- the absence-of-data case is
     handled by the observer / Zao gate upstream, not here).
+
+    Phase 4 (Plan 04-04 B-03): floors read from Settings (RELOAD_DATA
+    tagged), not module-level Final constants. SIGHUP retunes per cohort.
+    Defaults match RECOVERY_SPEC §6.1 verbatim (-110 dBm / -15 dB / 0 dB).
     """
     sig = snap.signal
-    if sig.rsrp_dbm is not None and sig.rsrp_dbm < _RSRP_FLOOR_DBM:
+    if sig.rsrp_dbm is not None and sig.rsrp_dbm < config.signal_rsrp_floor_dbm:
         return True
-    if sig.rsrq_db is not None and sig.rsrq_db < _RSRQ_FLOOR_DB:
+    if sig.rsrq_db is not None and sig.rsrq_db < config.signal_rsrq_floor_db:
         return True
-    return sig.snr_db is not None and sig.snr_db < _SNR_FLOOR_DB
+    return sig.snr_db is not None and sig.snr_db < config.signal_snr_floor_db
 
 
 def transition(  # noqa: PLR0911 -- one return per state-machine arm; intentional
@@ -60,9 +57,7 @@ def transition(  # noqa: PLR0911 -- one return per state-machine arm; intentiona
     paragraph) happens at action-selection time inside engine.run_cycle,
     not here.
     """
-    del ctx  # reserved for future ladder_exhausted_for(snap) lookup
-
-    rf_blocked = is_signal_below_gate(snap)
+    rf_blocked = is_signal_below_gate(snap, ctx.config)
     present = True  # Phase 2: assume present (Phase 3: udev-driven)
 
     # If no issues AND signal not measurably below threshold -> healthy.

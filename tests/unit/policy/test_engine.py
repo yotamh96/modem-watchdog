@@ -546,8 +546,14 @@ def test_engine_ladder_yields_skip_exhausted_when_all_rungs_full() -> None:
     assert len(result.plans) == 1
     plan = result.plans[0]
     assert plan.reason == "skip:exhausted"
-    # Counter should NOT bump on a skip:exhausted plan.
-    assert ActionKind.MODEM_RESET not in result.new_states["2-3.1.1"].counters
+    # Counters should NOT bump on a skip:exhausted plan -- prior counters
+    # carry forward unchanged (no rung-N+1 increment).
+    new_counters = result.new_states["2-3.1.1"].counters
+    assert new_counters[ActionKind.SOFT_RESET] == 3
+    assert new_counters[ActionKind.MODEM_RESET] == 2
+    assert new_counters[ActionKind.USB_RESET] == 1
+    # Per-kind timestamp dict also untouched.
+    assert result.new_states["2-3.1.1"].last_action_monotonic_by_kind == {}
 
 
 def test_engine_atomically_bumps_legacy_and_per_kind_timestamps() -> None:

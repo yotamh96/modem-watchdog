@@ -97,9 +97,7 @@ def select_top_priority_issue(issues: list[Issue]) -> Issue | None:
     return None
 
 
-def lookup_action(
-    category: IssueCategory, detail: IssueDetail
-) -> ActionKind | str | None:
+def lookup_action(category: IssueCategory, detail: IssueDetail) -> ActionKind | str | None:
     """Return ActionKind, skip-reason string, or None for unrecognised pairs.
 
     Unrecognised pairs (e.g. a CONFIG category against a QMI_TIMEOUT detail)
