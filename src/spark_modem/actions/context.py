@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Protocol
+from typing import Literal, Protocol
 
 from spark_modem.config.settings import Settings
 from spark_modem.qmi.wrapper import QmiWrapper
@@ -57,6 +57,11 @@ class ActionContext:
       sysfs_root: filesystem root for fix_autosuspend's power/control
         write. Defaults to ``/sys`` (production); tests override with
         ``tmp_path`` so no /sys traffic happens during unit tests.
+      target: usb_reset variant selector (Plan 04-02). ``"child-port"``
+        (default) unbinds/rebinds the modem's leaf bus-port; ``"parent-hub"``
+        unbinds/rebinds the parent USB hub to re-fire the Sierra EM7421
+        boot transition for IssueDetail.SIERRA_BOOTLOADER (PITFALLS §1.6).
+        Read ONLY by ``actions/usb_reset.py``; every other action ignores it.
     """
 
     qmi: QmiWrapper
@@ -65,3 +70,4 @@ class ActionContext:
     carrier_table: CarrierTable
     event_logger: EventLogWriterProto
     sysfs_root: Path = field(default_factory=lambda: Path("/sys"))
+    target: Literal["child-port", "parent-hub"] = "child-port"

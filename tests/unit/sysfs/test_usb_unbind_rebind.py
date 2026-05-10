@@ -17,7 +17,6 @@ introduced together in this plan.
 
 from __future__ import annotations
 
-import asyncio
 import errno
 import sys
 from pathlib import Path
@@ -166,20 +165,41 @@ async def test_unbind_rebind_raises_oserror_on_unbind_failure(tmp_path: Path) ->
 
 @pytest.mark.asyncio
 async def test_unbind_rebind_raises_oserror_on_bind_failure(tmp_path: Path) -> None:
-    """Pre-create unbind only -> bind write fails -> OSError propagates."""
+    """Bind write fails -> OSError propagates (simulating kernel EBUSY).
+
+    On a real /sys, the bind / unbind files are kernel-special; writing
+    to them returns EBUSY / ENODEV / EACCES depending on state. tmp_path
+    cannot replicate that semantic via a missing file (Path.write_text
+    creates the file on demand for regular files), so we monkey-patch
+    ``Path.write_text`` to raise OSError(EBUSY) on the bind path only.
+    The unbind path's write succeeds; the bind path's write trips.
+    """
     drivers_usb = tmp_path / "bus" / "usb" / "drivers" / "usb"
     drivers_usb.mkdir(parents=True, exist_ok=True)
     (drivers_usb / "unbind").write_text("", encoding="ascii")
-    # Note: bind file deliberately NOT created.
+    (drivers_usb / "bind").write_text("", encoding="ascii")
 
-    with pytest.raises(OSError) as exc_info:
+    real_write_text = Path.write_text
+
+    def selective_write_text(self: Path, *args: Any, **kwargs: Any) -> int:
+        if self.name == "bind":
+            raise OSError(errno.EBUSY, "Device or resource busy")
+        return real_write_text(self, *args, **kwargs)
+
+    with (
+        patch.object(Path, "write_text", selective_write_text),
+        pytest.raises(OSError) as exc_info,
+    ):
         await unbind_rebind(
             "2-3.1.1",
             target="child-port",
             sysfs_root=tmp_path,
             rebind_delay_seconds=0.0,
         )
-    assert exc_info.value.errno == errno.ENOENT
+    assert exc_info.value.errno == errno.EBUSY
+    # The unbind side DID succeed (proves the helper got past the unbind
+    # write before tripping on bind).
+    assert (drivers_usb / "unbind").read_text(encoding="ascii") == "2-3.1.1"
 
 
 # --- ActionContext.target field tests --------------------------------------
@@ -210,19 +230,3 @@ def test_action_context_target_can_be_parent_hub() -> None:
     """ActionContext accepts ``target="parent-hub"`` for the SIERRA_BOOTLOADER variant."""
     ctx = _make_ctx(target="parent-hub")
     assert ctx.target == "parent-hub"
-
-
-# Module-level expectation: exactly 8 test functions live in this file.
-def test_module_has_eight_tests() -> None:
-    """Sanity check: this file contains exactly the 8 tests required by the plan."""
-    import inspect
-
-    import tests.unit.sysfs.test_usb_unbind_rebind as mod
-
-    fns = [
-        name
-        for name, obj in inspect.getmembers(mod, inspect.isfunction)
-        if name.startswith("test_") and obj.__module__ == mod.__name__
-    ]
-    # 8 plan-required tests + this self-test = 9.
-    assert len(fns) == 9, fns
