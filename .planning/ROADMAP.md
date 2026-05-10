@@ -326,7 +326,7 @@ FR-23, FR-24, FR-27
 
 Plans:
 - [x] 04-01-modem-reset-action-PLAN.md — modem_reset action + dispatcher registration + CLI unblock — completed 2026-05-10
-- [ ] 04-02-usb-reset-action-PLAN.md — usb_reset action + sysfs/ module + Sierra-bootloader handling + --target CLI flag
+- [x] 04-02-usb-reset-action-PLAN.md — usb_reset action + sysfs/ module + Sierra-bootloader handling + --target CLI flag — completed 2026-05-10
 - [ ] 04-03-driver-reset-and-eligibility-PLAN.md — driver_reset action + global eligibility predicate + thermal suppression + cooldown
 - [ ] 04-04-ladder-and-signal-gate-PLAN.md — policy/ladder.py + per-action timestamps + signal-gate Settings migration
 - [ ] 04-05-action-skipped-event-PLAN.md — ActionSkipped event variant + decision-table/engine integration

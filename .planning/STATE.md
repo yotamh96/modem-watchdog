@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-destructive-actions-hil/06-hil-infra-scaffold
-last_updated: "2026-05-10T11:33:46.835Z"
+stopped_at: Completed 04-destructive-actions-hil/02-usb-reset-action
+last_updated: "2026-05-10T11:51:38.612Z"
 last_activity: 2026-05-10
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 33
-  completed_plans: 28
-  percent: 85
+  completed_plans: 29
+  percent: 88
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 04 (destructive-actions-hil) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Last activity: 2026-05-10
 
-Progress: [█████████░] 85%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -81,6 +81,7 @@ Progress: [█████████░] 85%
 | Phase 03-linux-event-sources-lifecycle P09 | ~8min | 3 tasks | 4 files (3 integration tests + SUMMARY) |
 | Phase 04-destructive-actions-hil P01-modem-reset | 6min | 2 tasks tasks | 7 files files |
 | Phase 04-destructive-actions-hil P06-hil-infra-scaffold | 7min | 2 tasks tasks | 8 files files |
+| Phase 04 P02 | 10min | 2 tasks tasks | 16 files files |
 
 ## Accumulated Context
 
@@ -252,6 +253,11 @@ Recent decisions affecting current work:
 - Plan 04-06: ASYNC240 fix in fault_inject.py:inject_kmsg — _KMSG.exists() and _KMSG.write_text() wrapped in asyncio.to_thread (pathlib methods on async functions are blocking I/O; ruff ASYNC240 enforces this). Plan 04-07 scenarios will follow the same pattern.
 - Plan 04-06: v1-30d trace directory ships .gitkeep + .gitattributes (*.json + *.jsonl LFS) + README today; actual JSON shards land via git lfs track + commit when first quarterly refresh produces real fixtures. README's redaction contract is verbatim sha256[:8] hash (deterministic per identity) — same shape as Plan 02-09's ctl support-bundle.
 - Plan 04-06: pyproject.toml NOT modified — hil pytest marker already registered at line 78 (Plan 03-01 era). PATTERNS correction #3 honored.
+- Plan 04-02: usb_reset is sysfs file I/O via new src/spark_modem/sysfs/ package -- Path.write_text only, NO subprocess (CLAUDE.md A-02 verbatim); SP-04 lint scope unchanged
+- Plan 04-02: PATTERNS correction #4 applied -- IssueCategory.ENUMERATION does NOT exist in wire/enums.py; SIERRA_BOOTLOADER lives under IssueCategory.QMI (decision-table row qmi/sierra_bootloader -> usb_reset)
+- Plan 04-02: --target=parent-hub argparse choices flag (RESEARCH Q9) over --parent-hub boolean -- self-documenting --help, type-checkable, extends to additional variants without script breakage
+- Plan 04-02: ActionContext gains target: Literal['child-port', 'parent-hub']='child-port' field -- read only by usb_reset; backwards-compat preserved (every other action ignores it); engine swaps via dataclasses.replace
+- Plan 04-02: dispatcher contract test rename _seven_kinds -> _eight_kinds + unknown-kind probe rotation USB_RESET -> DRIVER_RESET; cross-plan test convention continues 04-01->04-02->04-03
 
 ### Pending Todos
 
@@ -269,8 +275,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-10T11:33:46.820Z
-Stopped at: Completed 04-destructive-actions-hil/06-hil-infra-scaffold
+Last session: 2026-05-10T11:51:38.590Z
+Stopped at: Completed 04-destructive-actions-hil/02-usb-reset-action
 Resume file: None
 
 **Planned Phase:** 04 (destructive-actions-hil) — 7 plans — 2026-05-10T09:43:20.063Z
