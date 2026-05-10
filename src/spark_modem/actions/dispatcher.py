@@ -18,6 +18,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 
 from spark_modem.actions import (
+    driver_reset,
     fix_autosuspend,
     fix_raw_ip,
     modem_reset,
@@ -47,6 +48,7 @@ _REGISTRY: dict[ActionKind, tuple[ExecuteFn, VerifyFn]] = {
     ActionKind.FIX_AUTOSUSPEND: (fix_autosuspend.execute, fix_autosuspend.verify),
     ActionKind.MODEM_RESET: (modem_reset.execute, modem_reset.verify),
     ActionKind.USB_RESET: (usb_reset.execute, usb_reset.verify),
+    ActionKind.DRIVER_RESET: (driver_reset.execute, driver_reset.verify),
 }
 
 

@@ -72,17 +72,22 @@ async def test_reset_usb_reset_cli_smoke(
     assert "target=child-port" in out
 
 
-async def test_reset_driver_reset_still_rejected(
+async def test_reset_driver_reset_cli_smoke(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Plan 04-03 lands DRIVER_RESET; until then the new 'is not registered'
-    branch fires on this kind."""
+    """Plan 04-03: --action=driver_reset is now registered -> exit 0 + stub line.
+
+    Replaces the prior Plan 04-02 'still rejected' assertion -- DRIVER_RESET
+    is unblocked at this plan's commit time. All three Phase-4 destructive
+    kinds (modem_reset, usb_reset, driver_reset) now flow through the
+    dispatcher stub path.
+    """
     args = Namespace(action="driver_reset", modem="cdc-wdm0", dry_run=False)
     rc = await reset_cmd.run(args)
-    assert rc == 2
-    err = capsys.readouterr().err
-    assert "is not registered" in err
-    assert "driver_reset" in err
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "action=driver_reset" in out
+    assert "modem=cdc-wdm0" in out
 
 
 async def test_reset_cheap_action_dispatch_stub_message(
