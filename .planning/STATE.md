@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-destructive-actions-hil/04-ladder-and-signal-gate
-last_updated: "2026-05-10T12:32:01.463Z"
+stopped_at: Completed 04-destructive-actions-hil/04-05-action-skipped-event
+last_updated: "2026-05-10T12:53:33.419Z"
 last_activity: 2026-05-10
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 33
-  completed_plans: 31
-  percent: 94
+  completed_plans: 32
+  percent: 97
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 04 (destructive-actions-hil) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 Status: Ready to execute
 Last activity: 2026-05-10
 
-Progress: [█████████░] 94%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -84,6 +84,7 @@ Progress: [█████████░] 94%
 | Phase 04 P02 | 10min | 2 tasks tasks | 16 files files |
 | Phase 04 P03 | 11min (683s) | 3 tasks tasks | 9 files files |
 | Phase 04 P04 | 15min | 3 tasks tasks | 13 files files |
+| Phase 04-destructive-actions-hil PP05 | 14min | 2 tasks tasks | 10 files files |
 
 ## Accumulated Context
 
@@ -269,6 +270,11 @@ Recent decisions affecting current work:
 - Plan 04-04: non-ladder ActionKinds (SET_APN, FIX_RAW_IP, SIM_POWER_ON, FIX_AUTOSUSPEND, SET_OPERATING_MODE, DRIVER_RESET) pass through select_rung unchanged -- only the destructive triplet (SOFT/MODEM/USB_RESET) escalates
 - Plan 04-04: engine collapses ladder dispatch to one rebind (action_or_skip = select_rung(...)) -- existing isinstance(ActionKind | str) Step-6 dispatch handles both shapes; ruff PLR0912 satisfied without extracting a helper
 - Plan 04-04: SP-04 lint regex literally matches docstring text -- avoid spelling out forbidden tokens (create_subprocess_exec etc.) in docstrings; reword to abstract phrasing like 'kernel-touching primitives'
+- Plan 04-05: SkipReason closed StrEnum (7 values: signal_below_gate / ladder_backoff / same_action_backoff / exhausted / disconnected / maintenance / dry_run) -- adding a new gate-failure mode is a deliberate enum extension, never a runtime string (W-04 discipline)
+- Plan 04-05: dual-emit at gate-failure path -- ActionSkipped event AND PlannedAction.suppressed_* flags both emitted on every soft-skip / hard-skip path; replay harness reads suppressed_* flags from Phase 2 fixtures unmodified (CONTEXT B-04 'back-compat horizon' decision; no shim needed)
+- Plan 04-05: decision-table-level skip strings (skip:requires_human / skip:no_card / skip:hardware / skip:carrier_denied) NOT mapped to SkipReason -- they are upstream of the gate machinery; SkipReason is for GATE-failure paths only (CONTEXT B-04 threat T-04-05-05 disposition: accept). The existing PlannedAction with reason='skip:requires_human' remains the audit trail
+- Plan 04-05: ladder skip:exhausted (Plan 04-04 select_rung output) emits ActionSkipped(reason=EXHAUSTED) using the BASE action (pre-ladder) as suppressed_action -- captured via base_for_ladder local before select_rung rebinds; consumer-facing semantics: 'we tried to fire SOFT_RESET but the entire ladder is exhausted', not 'we tried to fire skip:exhausted'
+- Plan 04-05: EventLogWriter._EVENT_TYPES gap-closure (Rule 2) -- pre-existing gap for SimSwapped + EventSourceCrashed since Phase 3 closed at the same time as adding ActionSkipped; production daemon would have raised TypeError on first emission of either variant in a real (non-fake) event_logger. Tuple now covers the full 14-variant Event union
 
 ### Pending Todos
 
@@ -286,8 +292,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-10T12:31:40.051Z
-Stopped at: Completed 04-destructive-actions-hil/04-ladder-and-signal-gate
+Last session: 2026-05-10T12:53:33.400Z
+Stopped at: Completed 04-destructive-actions-hil/04-05-action-skipped-event
 Resume file: None
 
 **Planned Phase:** 04 (destructive-actions-hil) — 7 plans — 2026-05-10T09:43:20.063Z
