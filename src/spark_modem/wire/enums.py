@@ -59,6 +59,15 @@ class IssueDetail(StrEnum):
     ENUMERATION_ADDRESS_FAIL = "enumeration_address_fail"
     ENUMERATION_OVERCURRENT = "enumeration_overcurrent"
     AUTOSUSPEND_ON = "autosuspend_on"
+    # Sierra EM7421 (1199:9051) stuck-in-bootloader (PITFALLS §1.6 / Plan 04-02 A-06):
+    # the modem enumerates as VID:PID 1199:9051 instead of the operational
+    # 1199:9091 and stops responding to QMI. Recovery is a parent-hub
+    # usb_reset to re-fire the boot transition. The decision-table row
+    # routes (IssueCategory.QMI, IssueDetail.SIERRA_BOOTLOADER) ->
+    # ActionKind.USB_RESET (PATTERNS correction #4: IssueCategory.ENUMERATION
+    # does NOT exist in the closed-enum surface; QMI is the observation
+    # channel because the modem is unresponsive there).
+    SIERRA_BOOTLOADER = "sierra_bootloader"
     # Thermal / Zao
     THERMAL_WARN = "thermal_warn"
     THERMAL_CRITICAL = "thermal_critical"

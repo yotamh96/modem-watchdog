@@ -35,7 +35,10 @@ Coverage manifest (read by tools/check_spec.py via substring match):
   qmi / operating_mode_low_power
   qmi / qmi_proxy_died
   qmi / qmi_timeout
-  qmi / sierra_bootloader (Plan 04-02 / A-06; PATTERNS correction #4 -- IssueCategory.ENUMERATION does not exist; SIERRA_BOOTLOADER lives under QMI; usb_reset parent-hub variant per PITFALLS §1.6 selected via CLI --target=parent-hub)
+  qmi / sierra_bootloader  (Plan 04-02 / A-06 -- usb_reset parent-hub variant
+    per PITFALLS §1.6 selected via CLI --target=parent-hub; PATTERNS correction
+    #4: IssueCategory.ENUMERATION does not exist, so SIERRA_BOOTLOADER lives
+    under QMI category)
 """
 
 from __future__ import annotations

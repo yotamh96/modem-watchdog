@@ -94,6 +94,16 @@ def _build_parser() -> argparse.ArgumentParser:
         help="cdc-wdmN device basename",
     )
     p_res.add_argument("--dry-run", action="store_true")
+    p_res.add_argument(
+        "--target",
+        choices=["child-port", "parent-hub"],
+        default="child-port",
+        help=(
+            "usb_reset variant; parent-hub re-fires the boot transition for"
+            " Sierra EM7421 stuck-in-bootloader (PITFALLS §1.6 / Plan 04-02 A-06)."
+            " Ignored by every other action kind."
+        ),
+    )
     p_res.set_defaults(func=reset_cmd.run)
 
     # status

@@ -25,6 +25,7 @@ from spark_modem.actions import (
     set_operating_mode,
     sim_power_on,
     soft_reset,
+    usb_reset,
 )
 from spark_modem.actions.context import ActionContext
 from spark_modem.actions.result import ActionResult, VerifyResult
@@ -45,6 +46,7 @@ _REGISTRY: dict[ActionKind, tuple[ExecuteFn, VerifyFn]] = {
     ActionKind.SET_OPERATING_MODE: (set_operating_mode.execute, set_operating_mode.verify),
     ActionKind.FIX_AUTOSUSPEND: (fix_autosuspend.execute, fix_autosuspend.verify),
     ActionKind.MODEM_RESET: (modem_reset.execute, modem_reset.verify),
+    ActionKind.USB_RESET: (usb_reset.execute, usb_reset.verify),
 }
 
 

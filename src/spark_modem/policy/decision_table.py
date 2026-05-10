@@ -61,6 +61,15 @@ _DECISION_TABLE: dict[tuple[IssueCategory, IssueDetail], ActionKind | str] = {
     (IssueCategory.QMI, IssueDetail.OPERATING_MODE_LOW_POWER): ActionKind.MODEM_RESET,
     (IssueCategory.QMI, IssueDetail.QMI_PROXY_DIED): ActionKind.DRIVER_RESET,
     (IssueCategory.QMI, IssueDetail.QMI_TIMEOUT): ActionKind.SOFT_RESET,
+    # Plan 04-02 / A-06: Sierra EM7421 stuck-in-bootloader.
+    # Per PATTERNS correction #4 the row lives under QMI (not a
+    # nonexistent ENUMERATION category). The parent-hub variant
+    # (PITFALLS §1.6) is selected via ActionContext.target = "parent-hub"
+    # set by the operator-explicit CLI flag (`spark-modem reset --target=parent-hub`)
+    # OR by future engine logic that infers the variant from the IssueDetail.
+    # The decision-table row routes to USB_RESET; variant selection
+    # happens at the action-execution boundary in actions/usb_reset.py.
+    (IssueCategory.QMI, IssueDetail.SIERRA_BOOTLOADER): ActionKind.USB_RESET,
 }
 
 
