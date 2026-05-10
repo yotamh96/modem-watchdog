@@ -64,12 +64,12 @@ created: 2026-05-10
 - [ ] `tests/unit/actions/test_usb_reset.py` — FR-23 / FR-27 / A-06 Sierra-bootloader
 - [ ] `tests/unit/actions/test_driver_reset.py` — FR-24 / FR-27 / A-03 modprobe stderr
 - [ ] `tests/unit/sysfs/test_usb_unbind_rebind.py` — A-02 sysfs file-write semantics
-- [ ] `tests/unit/cli/test_reset_phase4.py` — FR-27 CLI surface (`--target=parent-hub`)
+- [ ] `tests/unit/cli/test_reset.py` — FR-27 CLI surface (`--target=parent-hub`) [extended; not created]
 - [ ] `tests/unit/wire/test_action_skipped_event.py` — B-04 ActionSkipped + SkipReason
 - [ ] `tests/property/test_destructive_idempotency.py` — SC#1 idempotency property
 - [ ] `tests/hil/conftest.py` — bench-Jetson fixtures (linux_only + hil markers)
 - [ ] `tests/hil/fault_inject.py` — fault-injection helpers (Plan 04-06)
-- [ ] `tests/hil/scenarios/*.py` — 8 SC#4 + 4 Phase-3 piggyback scenarios (Plan 04-07)
+- [ ] `tests/hil/scenarios/*.py` — 7 Phase-4 SC#4 scenarios + 4 Phase-3 piggyback scenarios + 1 destructive-actions end-to-end (Plan 04-07; total 12 HIL scenario files)
 - [ ] `tools/pull_replay_traces.py` — LFS trace materialization (Plan 04-06)
 - [ ] `tests/fixtures/replay/v1-30d/README.md` + `.gitattributes` — quarterly refresh runbook
 - [ ] `.github/workflows/hil.yml` — nightly + workflow_dispatch (Plan 04-06)

@@ -322,7 +322,16 @@ FR-23, FR-24, FR-27
      and recovered with one `driver_reset`. Replay-harness fault-cycle
      agreement against ≥30 days of v1 historical traces ≥95%.
 
-**Plans**: TBD
+**Plans**: 7 plans
+
+Plans:
+- [ ] 04-01-modem-reset-action-PLAN.md — modem_reset action + dispatcher registration + CLI unblock
+- [ ] 04-02-usb-reset-action-PLAN.md — usb_reset action + sysfs/ module + Sierra-bootloader handling + --target CLI flag
+- [ ] 04-03-driver-reset-and-eligibility-PLAN.md — driver_reset action + global eligibility predicate + thermal suppression + cooldown
+- [ ] 04-04-ladder-and-signal-gate-PLAN.md — policy/ladder.py + per-action timestamps + signal-gate Settings migration
+- [ ] 04-05-action-skipped-event-PLAN.md — ActionSkipped event variant + decision-table/engine integration
+- [ ] 04-06-hil-infra-scaffold-PLAN.md — HIL CI workflow + fault-injection helpers + LFS trace puller
+- [ ] 04-07-hil-scenario-suite-PLAN.md — 12 HIL scenarios + Phase-3 piggyback + replay-harness 30-day gate
 
 ### Phase 5: Bench & Field Shadow
 
@@ -452,7 +461,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Foundations & ADRs | 7/7 | Complete | 2026-05-06 |
 | 2. Core Daemon | 9/10 | In Progress | - |
 | 3. Linux Event Sources & Lifecycle | 9/9 | Complete | 2026-05-08 |
-| 4. Destructive Actions & HIL | 0/TBD | Not started | - |
+| 4. Destructive Actions & HIL | 0/7 | Not started | - |
 | 5. Bench & Field Shadow | 0/TBD | Not started | - |
 | 6. Cutover & Fleet Rollout | 0/TBD | Not started | - |
 | 7. v1 Decommission & Archive | 0/TBD | Not started | - |
