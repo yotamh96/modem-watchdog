@@ -27,13 +27,16 @@ from spark_modem.wire.events import (
     ActionExecuted,
     ActionFailed,
     ActionPlanned,
+    ActionSkipped,
     DaemonStarted,
     DaemonStopped,
     Event,
     EventAdapter,
+    EventSourceCrashed,
     MaintenanceWindowEnded,
     MaintenanceWindowStarted,
     SchemaDowngradePending,
+    SimSwapped,
     StateTransition,
     UsbPathMismatch,
     WebhookDropped,
@@ -49,15 +52,24 @@ _REOPEN_BUFFER_MAX = 1000
 # Concrete types that make up the Event discriminated union.
 # Used for isinstance checks in append() so callers get a clear TypeError
 # rather than a pydantic ValidationError on bogus input.
+#
+# Plan 04-05 / B-04: ActionSkipped (Phase 4) added; pre-existing gaps for
+# SimSwapped + EventSourceCrashed (Phase 3) closed at the same time so the
+# tuple covers the full Event union -- a future variant addition that
+# forgets this list would surface as a TypeError on first append (Rule 2:
+# auto-add missing critical functionality at the wire boundary).
 _EVENT_TYPES: tuple[type, ...] = (
     ActionExecuted,
     ActionFailed,
     ActionPlanned,
+    ActionSkipped,
     DaemonStarted,
     DaemonStopped,
+    EventSourceCrashed,
     MaintenanceWindowEnded,
     MaintenanceWindowStarted,
     SchemaDowngradePending,
+    SimSwapped,
     StateTransition,
     UsbPathMismatch,
     WebhookDropped,

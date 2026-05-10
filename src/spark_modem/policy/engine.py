@@ -48,7 +48,8 @@ from spark_modem.wire.diag import (
     WhoHost,
     WhoModem,
 )
-from spark_modem.wire.enums import ActionKind, IssueCategory, IssueDetail
+from spark_modem.wire.enums import ActionKind, IssueCategory, IssueDetail, SkipReason
+from spark_modem.wire.events import ActionSkipped
 from spark_modem.wire.globals import GlobalsState
 from spark_modem.wire.state import ModemState
 
@@ -70,6 +71,11 @@ def run_cycle(
     plans: list[PlannedAction] = []
     transitions_out: list[StateTransition] = []
     new_states: dict[str, ModemState] = {}
+    # Plan 04-05 / B-04: ActionSkipped events accumulated alongside PlannedActions
+    # whenever a gate fires. The driver_reset short-circuit path produces no
+    # per-modem ActionSkipped events (no gate evaluation happens for the
+    # short-circuited cycle); the per-modem path is where gates fire.
+    skipped_out: list[ActionSkipped] = []
 
     # 1.5: Phase 4 will add global driver-reset short-circuit here;
     # Phase 2 ships a placeholder check that always returns False so the
@@ -127,8 +133,14 @@ def run_cycle(
 
         # Step 5 -- decision table lookup
         action_or_skip: ActionKind | str | None = None
+        base_for_ladder: ActionKind | None = None
         if issue is not None:
             action_or_skip = lookup_action(issue.category, issue.detail)
+            if isinstance(action_or_skip, ActionKind):
+                # Capture the BASE action before ladder.select_rung rebinds --
+                # used by Plan 04-05 to populate ActionSkipped.suppressed_action
+                # on the ladder skip:exhausted path.
+                base_for_ladder = action_or_skip
 
         # Step 5.5 -- ladder rung selection (Plan 04-04 B-01).
         # Decision table is flat; ladder.select_rung() picks the actual rung
@@ -143,60 +155,45 @@ def run_cycle(
                 config=ctx.config,
             )
 
-        # Step 6 -- gates and PlannedAction
+        # Step 6 -- gates and PlannedAction (+ Plan 04-05 ActionSkipped).
         counter_bump: ActionKind | None = None
         if isinstance(action_or_skip, ActionKind):
-            plan, would_execute = _apply_gates_to_action(
+            # issue is non-None here because action_or_skip came from
+            # lookup_action(issue.category, issue.detail) above.
+            assert issue is not None
+            plan, would_execute, skipped_events = _apply_gates_to_action(
                 action_or_skip,
                 new_state,
                 ctx,
                 _snap_who(snap),
+                cause_category=issue.category,
+                cause_detail=issue.detail,
             )
             plans.append(plan)
+            skipped_out.extend(skipped_events)
             if would_execute:
                 counter_bump = action_or_skip
         elif isinstance(action_or_skip, str) and action_or_skip.startswith("skip:"):
-            # Decision-table-level skip (e.g. skip:requires_human) OR
-            # ladder-level skip (skip:exhausted from select_rung).
-            # We use a nominal ActionKind in PlannedAction.kind because the
-            # field is non-nullable; the canonical truth is the `reason`.
-            plans.append(
-                PlannedAction(
-                    kind=ActionKind.SOFT_RESET,
-                    who=_snap_who(snap),
-                    reason=action_or_skip,
-                    suppressed_by_backoff=False,
-                    suppressed_by_signal_gate=False,
-                    suppressed_by_dry_run=False,
-                )
+            _emit_skip_string_outputs(
+                action_or_skip=action_or_skip,
+                snap=snap,
+                ctx=ctx,
+                base_for_ladder=base_for_ladder,
+                issue=issue,
+                plans_out=plans,
+                skipped_out=skipped_out,
             )
 
-        # Step 7 -- counter bump + per-kind timestamp bump (only if action
-        # will actually execute). Per RECOVERY_SPEC §8 / CLAUDE.md invariant 8:
-        # ONE atomic model_copy writes streak + counters + BOTH timestamp
-        # fields together. The legacy last_action_monotonic is bumped even
-        # though no gate reads it -- back-compat contract for Phase 2 state
-        # files (a future engineer must NOT delete this bump as dead code).
-        new_counters: dict[ActionKind, int] = dict(decayed_counters)
-        new_ts_by_kind: dict[ActionKind, float] = dict(prior.last_action_monotonic_by_kind)
-        new_last_action_monotonic: float | None = prior.last_action_monotonic
-        if counter_bump is not None:
-            new_counters[counter_bump] = new_counters.get(counter_bump, 0) + 1
-            now = ctx.clock.monotonic()
-            new_ts_by_kind[counter_bump] = now
-            new_last_action_monotonic = now
-
-        new_state_with_counters = new_state.model_copy(
-            update={
-                "healthy_streak": new_streak,
-                "counters": new_counters,
-                "last_action_monotonic": new_last_action_monotonic,
-                "last_action_monotonic_by_kind": new_ts_by_kind,
-            }
+        # Steps 7+8 -- counter bump + atomic state-write + StateTransition.
+        new_state_with_counters = _finalize_per_modem_state(
+            prior=prior,
+            new_state=new_state,
+            decayed_counters=decayed_counters,
+            new_streak=new_streak,
+            counter_bump=counter_bump,
+            ctx=ctx,
         )
         new_states[usb_path] = new_state_with_counters
-
-        # Step 8 -- transition record
         if new_state_with_counters.state != prior.state:
             transitions_out.append(
                 StateTransition(
@@ -213,7 +210,93 @@ def run_cycle(
         transitions=transitions_out,
         new_states=new_states,
         new_globals=globals_state,  # globals only change on driver_reset path
+        skipped=skipped_out,
     )
+
+
+def _finalize_per_modem_state(
+    *,
+    prior: ModemState,
+    new_state: ModemState,
+    decayed_counters: dict[ActionKind, int],
+    new_streak: int,
+    counter_bump: ActionKind | None,
+    ctx: PolicyContext,
+) -> ModemState:
+    """Step 7: counter bump + atomic per-modem state write.
+
+    Per RECOVERY_SPEC §8 / CLAUDE.md invariant 8: ONE atomic model_copy
+    writes streak + counters + BOTH timestamp fields (legacy +
+    last_action_monotonic_by_kind) together. The legacy
+    last_action_monotonic is bumped even though no gate reads it
+    post-Plan-04-04 -- back-compat contract for Phase 2 state files
+    (a future engineer must NOT delete this bump as dead code; locked by
+    test_engine_atomically_bumps_legacy_and_per_kind_timestamps).
+    """
+    new_counters: dict[ActionKind, int] = dict(decayed_counters)
+    new_ts_by_kind: dict[ActionKind, float] = dict(prior.last_action_monotonic_by_kind)
+    new_last_action_monotonic: float | None = prior.last_action_monotonic
+    if counter_bump is not None:
+        new_counters[counter_bump] = new_counters.get(counter_bump, 0) + 1
+        now = ctx.clock.monotonic()
+        new_ts_by_kind[counter_bump] = now
+        new_last_action_monotonic = now
+
+    return new_state.model_copy(
+        update={
+            "healthy_streak": new_streak,
+            "counters": new_counters,
+            "last_action_monotonic": new_last_action_monotonic,
+            "last_action_monotonic_by_kind": new_ts_by_kind,
+        }
+    )
+
+
+def _emit_skip_string_outputs(
+    *,
+    action_or_skip: str,
+    snap: ModemSnapshot,
+    ctx: PolicyContext,
+    base_for_ladder: ActionKind | None,
+    issue: Issue | None,
+    plans_out: list[PlannedAction],
+    skipped_out: list[ActionSkipped],
+) -> None:
+    """Append the PlannedAction(skip:*) and any sibling ActionSkipped event.
+
+    Decision-table-level skip strings (skip:requires_human / skip:no_card /
+    skip:hardware / skip:carrier_denied) get only a PlannedAction -- they
+    are upstream of the gate machinery; SkipReason is for GATE-failure
+    paths only (CONTEXT B-04 threat register T-04-05-05 disposition).
+
+    The LADDER-level skip:exhausted (Plan 04-04 select_rung output) ALSO
+    gets an ActionSkipped(reason=EXHAUSTED) so consumers can filter
+    events.jsonl by skip cause without scraping reason strings.
+
+    PlannedAction.kind is set to SOFT_RESET because the field is
+    non-nullable; the canonical truth is the `reason` string.
+    """
+    plans_out.append(
+        PlannedAction(
+            kind=ActionKind.SOFT_RESET,
+            who=_snap_who(snap),
+            reason=action_or_skip,
+            suppressed_by_backoff=False,
+            suppressed_by_signal_gate=False,
+            suppressed_by_dry_run=False,
+        )
+    )
+    if action_or_skip == "skip:exhausted" and base_for_ladder is not None and issue is not None:
+        skipped_out.append(
+            ActionSkipped(
+                ts_iso=ctx.clock.wall_clock_iso(),
+                usb_path=snap.usb_path,
+                suppressed_action=base_for_ladder,
+                reason=SkipReason.EXHAUSTED,
+                cause_category=issue.category,
+                cause_detail=issue.detail,
+            )
+        )
 
 
 def _apply_gates_to_action(
@@ -221,17 +304,41 @@ def _apply_gates_to_action(
     state: ModemState,
     ctx: PolicyContext,
     who: WhoModem,
-) -> tuple[PlannedAction, bool]:
+    *,
+    cause_category: IssueCategory,
+    cause_detail: IssueDetail,
+) -> tuple[PlannedAction, bool, list[ActionSkipped]]:
     """Evaluate gates in RECOVERY_SPEC §6 order.
 
-    Returns (PlannedAction, would_execute).  `would_execute=True` means
-    the dispatcher should actually run the action; counter bump happens
-    only in that case (FR-26 -- counters bump on execution, not selection).
+    Returns (PlannedAction, would_execute, skipped_events).
+    `would_execute=True` means the dispatcher should actually run the
+    action; counter bump happens only in that case (FR-26 -- counters
+    bump on execution, not selection).
 
-    Hard-skip gates short-circuit (disconnected, maintenance, exhausted).
-    Soft-skip gates accumulate into suppressed_* flags (signal, backoff,
-    ladder, dry_run) so the events log can show partial-skip causes.
+    Plan 04-05 / Phase 4 B-04: each gate-failure path that previously set
+    PlannedAction flags now ALSO emits an ActionSkipped event with the
+    matching SkipReason. PlannedAction.suppressed_* flags PRESERVED for
+    Plan 02-10 replay-harness back-compat (CONTEXT B-04 'horizon' decision).
+
+    Hard-skip gates short-circuit (disconnected, maintenance, exhausted)
+    and produce exactly one ActionSkipped event.
+
+    Soft-skip gates accumulate into suppressed_* flags AND may emit
+    multiple ActionSkipped events (e.g. signal AND backoff fire on the
+    same action -> 2 events, one per fired suppression).
     """
+    ts_iso = ctx.clock.wall_clock_iso()
+
+    def _build_skipped(reason: SkipReason) -> ActionSkipped:
+        return ActionSkipped(
+            ts_iso=ts_iso,
+            usb_path=who.usb_path,
+            suppressed_action=action,
+            reason=reason,
+            cause_category=cause_category,
+            cause_detail=cause_detail,
+        )
+
     # Hard-skip gates short-circuit first; they produce a definitive skip:reason.
     if gate_disconnected(state):
         return (
@@ -244,6 +351,7 @@ def _apply_gates_to_action(
                 suppressed_by_dry_run=False,
             ),
             False,
+            [_build_skipped(SkipReason.DISCONNECTED)],
         )
 
     if gate_maintenance(ctx.maintenance_active, action):
@@ -257,6 +365,7 @@ def _apply_gates_to_action(
                 suppressed_by_dry_run=False,
             ),
             False,
+            [_build_skipped(SkipReason.MAINTENANCE)],
         )
 
     if gate_exhausted(state, action):
@@ -270,14 +379,19 @@ def _apply_gates_to_action(
                 suppressed_by_dry_run=False,
             ),
             False,
+            [_build_skipped(SkipReason.EXHAUSTED)],
         )
 
     # Soft-skip gates: accumulate flags but still record the planned kind.
+    # Plan 04-05: distinguish same-action vs. ladder backoff so each emits
+    # its own SkipReason (the legacy suppressed_by_backoff bool conflates
+    # the two; PlannedAction stays unchanged for back-compat).
     suppressed_signal = gate_signal(state, action)
-    suppressed_backoff = gate_same_action_backoff(state, action, ctx.clock, ctx.config)
-    if not suppressed_backoff:
-        suppressed_backoff = gate_ladder_backoff(state, action, ctx.clock, ctx.config)
-
+    suppressed_same_action = gate_same_action_backoff(state, action, ctx.clock, ctx.config)
+    suppressed_ladder = (not suppressed_same_action) and gate_ladder_backoff(
+        state, action, ctx.clock, ctx.config
+    )
+    suppressed_backoff = suppressed_same_action or suppressed_ladder
     suppressed_dry_run = ctx.config.dry_run
 
     would_execute = not (suppressed_signal or suppressed_backoff or suppressed_dry_run)
@@ -289,6 +403,18 @@ def _apply_gates_to_action(
     else:
         reason = "skip:gate_failed"
 
+    skipped_events: list[ActionSkipped] = []
+    if suppressed_signal:
+        skipped_events.append(_build_skipped(SkipReason.SIGNAL_BELOW_GATE))
+    if suppressed_same_action:
+        skipped_events.append(_build_skipped(SkipReason.SAME_ACTION_BACKOFF))
+    elif suppressed_ladder:
+        skipped_events.append(_build_skipped(SkipReason.LADDER_BACKOFF))
+    # dry_run only emits an ActionSkipped when no harder gate fired -- if
+    # signal/backoff already suppressed, dry_run is downstream-noise.
+    if suppressed_dry_run and not (suppressed_signal or suppressed_backoff):
+        skipped_events.append(_build_skipped(SkipReason.DRY_RUN))
+
     return (
         PlannedAction(
             kind=action,
@@ -299,6 +425,7 @@ def _apply_gates_to_action(
             suppressed_by_dry_run=suppressed_dry_run,
         ),
         would_execute,
+        skipped_events,
     )
 
 

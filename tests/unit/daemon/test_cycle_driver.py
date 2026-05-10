@@ -32,8 +32,7 @@ from spark_modem.status_reporter.metrics_registry import MetricRegistry
 from spark_modem.subproc.result import CompletedProcess
 from spark_modem.wire.carriers import CarrierTable
 from spark_modem.wire.diag import WhoModem
-from spark_modem.wire.enums import ActionKind
-from spark_modem.wire.enums import IssueCategory, IssueDetail, SkipReason
+from spark_modem.wire.enums import ActionKind, IssueCategory, IssueDetail, SkipReason
 from spark_modem.wire.events import ActionSkipped
 from spark_modem.wire.events import StateTransition as StateTransitionEvent
 from spark_modem.wire.globals import GlobalsState

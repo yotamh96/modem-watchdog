@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from unittest.mock import patch as _patch
 
 from spark_modem.config.settings import Settings
 from spark_modem.policy.context import PolicyContext
@@ -132,9 +133,7 @@ def test_run_cycle_no_issues_returns_no_plans() -> None:
 
 def test_run_cycle_apn_empty_plans_set_apn() -> None:
     """CONFIG/APN_EMPTY -> set_apn, no suppression with default settings."""
-    diag = _diag(
-        [_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])]
-    )
+    diag = _diag([_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])])
     result = run_cycle(diag, {"2-3.1.1": _state()}, GlobalsState(), _ctx())
     assert len(result.plans) == 1
     plan = result.plans[0]
@@ -147,13 +146,7 @@ def test_run_cycle_apn_empty_plans_set_apn() -> None:
 
 def test_run_cycle_sim_pin_required_plans_skip_requires_human() -> None:
     """Decision-table-level skip propagates to PlannedAction.reason."""
-    diag = _diag(
-        [
-            _snap(
-                issues=[_issue(IssueCategory.SIM, IssueDetail.SIM_APP_PIN_REQUIRED)]
-            )
-        ]
-    )
+    diag = _diag([_snap(issues=[_issue(IssueCategory.SIM, IssueDetail.SIM_APP_PIN_REQUIRED)])])
     result = run_cycle(diag, {"2-3.1.1": _state()}, GlobalsState(), _ctx())
     assert len(result.plans) == 1
     assert result.plans[0].reason == "skip:requires_human"
@@ -255,9 +248,7 @@ def test_run_cycle_decay_does_not_fire_below_k() -> None:
 
 def test_run_cycle_records_state_transition() -> None:
     """healthy -> degraded (issue arrives) is recorded as a StateTransition."""
-    diag = _diag(
-        [_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])]
-    )
+    diag = _diag([_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])])
     state = _state(state="healthy")
     result = run_cycle(diag, {"2-3.1.1": state}, GlobalsState(), _ctx())
     assert len(result.transitions) == 1
@@ -280,9 +271,7 @@ def test_run_cycle_no_transition_recorded_when_state_unchanged() -> None:
 
 def test_run_cycle_counter_bumps_on_executed_action() -> None:
     """set_apn passes all gates -> counter bumps from 0 -> 1."""
-    diag = _diag(
-        [_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])]
-    )
+    diag = _diag([_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])])
     result = run_cycle(diag, {"2-3.1.1": _state()}, GlobalsState(), _ctx())
     assert result.new_states["2-3.1.1"].counters[ActionKind.SET_APN] == 1
 
@@ -300,13 +289,9 @@ def test_run_cycle_counter_does_not_bump_when_skipped_by_gate() -> None:
         last_action_monotonic=0.0,
         last_action_monotonic_by_kind={ActionKind.SET_APN: 0.0},
     )
-    diag = _diag(
-        [_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])]
-    )
+    diag = _diag([_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])])
     clock = FakeClock(start_monotonic=100.0)  # within 300s backoff window
-    result = run_cycle(
-        diag, {"2-3.1.1": state}, GlobalsState(), _ctx(clock=clock)
-    )
+    result = run_cycle(diag, {"2-3.1.1": state}, GlobalsState(), _ctx(clock=clock))
     new_state = result.new_states["2-3.1.1"]
     # Counter should NOT bump because backoff suppressed the action
     assert ActionKind.SET_APN not in new_state.counters
@@ -318,13 +303,9 @@ def test_run_cycle_counter_does_not_bump_when_skipped_by_gate() -> None:
 
 def test_run_cycle_dry_run_marks_suppressed_dry_run() -> None:
     """settings.dry_run=True -> suppressed_by_dry_run on planned action."""
-    diag = _diag(
-        [_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])]
-    )
+    diag = _diag([_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])])
     settings = _settings(dry_run=True)
-    result = run_cycle(
-        diag, {"2-3.1.1": _state()}, GlobalsState(), _ctx(settings=settings)
-    )
+    result = run_cycle(diag, {"2-3.1.1": _state()}, GlobalsState(), _ctx(settings=settings))
     assert len(result.plans) == 1
     plan = result.plans[0]
     assert plan.suppressed_by_dry_run is True
@@ -356,9 +337,7 @@ def test_run_cycle_maintenance_blocks_destructive_only() -> None:
         ]
     )
     states = {"2-3.1.1": _state(), "2-3.1.2": _state()}
-    result = run_cycle(
-        diag, states, GlobalsState(), _ctx(maintenance_active=True)
-    )
+    result = run_cycle(diag, states, GlobalsState(), _ctx(maintenance_active=True))
     plans_by_usb = {p.who.usb_path: p for p in result.plans if p.who.kind == "modem"}
     assert plans_by_usb["2-3.1.1"].kind == ActionKind.SET_APN
     assert plans_by_usb["2-3.1.1"].reason == "action_planned:set_apn"
@@ -372,17 +351,11 @@ def test_run_cycle_maintenance_blocks_destructive_only() -> None:
 
 def test_run_cycle_returns_pure_function_no_side_effects() -> None:
     """Calling run_cycle twice with same inputs produces identical results."""
-    diag = _diag(
-        [_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])]
-    )
+    diag = _diag([_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])])
     state = _state()
 
-    r1 = run_cycle(
-        diag, {"2-3.1.1": state}, GlobalsState(), _ctx(clock=FakeClock())
-    )
-    r2 = run_cycle(
-        diag, {"2-3.1.1": state}, GlobalsState(), _ctx(clock=FakeClock())
-    )
+    r1 = run_cycle(diag, {"2-3.1.1": state}, GlobalsState(), _ctx(clock=FakeClock()))
+    r2 = run_cycle(diag, {"2-3.1.1": state}, GlobalsState(), _ctx(clock=FakeClock()))
     # Plans dump identically
     assert [p.model_dump() for p in r1.plans] == [p.model_dump() for p in r2.plans]
     # New states dump identically
@@ -403,11 +376,7 @@ def test_engine_imports_no_io_modules() -> None:
     Also forbids os.system specifically (anti-pattern catalogue).
     """
     src = (
-        Path(__file__).resolve().parents[3]
-        / "src"
-        / "spark_modem"
-        / "policy"
-        / "engine.py"
+        Path(__file__).resolve().parents[3] / "src" / "spark_modem" / "policy" / "engine.py"
     ).read_text(encoding="utf-8")
     forbidden = (
         re.compile(r"^\s*import\s+subprocess", re.MULTILINE),
@@ -461,9 +430,7 @@ def test_run_cycle_picks_highest_priority_issue() -> None:
 def test_run_cycle_streak_resets_on_non_healthy() -> None:
     """healthy_streak=5; an issue arrives -> streak goes to 0."""
     state = _state(state="healthy", healthy_streak=5)
-    diag = _diag(
-        [_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])]
-    )
+    diag = _diag([_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])])
     result = run_cycle(diag, {"2-3.1.1": state}, GlobalsState(), _ctx())
     assert result.new_states["2-3.1.1"].healthy_streak == 0
 
@@ -503,13 +470,7 @@ def test_engine_uses_ladder_select_rung_for_registration() -> None:
     max_soft default 3); ladder.select_rung promotes to MODEM_RESET.
     """
     diag = _diag(
-        [
-            _snap(
-                issues=[
-                    _issue(IssueCategory.REGISTRATION, IssueDetail.NOT_REGISTERED_SEARCHING)
-                ]
-            )
-        ]
+        [_snap(issues=[_issue(IssueCategory.REGISTRATION, IssueDetail.NOT_REGISTERED_SEARCHING)])]
     )
     state = _state(
         state="degraded",
@@ -527,13 +488,7 @@ def test_engine_ladder_yields_skip_exhausted_when_all_rungs_full() -> None:
     (mirroring the decision-table-level skip-string pattern).
     """
     diag = _diag(
-        [
-            _snap(
-                issues=[
-                    _issue(IssueCategory.REGISTRATION, IssueDetail.NOT_REGISTERED_SEARCHING)
-                ]
-            )
-        ]
+        [_snap(issues=[_issue(IssueCategory.REGISTRATION, IssueDetail.NOT_REGISTERED_SEARCHING)])]
     )
     state = _state(
         state="degraded",
@@ -572,9 +527,7 @@ def test_engine_atomically_bumps_legacy_and_per_kind_timestamps() -> None:
     Use SET_APN as the executed action -- it's a cheap action that runs
     cleanly without ladder/signal interference.
     """
-    diag = _diag(
-        [_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])]
-    )
+    diag = _diag([_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])])
     clock = FakeClock(start_monotonic=12345.0)
     result = run_cycle(diag, {"2-3.1.1": _state()}, GlobalsState(), _ctx(clock=clock))
     new_state = result.new_states["2-3.1.1"]
@@ -588,9 +541,10 @@ def test_engine_atomically_bumps_legacy_and_per_kind_timestamps() -> None:
     assert new_state.last_action_monotonic == expected_ts
 
     # The two timestamps are equal -- atomic same-clock-read in one model_copy.
-    assert new_state.last_action_monotonic == new_state.last_action_monotonic_by_kind[
-        ActionKind.SET_APN
-    ]
+    assert (
+        new_state.last_action_monotonic
+        == new_state.last_action_monotonic_by_kind[ActionKind.SET_APN]
+    )
 
 
 def test_engine_does_not_bump_per_kind_for_skipped_actions() -> None:
@@ -635,9 +589,7 @@ def test_engine_phase_2_states_load_and_run_cleanly() -> None:
     )
     assert state.last_action_monotonic_by_kind == {}  # default empty dict
 
-    diag = _diag(
-        [_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])]
-    )
+    diag = _diag([_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])])
     clock = FakeClock(start_monotonic=999.0)
     result = run_cycle(diag, {"2-3.1.1": state}, GlobalsState(), _ctx(clock=clock))
     new_state = result.new_states["2-3.1.1"]
@@ -699,13 +651,9 @@ def test_engine_emits_action_skipped_on_same_action_backoff() -> None:
         state="degraded",
         last_action_monotonic_by_kind={ActionKind.SET_APN: 0.0},
     )
-    diag = _diag(
-        [_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])]
-    )
+    diag = _diag([_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])])
     clock = FakeClock(start_monotonic=100.0)  # within 300s default backoff window
-    result = run_cycle(
-        diag, {"2-3.1.1": state}, GlobalsState(), _ctx(clock=clock)
-    )
+    result = run_cycle(diag, {"2-3.1.1": state}, GlobalsState(), _ctx(clock=clock))
     assert len(result.skipped) == 1
     s = result.skipped[0]
     assert s.reason == SkipReason.SAME_ACTION_BACKOFF
@@ -717,27 +665,19 @@ def test_engine_emits_action_skipped_on_same_action_backoff() -> None:
 def test_engine_emits_action_skipped_on_ladder_backoff() -> None:
     """B-04: cross-action ladder backoff fires -> ActionSkipped(reason=LADDER_BACKOFF).
 
-    Setup: prior SOFT_RESET timestamp 50s ago, 90s ladder window not yet expired;
-    new cycle wants to fire MODEM_RESET (different destructive kind) -- the
-    ladder gate suppresses it.
+    Setup: prior USB_RESET timestamp 50s ago (a destructive kind), 90s ladder
+    window not yet expired; new cycle wants to fire MODEM_RESET (a different
+    destructive kind) -- the ladder gate (MAX-over-destructive-kind dict)
+    suppresses it. SOFT_RESET timestamps would NOT trigger the ladder gate
+    (SOFT_RESET is NOT in _DESTRUCTIVE_KINDS per policy/gates.py).
     """
     state = _state(
         state="degraded",
-        last_action_monotonic_by_kind={ActionKind.SOFT_RESET: 0.0},
+        last_action_monotonic_by_kind={ActionKind.USB_RESET: 0.0},
     )
-    diag = _diag(
-        [
-            _snap(
-                issues=[
-                    _issue(IssueCategory.DATAPATH, IssueDetail.SESSION_DISCONNECTED)
-                ]
-            )
-        ]
-    )
+    diag = _diag([_snap(issues=[_issue(IssueCategory.DATAPATH, IssueDetail.SESSION_DISCONNECTED)])])
     clock = FakeClock(start_monotonic=50.0)  # 50s < 90s default ladder window
-    result = run_cycle(
-        diag, {"2-3.1.1": state}, GlobalsState(), _ctx(clock=clock)
-    )
+    result = run_cycle(diag, {"2-3.1.1": state}, GlobalsState(), _ctx(clock=clock))
     assert len(result.skipped) == 1
     s = result.skipped[0]
     assert s.reason == SkipReason.LADDER_BACKOFF
@@ -750,24 +690,36 @@ def test_engine_emits_action_skipped_on_exhausted_state() -> None:
 
     The hard-skip exhausted gate fires when ModemState.state == 'exhausted'
     AND the chosen action is not in the cheap allowlist (set_apn / fix_raw_ip).
+    Use NOT_REGISTERED_SEARCHING (-> SOFT_RESET base, walked by ladder to
+    SOFT_RESET on empty counters); SOFT_RESET is NOT in the cheap allowlist,
+    so the exhausted gate suppresses it. QMI_CHANNEL_HUNG would also trigger
+    the global driver_reset short-circuit when expected_modem_count=1, which
+    bypasses the per-modem path -- avoid that here.
     """
     state = _state(state="exhausted")
     diag = _diag(
-        [_snap(issues=[_issue(IssueCategory.QMI, IssueDetail.QMI_CHANNEL_HUNG)])]
+        [_snap(issues=[_issue(IssueCategory.REGISTRATION, IssueDetail.NOT_REGISTERED_SEARCHING)])]
     )
     result = run_cycle(diag, {"2-3.1.1": state}, GlobalsState(), _ctx())
     assert len(result.skipped) == 1
     s = result.skipped[0]
     assert s.reason == SkipReason.EXHAUSTED
-    assert s.suppressed_action == ActionKind.USB_RESET
+    assert s.suppressed_action == ActionKind.SOFT_RESET
 
 
 def test_engine_emits_action_skipped_on_disconnected() -> None:
     """B-04: state.present=False -> ActionSkipped(reason=DISCONNECTED) for
-    any kind chosen by the decision table."""
+    any kind chosen by the decision table.
+
+    transition() always derives present=True in Phase 4 (observer sees the
+    modem so the snapshot exists). The disconnected gate fires when udev
+    has marked the modem absent via Plan 03-02 -- here we monkey-patch
+    transition() to surface present=False so the gate fires in unit-test
+    isolation without dragging in udev infrastructure.
+    """
     payload: dict[str, object] = {
         "state": "degraded",
-        "present": False,  # disconnected gate fires
+        "present": False,
         "rf_blocked": False,
         "recovering_level": None,
         "_healthy_streak": 0,
@@ -776,11 +728,13 @@ def test_engine_emits_action_skipped_on_disconnected() -> None:
         "last_action_monotonic_by_kind": {},
         "last_state_transition_iso": None,
     }
-    state = ModemState.model_validate(payload)
-    diag = _diag(
-        [_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])]
-    )
-    result = run_cycle(diag, {"2-3.1.1": state}, GlobalsState(), _ctx())
+    absent_state = ModemState.model_validate(payload)
+    diag = _diag([_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])])
+    with _patch(
+        "spark_modem.policy.engine.transition",
+        return_value=absent_state,
+    ):
+        result = run_cycle(diag, {"2-3.1.1": _state()}, GlobalsState(), _ctx())
     assert len(result.skipped) == 1
     s = result.skipped[0]
     assert s.reason == SkipReason.DISCONNECTED
@@ -811,9 +765,7 @@ def test_engine_emits_action_skipped_on_maintenance() -> None:
         ]
     )
     states = {"2-3.1.1": _state(), "2-3.1.2": _state()}
-    result = run_cycle(
-        diag, states, GlobalsState(), _ctx(maintenance_active=True)
-    )
+    result = run_cycle(diag, states, GlobalsState(), _ctx(maintenance_active=True))
     # Only the destructive (modem_reset) modem should produce an ActionSkipped.
     assert len(result.skipped) == 1
     s = result.skipped[0]
@@ -824,13 +776,9 @@ def test_engine_emits_action_skipped_on_maintenance() -> None:
 
 def test_engine_emits_action_skipped_on_dry_run() -> None:
     """B-04: dry_run=True (and no other gate) -> ActionSkipped(reason=DRY_RUN)."""
-    diag = _diag(
-        [_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])]
-    )
+    diag = _diag([_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])])
     settings = _settings(dry_run=True)
-    result = run_cycle(
-        diag, {"2-3.1.1": _state()}, GlobalsState(), _ctx(settings=settings)
-    )
+    result = run_cycle(diag, {"2-3.1.1": _state()}, GlobalsState(), _ctx(settings=settings))
     assert len(result.skipped) == 1
     s = result.skipped[0]
     assert s.reason == SkipReason.DRY_RUN
@@ -856,13 +804,7 @@ def test_engine_emits_action_skipped_on_ladder_skip_exhausted() -> None:
         },
     )
     diag = _diag(
-        [
-            _snap(
-                issues=[
-                    _issue(IssueCategory.REGISTRATION, IssueDetail.NOT_REGISTERED_SEARCHING)
-                ]
-            )
-        ]
+        [_snap(issues=[_issue(IssueCategory.REGISTRATION, IssueDetail.NOT_REGISTERED_SEARCHING)])]
     )
     result = run_cycle(diag, {"2-3.1.1": state}, GlobalsState(), _ctx())
     assert len(result.skipped) == 1
@@ -876,9 +818,7 @@ def test_engine_emits_action_skipped_on_ladder_skip_exhausted() -> None:
 
 def test_engine_skipped_list_empty_when_no_gate_fires() -> None:
     """B-04: clean cycle with executable action -> CycleResult.skipped == []."""
-    diag = _diag(
-        [_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])]
-    )
+    diag = _diag([_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])])
     result = run_cycle(diag, {"2-3.1.1": _state()}, GlobalsState(), _ctx())
     assert result.skipped == []
 
@@ -898,13 +838,7 @@ def test_engine_skipped_list_empty_on_decision_table_skip() -> None:
     A SIM_APP_PIN_REQUIRED issue routes to skip:requires_human (decision table);
     no ActionSkipped is emitted because no gate fired (no action was selected).
     """
-    diag = _diag(
-        [
-            _snap(
-                issues=[_issue(IssueCategory.SIM, IssueDetail.SIM_APP_PIN_REQUIRED)]
-            )
-        ]
-    )
+    diag = _diag([_snap(issues=[_issue(IssueCategory.SIM, IssueDetail.SIM_APP_PIN_REQUIRED)])])
     result = run_cycle(diag, {"2-3.1.1": _state()}, GlobalsState(), _ctx())
     # The PlannedAction with reason='skip:requires_human' is still emitted
     # (back-compat); ActionSkipped list is empty.

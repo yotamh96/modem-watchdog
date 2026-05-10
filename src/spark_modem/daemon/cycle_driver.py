@@ -473,6 +473,15 @@ class CycleDriver:
                 ),
             )
 
+        # Plan 04-05 / B-04: ActionSkipped events emitted alongside the
+        # legacy PlannedAction.suppressed_* flags. Order: state writes
+        # FIRST (above), event-log appends SECOND -- if the daemon crashes
+        # between, a re-run reads the pre-action state and re-derives the
+        # gate decisions; events.jsonl is advisory, ModemState is
+        # authoritative (RECOVERY_SPEC §8 atomic-write ordering).
+        for skipped in cycle_result.skipped:
+            self._events.append(skipped)
+
     async def _enqueue_webhooks(
         self,
         cycle_result: CycleResult,
