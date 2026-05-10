@@ -1,0 +1,6 @@
+# Git LFS pointer registration scoped to tests/fixtures/replay/v1-30d/.
+# Quarterly refresh process documented in README.md.
+# Per Phase 4 CONTEXT D-03.
+
+*.json filter=lfs diff=lfs merge=lfs -text
+*.jsonl filter=lfs diff=lfs merge=lfs -text
