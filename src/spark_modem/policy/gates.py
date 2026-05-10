@@ -75,23 +75,21 @@ def gate_same_action_backoff(
     clock: ClockProto,
     config: Settings,
 ) -> bool:
-    """FR-25: skip if same action attempted within backoff_seconds (300s).
+    """FR-25: skip if the SAME ActionKind was attempted within backoff_seconds (300s).
 
     Uses monotonic clock arithmetic (ADR-0007).
 
-    Per-action timestamps are NOT persisted in ModemState today (only
-    last_action_monotonic globally per modem); the engine treats
-    same-action and cross-action backoffs uniformly off this single
-    timestamp in Phase 2.  Phase 4 may split per-action timestamps.
-
-    The `action` parameter is reserved for the Phase 4 split; see also
-    `gate_ladder_backoff` which DOES discriminate by action kind.
+    Phase 4 (B-02): keys on per-kind timestamps from
+    state.last_action_monotonic_by_kind, NOT the legacy
+    last_action_monotonic. The per-kind dict is updated atomically by the
+    engine each cycle alongside the counter bump (RECOVERY_SPEC §8). Phase 2
+    state files (without the dict) load with an empty default and the
+    gate naturally returns False for any kind on the first action.
     """
-    del action  # reserved for Phase 4 per-action timestamp split
-    if state.last_action_monotonic is None:
+    ts = state.last_action_monotonic_by_kind.get(action)
+    if ts is None:
         return False
-    elapsed = clock.monotonic() - state.last_action_monotonic
-    return elapsed < float(config.backoff_seconds)
+    return (clock.monotonic() - ts) < float(config.backoff_seconds)
 
 
 def gate_ladder_backoff(
@@ -103,18 +101,24 @@ def gate_ladder_backoff(
     """FR-25.1: cross-action ladder backoff for destructive actions.
 
     No destructive action runs more than once every
-    config.ladder_min_interval_seconds (default 90s).  Cheap actions
+    config.ladder_min_interval_seconds (default 90s). Cheap actions
     (soft_reset, set_apn, etc.) bypass this gate.
 
-    See RECOVERY_SPEC §6.3 -- prevents v1's soft -> modem -> soft -> modem
-    ping-pong.
+    Phase 4 (B-02): MAX over destructive-kind timestamps from
+    state.last_action_monotonic_by_kind. The ladder fires its rung-promotion
+    90 s after ANY destructive rung last fired -- prevents v1's
+    soft -> modem -> soft -> modem ping-pong (RECOVERY_SPEC §6.3).
     """
     if action not in _DESTRUCTIVE_KINDS:
         return False
-    if state.last_action_monotonic is None:
+    destructive_ts = [
+        state.last_action_monotonic_by_kind[k]
+        for k in _DESTRUCTIVE_KINDS
+        if k in state.last_action_monotonic_by_kind
+    ]
+    if not destructive_ts:
         return False
-    elapsed = clock.monotonic() - state.last_action_monotonic
-    return elapsed < float(config.ladder_min_interval_seconds)
+    return (clock.monotonic() - max(destructive_ts)) < float(config.ladder_min_interval_seconds)
 
 
 def gate_exhausted(state: ModemState, action: ActionKind) -> bool:

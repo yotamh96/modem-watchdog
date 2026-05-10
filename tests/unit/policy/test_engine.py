@@ -60,6 +60,7 @@ def _state(
     healthy_streak: int = 0,
     counters: dict[str, int] | None = None,
     last_action_monotonic: float | None = None,
+    last_action_monotonic_by_kind: dict[ActionKind, float] | None = None,
     recovering_level: int | None = None,
 ) -> ModemState:
     payload: dict[str, object] = {
@@ -70,6 +71,7 @@ def _state(
         "_healthy_streak": healthy_streak,
         "counters": counters or {},
         "last_action_monotonic": last_action_monotonic,
+        "last_action_monotonic_by_kind": last_action_monotonic_by_kind or {},
         "last_state_transition_iso": None,
     }
     return ModemState.model_validate(payload)
@@ -285,11 +287,17 @@ def test_run_cycle_counter_bumps_on_executed_action() -> None:
 
 
 def test_run_cycle_counter_does_not_bump_when_skipped_by_gate() -> None:
-    """Backoff active -> counter does not bump."""
-    # Same-action backoff: last_action 100s ago, default backoff 300s.
+    """Backoff active -> counter does not bump.
+
+    Phase 4 (B-02): same-action gate keys on the per-kind dict, not the
+    legacy global last_action_monotonic. Populate the dict for SET_APN so
+    the gate fires.
+    """
+    # Same-action backoff: last SET_APN action 100s ago, default backoff 300s.
     state = _state(
         state="degraded",
-        last_action_monotonic=0.0,  # 100s before current clock=100
+        last_action_monotonic=0.0,
+        last_action_monotonic_by_kind={ActionKind.SET_APN: 0.0},
     )
     diag = _diag(
         [_snap(issues=[_issue(IssueCategory.CONFIG, IssueDetail.APN_EMPTY)])]

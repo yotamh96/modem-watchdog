@@ -56,7 +56,24 @@ class ModemState(BaseWire):
 
     # Monotonic timestamp of the last action attempted on this modem (ADR-0007).
     # None on first observation.
+    #
+    # Phase 4 (Plan 04-04 B-02): preserved for backwards-compat with Phase 2
+    # state files; bumped by the engine alongside the new per-kind dict but
+    # NO LONGER consulted by gate_same_action_backoff or gate_ladder_backoff
+    # (both now key on last_action_monotonic_by_kind). The legacy bump is
+    # locked as a contract -- a future engineer must NOT delete it as dead
+    # code. See test_engine_atomically_bumps_legacy_and_per_kind_timestamps.
     last_action_monotonic: float | None = None
+
+    # FR-25 / FR-25.1 per-action timestamp split (Phase 4 Plan 04-04 B-02).
+    #
+    # Phase 2 state files (without this field) load cleanly via default_factory.
+    # gate_same_action_backoff keys on the executed kind for the 300s gate;
+    # gate_ladder_backoff uses MAX(timestamps over destructive kinds) for the
+    # 90s cross-action gate. Engine bumps both this dict AND the legacy
+    # last_action_monotonic atomically in ONE model_copy per cycle
+    # (RECOVERY_SPEC §8 atomic ordering preserved).
+    last_action_monotonic_by_kind: dict[ActionKind, float] = Field(default_factory=dict)
 
     # Wall-clock ISO-8601 stamp of the last state transition (ADR-0007 — wall
     # clock is fine for ISO timestamps; only durations / backoffs use monotonic).
