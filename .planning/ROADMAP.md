@@ -391,7 +391,7 @@ Phases 1-2)
 
 Plans:
 - [x] 05-01-PLAN.md — `dms_get_revision` qmicli verb + parser + per-libqmi-version fixtures (X-02 firmware probe)
-- [ ] 05-02-PLAN.md — Version-detection helpers: libqmi + Zao SDK + FleetTriple orchestrator (X-03 triple)
+- [x] 05-02-PLAN.md — Version-detection helpers: libqmi + Zao SDK + FleetTriple orchestrator (X-03 triple)
 - [ ] 05-03-PLAN.md — `spark-modem ctl capture-fleet-fixture` CLI verb + PII redaction (X-01, X-02)
 - [ ] 05-04-PLAN.md — `preflight_check_known_fleet_triple` daemon preflight + main.py wiring (X-03)
 - [x] 05-05-PLAN.md — Soak audit tools: `tools/audit_soak_zao.py` + `tools/audit_soak_exhausted.py` (S-01 #2, S-01 #3 / M4)

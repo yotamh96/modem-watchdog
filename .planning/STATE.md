@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-05-PLAN.md (tools/audit_soak_zao.py + tools/audit_soak_exhausted.py — S-01 #2/#3 detectors)
-last_updated: "2026-05-11T08:25:00.000Z"
+stopped_at: Completed 05-02-PLAN.md (qmi/version.py + zao_log/version.py + FleetTriple wire + compute_fleet_triple orchestrator — three-source version detection for Plans 05-03 + 05-04)
+last_updated: "2026-05-11T08:37:59.804Z"
 last_activity: 2026-05-11
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 41
-  completed_plans: 35
-  percent: 85
+  completed_plans: 36
+  percent: 88
 ---
 
 # Project State
@@ -30,7 +30,7 @@ Plan: 05-05 done (parallel wave-1 dispatched sequentially); 05-02/03/04/06/07/08
 Status: Ready to execute next wave-1 plan or move to wave-2
 Last activity: 2026-05-11
 
-Progress: [████████▌░] 85%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -89,6 +89,7 @@ Progress: [████████▌░] 85%
 | Phase 04-destructive-actions-hil P07-hil-scenario-suite | 21min | 3 tasks tasks | 16 files files |
 | Phase 05 P01 | 5min | 2 tasks (4 TDD commits) tasks | 6 files files |
 | Phase 05 P05 | 7min | 2 tasks (4 TDD commits) tasks | 5 files files |
+| Phase 05 P02 | 7min | 3 tasks (6 TDD commits) tasks | 8 files files |
 
 ## Accumulated Context
 
@@ -296,6 +297,11 @@ Recent decisions affecting current work:
 - Plan 05-05: classifier in audit_soak_exhausted.py uses `match history[j].to_state:` per CLAUDE.md anti-pattern catalogue (no if/elif on ModemState); test_match_pattern_used_not_if_elif pins via grep-assertion on source
 - Plan 05-05: _HARDWARE_FAILURE_DETAILS = frozenset({enumeration_overcurrent, enumeration_address_fail, usb_overcurrent, thermal_throttle, tegra_hub_psu_droop}) — sourced verbatim from wire/enums.py IssueDetail enum; conservative (new variant added later classifies UNEXPLAINED, T-05-05-05 accept disposition)
 - Plan 05-05: tests/unit/tools/ established as a new test sub-package (sibling to tests/unit/qmi/parsers/ from Plan 05-01); first tests under tools/ in the entire codebase; module import via importlib.util.spec_from_file_location since tools/ is not a Python package
+- Plan 05-02: compute_fleet_triple takes wrapper: object (duck-typed) NOT a QmiWrapper Protocol — avoids the qmi/wrapper.py to qmi/errors.py to subproc/ import cycle; production QmiWrapper.dms_get_revision and test _FakeWrapper both structurally satisfy the contract
+- Plan 05-02: _ZAO_SDK_UNKNOWN_SENTINEL is the literal string 'unknown' (not None, not Optional) on the FleetTriple wire — RESEARCH Q3 fallback materialised; byte-reproducible across triple.json files baked into the .deb; preflight (05-04) decides fail-closed, capture (05-03) records for operator follow-up
+- Plan 05-02: FleetTriple uses inline ConfigDict(frozen=True, extra='forbid') instead of inheriting BaseWire from wire/_base.py — version.py already imports qmi/errors, parsers/get_revision, subproc, AND zao_log/version; adding wire/_base would deepen the chain unnecessarily and the inline config is two lines; W-02 wire discipline preserved verbatim
+- Plan 05-02: QmiError on dms_get_revision surfaces as QmiVersionDetectionFailed (raise, not silent fallback) — daemon preflight (X-03) needs firmware failure to surface; SDK fallback to 'unknown' is allowed (no universal detection) but firmware fallback to 'unknown' would defeat the known-fleet-triple gate
+- Plan 05-02: Two Zao banner regex candidates in priority order (modern zao_remote_endpoint/X.Y.Z first, legacy zao-remote-endpoint X.Y.Z second); 64 KiB head-read cap (_HEAD_BYTES) pins T-05-02-01 DoS mitigation; dpkg-query subprocess fallback (RESEARCH Q3 §295) deferred to future ADR if banner-absent becomes fleet-wide
 
 ### Pending Todos
 
@@ -314,8 +320,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-11T08:25:00.000Z
-Stopped at: Completed 05-05-PLAN.md (tools/audit_soak_zao.py + tools/audit_soak_exhausted.py — S-01 #2/#3 soak-audit detectors)
+Last session: 2026-05-11T08:37:59.784Z
+Stopped at: Completed 05-02-PLAN.md (qmi/version.py + zao_log/version.py + FleetTriple wire + compute_fleet_triple orchestrator — three-source version detection for Plans 05-03 + 05-04)
 Resume file: None
 
 **Planned Phase:** 5 (Bench & Field Shadow) — 8 plans — 2026-05-11T07:40:08.287Z
