@@ -1,0 +1,8 @@
+# libqmi_version: 1.30
+qmicli 1.30.6
+Copyright (C) 2012-2023 Aleksander Morgado
+License GPLv2+: GNU GPL version 2 or later <http://gnu.org/licenses/gpl-2.0.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+Compiled with libqmi-glib 1.30.6
