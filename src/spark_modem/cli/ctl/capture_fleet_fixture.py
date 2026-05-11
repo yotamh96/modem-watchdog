@@ -112,10 +112,17 @@ async def _capture_one_modem(
             # On any failure, write a stub so the operator can see what failed.
             # Broad-except deliberate: operator visibility over strictness for a
             # one-shot capture verb run with physical access to the box.
-            redacted = (
+            #
+            # Phase 5 WR-02: route the failure stub through the same PII pipeline
+            # that wraps stdout, because ``exc!s`` may carry stderr / stdout /
+            # ValidationError citations that quote PII-shaped values verbatim.
+            # Defense-in-depth for NFR-22 — the captured file ships in support
+            # bundles, so any PII reaching this surface MUST be redacted.
+            raw_stub = (
                 f"# CAPTURE FAILED for {verb_name} on {descriptor.usb_path} "
                 f"({descriptor.cdc_wdm}): {type(exc).__name__}: {exc!s}\n"
             ).encode()
+            redacted = redact_pii_from_raw_qmicli(raw_stub)
         await asyncio.to_thread(_write_modem_verb_output, modem_dir, verb_name, redacted)
 
 

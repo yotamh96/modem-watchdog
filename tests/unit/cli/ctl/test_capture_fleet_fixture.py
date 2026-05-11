@@ -19,6 +19,7 @@ import pytest
 
 from spark_modem.cli.ctl.capture_fleet_fixture import (
     QMICLI_CAPTURE_VERBS,
+    _capture_one_modem,
     build_fleet_fixture,
 )
 from spark_modem.cli.main import _build_parser
@@ -203,6 +204,52 @@ def test_argparse_requires_out() -> None:
     with pytest.raises(SystemExit) as exc_info:
         parser.parse_args(["ctl", "capture-fleet-fixture"])
     assert exc_info.value.code == 2  # argparse's standard "missing argument" exit
+
+
+async def test_capture_failure_message_is_redacted(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Phase 5 WR-02: an exception raised by ``subproc_runner.run`` whose
+    ``str()`` carries PII MUST be redacted before the failure stub lands
+    on disk. Defense-in-depth for NFR-22: the capture verb's failure path
+    is a real surface that ships in support bundles.
+
+    Exercises ``_capture_one_modem`` directly (not the full
+    ``build_fleet_fixture``) to isolate the failure-stub redaction path:
+    full-pipeline failures bail out via ``compute_fleet_triple`` long
+    before producing per-verb stubs.
+    """
+
+    async def fake_run_raising_with_pii(
+        argv: list[str],
+        *,
+        timeout_s: float,
+        stdin: bytes | None = None,
+        env: dict[str, str] | None = None,
+    ) -> CompletedProcess:
+        del argv, timeout_s, stdin, env
+        # Synthesise an exception whose str() carries an ICCID-shaped value
+        # (the worst case the reviewer described: a Pydantic ValidationError
+        # or stderr-bearing exception that quotes the offending field value).
+        raise RuntimeError("downstream failure: ICCID: '8997201700123456789'")
+
+    monkeypatch.setattr(subproc_runner, "run", fake_run_raising_with_pii)
+
+    descriptor = _make_descriptors()[0]
+    modem_dir = tmp_path / "qmi" / descriptor.usb_path
+    await _capture_one_modem(descriptor, modem_dir=modem_dir)
+
+    for verb_name, _ in QMICLI_CAPTURE_VERBS:
+        body = (modem_dir / f"{verb_name}.txt").read_bytes()
+        assert b"CAPTURE FAILED" in body, f"expected failure stub in {verb_name}"
+        assert b"8997201700123456789" not in body, (
+            f"raw ICCID leaked into failure stub for {verb_name}"
+        )
+        # Confirm the redaction token shape is present.
+        assert _REDACTED_RE.search(body) is not None, (
+            f"no redaction token in failure stub for {verb_name}"
+        )
 
 
 def test_qmicli_capture_verbs_list_is_locked_at_7() -> None:
