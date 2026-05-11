@@ -10,6 +10,7 @@ not enough to enable a brute-force lookup table for the full ICCID space.
 from __future__ import annotations
 
 import hashlib
+import re
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -64,3 +65,50 @@ def redact_webhook_url_to_host_only(url: str) -> str:
     if not parts.netloc:
         return url
     return f"{parts.scheme}://{parts.netloc}/"
+
+
+# ---- raw qmicli stdout redaction (Phase 5 X-02) ----------------------
+
+# Match ``ICCID: '<digits>'``, ``UIM ID: '<digits>'``, ``IMSI: '<digits>'``,
+# ``IPv4 address: '<dotted>'``. Captured groups: (label-prefix-with-colon-and-quote,
+# value, closing-quote). Replacement preserves the prefix and closing quote so
+# consumers of the captured fixture can still read the line shape; only the
+# value is replaced with the ``<redacted:<sha256[:8]>>`` sentinel.
+#
+# ``UIM ID`` is included alongside ``ICCID`` because real qmicli uim_get_card_status
+# stdout carries the ICCID value under both labels (Rule 2 — missing critical PII
+# coverage; same identity in two places of the same stdout would otherwise leak).
+_RAW_QMICLI_PII_PATTERNS: tuple[re.Pattern[bytes], ...] = (
+    re.compile(rb"(ICCID:\s*')([^']+)(')"),
+    re.compile(rb"(UIM ID:\s*')([^']+)(')"),
+    re.compile(rb"(IMSI:\s*')([^']+)(')"),
+    re.compile(rb"(IPv4 address:\s*')([^']+)(')"),
+)
+
+
+def redact_pii_from_raw_qmicli(stdout: bytes) -> bytes:
+    """Redact ICCID / IMSI / IPv4 values from raw qmicli stdout.
+
+    Returns bytes with every matched value replaced by
+    ``<redacted:<sha256[:8]>>`` (the same sentinel shape ``redact_pii``
+    produces). Determinism is preserved: same input → same output;
+    the same ICCID value appearing twice in one stdout becomes the
+    same redacted form so cross-file identity correlation survives.
+
+    Phase 5 X-02 / CONTEXT.md: applied at capture time to every raw
+    qmicli output written under
+    ``tests/fixtures/fleet/<box-id>/qmi/<usb_path>/<verb>.txt``.
+
+    Lines without a matching pattern are returned byte-identical (the
+    captured fixture text remains useful to operators reading it).
+    """
+
+    def _sub(m: re.Match[bytes]) -> bytes:
+        value = m.group(2).decode("utf-8", errors="replace")
+        redacted = redact_pii(value).encode("utf-8")
+        return m.group(1) + redacted + m.group(3)
+
+    out = stdout
+    for pat in _RAW_QMICLI_PII_PATTERNS:
+        out = pat.sub(_sub, out)
+    return out
