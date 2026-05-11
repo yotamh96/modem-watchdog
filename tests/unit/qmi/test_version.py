@@ -22,7 +22,13 @@ from spark_modem.subproc.result import CompletedProcess
 _FIXTURE_ROOT = Path(__file__).resolve().parents[2] / "fixtures" / "qmicli" / "version"
 
 
-def _make_cp(*, argv: list[str], exit_code: int, stdout: bytes, stderr: bytes = b"") -> CompletedProcess:
+def _make_cp(
+    *,
+    argv: list[str],
+    exit_code: int,
+    stdout: bytes,
+    stderr: bytes = b"",
+) -> CompletedProcess:
     """Build a CompletedProcess for stubbed subproc_runner.run returns."""
     return CompletedProcess.make(
         argv=argv,
