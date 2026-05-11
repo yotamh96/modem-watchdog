@@ -87,10 +87,22 @@ def redact_webhook_url_to_host_only(url: str) -> str:
 # leaked the routable carrier-NAT gateway IP into the support bundle. The
 # generalised label-prefix pattern below covers every ``IPv4 *: '...'``
 # shape with one expression. NFR-22.
+#
+# Device-identity labels (Phase 5 WR-03): IMEI / MEID / ESN / MSISDN are
+# emitted by ``dms_get_ids``. That verb is NOT in ``QMICLI_CAPTURE_VERBS``
+# today, but a future verb-list expansion (or any other code path that
+# feeds raw qmicli stdout through this redactor) must not silently leak
+# device identity. Adding these patterns now is the defense-in-depth move
+# the WR-03 reviewer recommended. ``MSISDN`` (subscriber phone number)
+# is the strongest PII of the four.
 _RAW_QMICLI_PII_PATTERNS: tuple[re.Pattern[bytes], ...] = (
     re.compile(rb"(ICCID:\s*')([^']+)(')"),
     re.compile(rb"(UIM ID:\s*')([^']+)(')"),
     re.compile(rb"(IMSI:\s*')([^']+)(')"),
+    re.compile(rb"(IMEI:\s*')([^']+)(')"),
+    re.compile(rb"(MEID:\s*')([^']+)(')"),
+    re.compile(rb"(ESN:\s*')([^']+)(')"),
+    re.compile(rb"(MSISDN:\s*')([^']+)(')"),
     # Covers address / subnet mask / gateway address / primary DNS / secondary DNS.
     re.compile(rb"(IPv4[^:'\n]*:\s*')([^']+)(')"),
 )

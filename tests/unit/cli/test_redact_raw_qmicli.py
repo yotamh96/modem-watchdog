@@ -76,6 +76,67 @@ def test_wds_current_settings_fixture_redacts_all_ipv4_fields() -> None:
     assert len(_REDACTED_RE.findall(out)) >= 3
 
 
+def test_imei_redacted() -> None:
+    """Phase 5 WR-03: IMEI is device-identity PII (``dms_get_ids`` output).
+
+    The verb is not in ``QMICLI_CAPTURE_VERBS`` today but the redaction
+    layer should cover every plausibly-PII-shaped qmicli label up-front
+    so a future verb-list expansion does not silently leak identity.
+    """
+    out = redact_pii_from_raw_qmicli(b"\tIMEI: '359072063123456'\n")
+    assert _REDACTED_RE.search(out) is not None
+    assert b"359072063123456" not in out
+
+
+def test_meid_redacted() -> None:
+    """Phase 5 WR-03: MEID (CDMA equipment identity) is PII."""
+    out = redact_pii_from_raw_qmicli(b"\tMEID: 'A0000012345678'\n")
+    assert _REDACTED_RE.search(out) is not None
+    assert b"A0000012345678" not in out
+
+
+def test_esn_redacted() -> None:
+    """Phase 5 WR-03: ESN (legacy CDMA serial number) is PII."""
+    out = redact_pii_from_raw_qmicli(b"\tESN: '80ABCDEF'\n")
+    assert _REDACTED_RE.search(out) is not None
+    assert b"80ABCDEF" not in out
+
+
+def test_msisdn_redacted() -> None:
+    """Phase 5 WR-03: MSISDN is the subscriber's phone number — clear PII."""
+    out = redact_pii_from_raw_qmicli(b"\tMSISDN: '+972541234567'\n")
+    assert _REDACTED_RE.search(out) is not None
+    assert b"+972541234567" not in out
+
+
+def test_wr03_identity_block_roundtrip() -> None:
+    """Phase 5 WR-03: combined identity block (a plausible dms_get_ids output)
+    must redact every PII label and pass through structural lines byte-identical."""
+    body = (
+        b"[/dev/cdc-wdm0] Device identifiers retrieved:\n"
+        b"\tIMEI: '359072063123456'\n"
+        b"\tIMEI software version: '00'\n"
+        b"\tMEID: 'A0000012345678'\n"
+        b"\tESN: '80ABCDEF'\n"
+        b"\tMSISDN: '+972541234567'\n"
+    )
+    out = redact_pii_from_raw_qmicli(body)
+    for raw_value in (
+        b"359072063123456",
+        b"A0000012345678",
+        b"80ABCDEF",
+        b"+972541234567",
+    ):
+        assert raw_value not in out, f"{raw_value!r} survived redaction"
+    # The descriptive prefix and structural lines should pass through.
+    assert b"Device identifiers retrieved:" in out
+    # IMEI software version is not PII-shaped (always two digits per spec)
+    # but the WR-03 expansion uses a literal ``IMEI:`` pattern, so this
+    # ``IMEI software version`` line is NOT matched — verify by counting:
+    # exactly four redaction tokens should appear (IMEI, MEID, ESN, MSISDN).
+    assert len(_REDACTED_RE.findall(out)) == 4
+
+
 def test_idempotent_redaction_is_deterministic() -> None:
     body = b"ICCID: '8997201700123456789'\nIMSI: '425010012345678'\n"
     a = redact_pii_from_raw_qmicli(body)
