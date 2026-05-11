@@ -22,12 +22,13 @@ from spark_modem.cli import provision as provision_cmd
 from spark_modem.cli import recovery as recovery_cmd
 from spark_modem.cli import reset as reset_cmd
 from spark_modem.cli import status as status_cmd
+from spark_modem.cli.ctl import capture_fleet_fixture as ctl_capture_fleet
 from spark_modem.cli.ctl import history as ctl_history
 from spark_modem.cli.ctl import maintenance as ctl_maintenance
 from spark_modem.cli.ctl import support_bundle as ctl_support_bundle
 
 
-def _build_parser() -> argparse.ArgumentParser:
+def _build_parser() -> argparse.ArgumentParser:  # noqa: PLR0915 - argparse subparser wiring is a single block by design
     parser = argparse.ArgumentParser(prog="spark-modem")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
@@ -176,6 +177,19 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output path (default: /var/lib/.../support-bundles/...)",
     )
     p_sb.set_defaults(func=ctl_support_bundle.run)
+
+    # ctl capture-fleet-fixture (Phase 5 X-01 / X-02)
+    p_cff = ctl_sub.add_parser(
+        "capture-fleet-fixture",
+        help="Capture per-box (firmware, SDK, libqmi) triple + redacted qmicli fixtures",
+    )
+    p_cff.add_argument(
+        "--out",
+        type=str,
+        required=True,
+        help="Output directory for the per-box fixture tree",
+    )
+    p_cff.set_defaults(func=ctl_capture_fleet.run)
 
     return parser
 
