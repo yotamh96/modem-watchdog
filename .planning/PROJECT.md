@@ -249,4 +249,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-08 after Phase 3 (Linux Event Sources & Lifecycle) completion*
+*Last updated: 2026-05-11 after Phase 5 (Bench & Field Shadow) code-completion — Plans 05-01..05-07 shipped (X-* fleet-triple chain, audit tools, .deb known-fleet shipment, operator docs). Plan 05-08 (3-4 week operator soak campaign + SIGNOFF) tracked in 05-HUMAN-UAT.md.*
