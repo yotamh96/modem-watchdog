@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-01-PLAN.md (dms_get_revision wrapper + parser + libqmi 1.30/1.32 fixtures)
-last_updated: "2026-05-11T08:07:35.331Z"
+stopped_at: Completed 05-05-PLAN.md (tools/audit_soak_zao.py + tools/audit_soak_exhausted.py — S-01 #2/#3 detectors)
+last_updated: "2026-05-11T08:25:00.000Z"
 last_activity: 2026-05-11
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 41
-  completed_plans: 34
-  percent: 83
+  completed_plans: 35
+  percent: 85
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 05 (bench-field-shadow) — EXECUTING
-Plan: 2 of 8
-Status: Ready to execute
+Plan: 05-05 done (parallel wave-1 dispatched sequentially); 05-02/03/04/06/07/08 still pending
+Status: Ready to execute next wave-1 plan or move to wave-2
 Last activity: 2026-05-11
 
-Progress: [████████░░] 83%
+Progress: [████████▌░] 85%
 
 ## Performance Metrics
 
@@ -88,6 +88,7 @@ Progress: [████████░░] 83%
 | Phase 04-destructive-actions-hil PP05 | 14min | 2 tasks tasks | 10 files files |
 | Phase 04-destructive-actions-hil P07-hil-scenario-suite | 21min | 3 tasks tasks | 16 files files |
 | Phase 05 P01 | 5min | 2 tasks (4 TDD commits) tasks | 6 files files |
+| Phase 05 P05 | 7min | 2 tasks (4 TDD commits) tasks | 5 files files |
 
 ## Accumulated Context
 
@@ -288,6 +289,13 @@ Recent decisions affecting current work:
 - Plan 05-01: parse_get_revision preserves case on the revision string (NOT lowercased); deliberate deviation from parse_get_operating_mode which lowercases mode — firmware identifiers like SWI9X30C_02.38.00.00 are case-sensitive; called out in-source so it doesn't get 'fixed' later
 - Plan 05-01: tests/unit/qmi/parsers/ established as a new test sub-package (sibling to the existing tests/unit/qmi/test_parsers.py omnibus) — isolates parser-specific happy/error tests from the fixture-parametrized smoke matrix
 - Plan 05-01: per-libqmi-version fixture pair (1.30 + 1.32) landed atomically with the parser; locked-set assertion test_fixture_tree_has_locked_set_of_libqmi_versions pins {1.30, 1.32} so deletion of either is a regression caught at test time
+- Plan 05-05: tools/audit_soak_zao.py + tools/audit_soak_exhausted.py are the post-hoc S-01 #2 + #3 detectors the on-site engineer runs at soak-window end; both are SP-04-exempt (live under tools/) and READ-ONLY against events.jsonl + Zao log; verified by grep -rEn 'StateStore.save|atomic_write_bytes' tools/audit_soak_*.py returning zero matches (T-05-05-04)
+- Plan 05-05: event wire schema is flat — ActionPlanned/StateTransition variants carry usb_path (no who, no line); audits derive line from trailing dotted segment of usb_path (2-3.1.N -> N) since bench hardware always wires lines 1..4 to 2-3.1.{1..4}; malformed usb_path classified as unknown_line_derivation (refuses to fabricate)
+- Plan 05-05: _DECAY_K_DEFAULT does not exist as a module-level constant in policy/engine.py — actual production source is Settings.healthy_streak_decay_k (default 10 per ADR-0006). audit_soak_exhausted._resolve_decay_k_default() probes policy.engine._DECAY_K_DEFAULT (forward-compat), then Settings field default, then literal 10
+- Plan 05-05: both audits define private _read_events_as_raw_dicts helper (raw JSONL read; bypasses pydantic EventAdapter.validate_json) — design rationale: audit must NOT break when Event union shape evolves; comment in module docstring documents the deliberate non-coupling from spark_modem.cli.ctl.history
+- Plan 05-05: classifier in audit_soak_exhausted.py uses `match history[j].to_state:` per CLAUDE.md anti-pattern catalogue (no if/elif on ModemState); test_match_pattern_used_not_if_elif pins via grep-assertion on source
+- Plan 05-05: _HARDWARE_FAILURE_DETAILS = frozenset({enumeration_overcurrent, enumeration_address_fail, usb_overcurrent, thermal_throttle, tegra_hub_psu_droop}) — sourced verbatim from wire/enums.py IssueDetail enum; conservative (new variant added later classifies UNEXPLAINED, T-05-05-05 accept disposition)
+- Plan 05-05: tests/unit/tools/ established as a new test sub-package (sibling to tests/unit/qmi/parsers/ from Plan 05-01); first tests under tools/ in the entire codebase; module import via importlib.util.spec_from_file_location since tools/ is not a Python package
 
 ### Pending Todos
 
@@ -306,8 +314,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-11T08:07:35.313Z
-Stopped at: Completed 05-01-PLAN.md (dms_get_revision wrapper + parser + libqmi 1.30/1.32 fixtures)
+Last session: 2026-05-11T08:25:00.000Z
+Stopped at: Completed 05-05-PLAN.md (tools/audit_soak_zao.py + tools/audit_soak_exhausted.py — S-01 #2/#3 soak-audit detectors)
 Resume file: None
 
 **Planned Phase:** 5 (Bench & Field Shadow) — 8 plans — 2026-05-11T07:40:08.287Z
