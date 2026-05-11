@@ -14,8 +14,14 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
-from spark_modem.qmi.version import QmiVersionDetectionFailed, detect_libqmi_version
+from spark_modem.qmi.version import (
+    FleetTriple,
+    QmiVersionDetectionFailed,
+    compute_fleet_triple,
+    detect_libqmi_version,
+)
 from spark_modem.subproc import runner as subproc_runner
 from spark_modem.subproc.result import CompletedProcess
 
@@ -152,10 +158,6 @@ _ZAO_FIXTURE_ROOT = (
 
 def test_fleet_triple_is_frozen_and_extra_forbid() -> None:
     """FleetTriple is byte-reproducible: frozen + extra='forbid'."""
-    from pydantic import ValidationError
-
-    from spark_modem.qmi.version import FleetTriple
-
     triple = FleetTriple(em7421_firmware="X", zao_sdk="Y", libqmi="Z")
     # extra=forbid: unknown fields rejected.
     with pytest.raises(ValidationError):
@@ -172,8 +174,6 @@ def test_fleet_triple_is_frozen_and_extra_forbid() -> None:
 
 async def test_compute_fleet_triple_happy_path(monkeypatch: pytest.MonkeyPatch) -> None:
     """All three probes succeed; FleetTriple has all three fields populated."""
-    from spark_modem.qmi.version import compute_fleet_triple
-
     libqmi_body = (_FIXTURE_ROOT / "1.30" / "standard.txt").read_bytes()
 
     async def fake_run(
@@ -198,8 +198,6 @@ async def test_compute_fleet_triple_zao_unknown_sentinel(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """No Zao banner → zao_sdk = 'unknown' (preflight decides what to do)."""
-    from spark_modem.qmi.version import compute_fleet_triple
-
     libqmi_body = (_FIXTURE_ROOT / "1.30" / "standard.txt").read_bytes()
 
     async def fake_run(
@@ -225,8 +223,6 @@ async def test_compute_fleet_triple_firmware_qmierror_raises(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Malformed dms_get_revision stdout → QmiVersionDetectionFailed."""
-    from spark_modem.qmi.version import compute_fleet_triple
-
     libqmi_body = (_FIXTURE_ROOT / "1.30" / "standard.txt").read_bytes()
 
     async def fake_run(
