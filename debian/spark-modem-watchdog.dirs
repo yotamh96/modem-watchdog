@@ -1,4 +1,5 @@
 /etc/spark-modem-watchdog/conf.d
+/etc/spark-modem-watchdog/known-fleet
 /var/lib/spark-modem-watchdog
 /var/lib/spark-modem-watchdog/state/by-usb
 /var/log/spark-modem-watchdog
