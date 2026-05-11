@@ -12,6 +12,8 @@ recover. It assumes a Jetson Orin NX with the `.deb` package installed
 and Zao already running. For dev/test workflows see
 [TEST_STRATEGY.md](TEST_STRATEGY.md).
 
+For Phase 5 bench/field soak operations, see `.planning/phases/05-bench-field-shadow/SOAK_RUNBOOK.md`.
+
 ---
 
 ## 1. First install
