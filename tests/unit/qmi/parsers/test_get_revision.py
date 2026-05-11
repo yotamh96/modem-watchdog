@@ -69,3 +69,22 @@ def test_result_is_frozen_and_ignores_extra_fields() -> None:
     )
     assert silent.revision == "SWI9X30C_02.38.00.00"
     assert not hasattr(silent, "unknown_field")
+
+
+def test_parser_accepts_libqmi_1_32_fixture() -> None:
+    """The parser handles the libqmi 1.32 fixture identically — Revision
+    line shape has not changed across 1.30→1.32 per RESEARCH Q3 A4/A5.
+    """
+    body = (_FIXTURES_ROOT / "get_revision" / "1.32" / "standard.txt").read_bytes()
+    result = parse_get_revision(body)
+    assert isinstance(result, GetRevisionResult)
+    assert result.revision == "SWI9X30C_02.38.00.00"
+
+
+def test_fixture_tree_has_locked_set_of_libqmi_versions() -> None:
+    """Phase 5: 1.30 + 1.32. Adding a new libqmi version is a deliberate
+    extension (new fixture file); deleting one is a regression caught here.
+    """
+    root = _FIXTURES_ROOT / "get_revision"
+    version_dirs = sorted(d.name for d in root.iterdir() if d.is_dir())
+    assert version_dirs == ["1.30", "1.32"], version_dirs
