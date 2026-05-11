@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: ready_to_plan
-stopped_at: "Completed 05-07-PLAN.md (operator-doc plan: SIGNOFF.md template + SOAK_RUNBOOK.md + docs/RUNBOOK.md cross-ref; Phase 5 automated deliverables complete, only manual 05-08 soak execution remains)"
-last_updated: "2026-05-11T09:24:43.309Z"
+status: planning
+stopped_at: "Phase 05.1 context gathered (deb-packaging-hotfix: 3 bugs, minimum+regression-gate scope, pip-install spark_modem into venv, LoadCredential+code-fallback, dockerized aarch64 CI install test)"
+last_updated: "2026-05-11T12:11:17.896Z"
 last_activity: 2026-05-11
 progress:
-  total_phases: 7
-  completed_phases: 6
+  total_phases: 8
+  completed_phases: 5
   total_plans: 41
-  completed_plans: 40
-  percent: 86
+  completed_plans: 41
+  percent: 100
 ---
 
 # Project State
@@ -97,6 +97,10 @@ Progress: [██████████] 98%
 | Phase 05-bench-field-shadow P07 | 3m 12s | 3 tasks tasks | 4 files files |
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 05.1 inserted after Phase 5 (2026-05-11): deb-packaging-hotfix (URGENT) — bench Jetson .deb install fails at systemctl start (203/EXEC); spark-modem package never installed into bundled venv, no daemon entry point in pyproject.toml, systemd-245 LoadCredential incompatibility. Blocks Plan 05-08 Task 2 (bench soak window) until resolved + reinstalled.
 
 ### Decisions
 
@@ -341,9 +345,9 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-11T09:24:31.554Z
-Stopped at: Completed 05-07-PLAN.md (operator-doc plan: SIGNOFF.md template + SOAK_RUNBOOK.md + docs/RUNBOOK.md cross-ref; Phase 5 automated deliverables complete, only manual 05-08 soak execution remains)
-Resume file: None
+Last session: --stopped-at
+Stopped at: Phase 05.1 context gathered (deb-packaging-hotfix: 3 bugs, minimum+regression-gate scope, pip-install spark_modem into venv, LoadCredential+code-fallback, dockerized aarch64 CI install test)
+Resume file: --resume-file
 
 **Planned Phase:** 5 (Bench & Field Shadow) — 8 plans — 2026-05-11T07:40:08.287Z
 **Phase 2 status:** ✅ COMPLETE — all 10 plans shipped, replay harness 100% v1 agreement, 1675-test suite green in 11.82s
