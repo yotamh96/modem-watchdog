@@ -70,19 +70,29 @@ def redact_webhook_url_to_host_only(url: str) -> str:
 # ---- raw qmicli stdout redaction (Phase 5 X-02) ----------------------
 
 # Match ``ICCID: '<digits>'``, ``UIM ID: '<digits>'``, ``IMSI: '<digits>'``,
-# ``IPv4 address: '<dotted>'``. Captured groups: (label-prefix-with-colon-and-quote,
-# value, closing-quote). Replacement preserves the prefix and closing quote so
-# consumers of the captured fixture can still read the line shape; only the
-# value is replaced with the ``<redacted:<sha256[:8]>>`` sentinel.
+# and every ``IPv4 <something>: '<dotted>'`` shape qmicli can emit.
+# Captured groups: (label-prefix-with-colon-and-quote, value, closing-quote).
+# Replacement preserves the prefix and closing quote so consumers of the
+# captured fixture can still read the line shape; only the value is replaced
+# with the ``<redacted:<sha256[:8]>>`` sentinel.
 #
 # ``UIM ID`` is included alongside ``ICCID`` because real qmicli uim_get_card_status
 # stdout carries the ICCID value under both labels (Rule 2 — missing critical PII
 # coverage; same identity in two places of the same stdout would otherwise leak).
+#
+# IPv4 coverage (Phase 5 CR-01): ``wds_get_current_settings`` emits three
+# adjacent labels — ``IPv4 address``, ``IPv4 subnet mask``, ``IPv4 gateway
+# address`` (plus ``IPv4 primary DNS`` / ``IPv4 secondary DNS`` in some
+# configurations). The original pattern matched only ``IPv4 address:`` and
+# leaked the routable carrier-NAT gateway IP into the support bundle. The
+# generalised label-prefix pattern below covers every ``IPv4 *: '...'``
+# shape with one expression. NFR-22.
 _RAW_QMICLI_PII_PATTERNS: tuple[re.Pattern[bytes], ...] = (
     re.compile(rb"(ICCID:\s*')([^']+)(')"),
     re.compile(rb"(UIM ID:\s*')([^']+)(')"),
     re.compile(rb"(IMSI:\s*')([^']+)(')"),
-    re.compile(rb"(IPv4 address:\s*')([^']+)(')"),
+    # Covers address / subnet mask / gateway address / primary DNS / secondary DNS.
+    re.compile(rb"(IPv4[^:'\n]*:\s*')([^']+)(')"),
 )
 
 
