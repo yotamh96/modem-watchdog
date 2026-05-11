@@ -390,7 +390,7 @@ Phases 1-2)
 **Plans**: 8 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — `dms_get_revision` qmicli verb + parser + per-libqmi-version fixtures (X-02 firmware probe)
+- [x] 05-01-PLAN.md — `dms_get_revision` qmicli verb + parser + per-libqmi-version fixtures (X-02 firmware probe)
 - [ ] 05-02-PLAN.md — Version-detection helpers: libqmi + Zao SDK + FleetTriple orchestrator (X-03 triple)
 - [ ] 05-03-PLAN.md — `spark-modem ctl capture-fleet-fixture` CLI verb + PII redaction (X-01, X-02)
 - [ ] 05-04-PLAN.md — `preflight_check_known_fleet_triple` daemon preflight + main.py wiring (X-03)
@@ -481,7 +481,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 2. Core Daemon | 9/10 | In Progress | - |
 | 3. Linux Event Sources & Lifecycle | 9/9 | Complete | 2026-05-08 |
 | 4. Destructive Actions & HIL | 0/7 | Not started | - |
-| 5. Bench & Field Shadow | 0/8 | Planned | - |
+| 5. Bench & Field Shadow | 1/8 | In Progress | - |
 | 6. Cutover & Fleet Rollout | 0/TBD | Not started | - |
 | 7. v1 Decommission & Archive | 0/TBD | Not started | - |
 

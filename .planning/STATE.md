@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Phase 5 context gathered
-last_updated: "2026-05-11T07:40:08.306Z"
-last_activity: 2026-05-10
+status: executing
+stopped_at: Completed 05-01-PLAN.md (dms_get_revision wrapper + parser + libqmi 1.30/1.32 fixtures)
+last_updated: "2026-05-11T08:07:35.331Z"
+last_activity: 2026-05-11
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 41
-  completed_plans: 33
-  percent: 80
+  completed_plans: 34
+  percent: 83
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-05)
 
 **Core value:** Maximize end-user uplink availability across the four bonded modems by applying minimum-impact recovery actions — and never running a destructive recovery that has zero chance of fixing the observed issue.
-**Current focus:** Phase 04 — destructive-actions-hil
+**Current focus:** Phase 05 — bench-field-shadow
 
 ## Current Position
 
-Phase: 5
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-10
+Phase: 05 (bench-field-shadow) — EXECUTING
+Plan: 2 of 8
+Status: Ready to execute
+Last activity: 2026-05-11
 
-Progress: [██████████] 100%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
@@ -87,6 +87,7 @@ Progress: [██████████] 100%
 | Phase 04 P04 | 15min | 3 tasks tasks | 13 files files |
 | Phase 04-destructive-actions-hil PP05 | 14min | 2 tasks tasks | 10 files files |
 | Phase 04-destructive-actions-hil P07-hil-scenario-suite | 21min | 3 tasks tasks | 16 files files |
+| Phase 05 P01 | 5min | 2 tasks (4 TDD commits) tasks | 6 files files |
 
 ## Accumulated Context
 
@@ -283,6 +284,10 @@ Recent decisions affecting current work:
 - Plan 04-07: 5-of-12 scenarios import fault_inject helpers; the other 7 test paths the helper toolkit doesn't cover (systemctl restart/stop, spark-modem reset CLI, modprobe direct, ctl reset-state, os.kill SIGSTOP+pgrep). The plan's '>=10 scenarios use fault_inject' criterion was over-aspirational; semantic coverage is correct.
 - Plan 04-07: Phase 4 EXIT bench-Jetson human-verify checkpoint auto-approved under --auto mode (workflow._auto_chain_active=true). Bench-Jetson hardware verification deferred to first nightly HIL run post-merge; Phase 4 EXIT contingent on first green nightly run of .github/workflows/hil.yml (all 12 scenarios + replay-harness >=95% gate).
 - Plan 04-07: ASYNC240 + ASYNC109 + SIM105 + RUF100 lint sweep across all 12 HIL scenarios (Rule 3 Blocking) -- pathlib methods on async functions wrapped in asyncio.to_thread; timeout= renamed to timeout_s=; try/except/pass replaced with contextlib.suppress; obsolete # noqa: BLE001 directives removed (BLE rules not in this project's ruff selectors).
+- Plan 05-01: dms_get_revision is the 8th read-only QmiWrapper verb (Phase 5 only adds one); preserves the read-only contract (does NOT set _in_critical_section), routes through subproc.runner (SP-04), always passes --device-open-proxy (FR-74)
+- Plan 05-01: parse_get_revision preserves case on the revision string (NOT lowercased); deliberate deviation from parse_get_operating_mode which lowercases mode — firmware identifiers like SWI9X30C_02.38.00.00 are case-sensitive; called out in-source so it doesn't get 'fixed' later
+- Plan 05-01: tests/unit/qmi/parsers/ established as a new test sub-package (sibling to the existing tests/unit/qmi/test_parsers.py omnibus) — isolates parser-specific happy/error tests from the fixture-parametrized smoke matrix
+- Plan 05-01: per-libqmi-version fixture pair (1.30 + 1.32) landed atomically with the parser; locked-set assertion test_fixture_tree_has_locked_set_of_libqmi_versions pins {1.30, 1.32} so deletion of either is a regression caught at test time
 
 ### Pending Todos
 
@@ -301,9 +306,9 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: --stopped-at
-Stopped at: Phase 5 context gathered
-Resume file: --resume-file
+Last session: 2026-05-11T08:07:35.313Z
+Stopped at: Completed 05-01-PLAN.md (dms_get_revision wrapper + parser + libqmi 1.30/1.32 fixtures)
+Resume file: None
 
 **Planned Phase:** 5 (Bench & Field Shadow) — 8 plans — 2026-05-11T07:40:08.287Z
 **Phase 2 status:** ✅ COMPLETE — all 10 plans shipped, replay harness 100% v1 agreement, 1675-test suite green in 11.82s
