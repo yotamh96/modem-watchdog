@@ -16,6 +16,7 @@ is NOT marked ``linux_only`` and runs on Windows dev hosts.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 from pathlib import Path
 
@@ -131,21 +132,19 @@ async def test_skip_preflight_bypasses_triple_check(
     # Stub acquire_pid_lock so we exit cleanly past preflight without
     # spawning TaskGroups against fake event sources. The simplest path:
     # raise a sentinel exception from PID-lock acquisition.
-    class _Sentinel(Exception):
+    class _SentinelError(Exception):
         pass
-
-    import contextlib
 
     @contextlib.contextmanager
     def fake_acquire_pid_lock(*, run_dir: Path):  # type: ignore[no-untyped-def]
         del run_dir
-        raise _Sentinel("preflight passed, halting test here")
+        raise _SentinelError("preflight passed, halting test here")
         yield  # unreachable; satisfies generator-function shape
 
     monkeypatch.setattr(daemon_main, "acquire_pid_lock", fake_acquire_pid_lock)
 
     args = _make_args(skip_preflight=True)
-    with pytest.raises(_Sentinel):
+    with pytest.raises(_SentinelError):
         await daemon_main._production_main(args)
     assert called["triple_check"] == 0, "triple check must NOT be called when --skip-preflight"
 
@@ -177,19 +176,17 @@ async def test_matching_triple_passes_preflight(
 
     monkeypatch.setattr(daemon_main, "preflight_check_known_fleet_triple", fake_triple_check)
 
-    class _Sentinel(Exception):
+    class _SentinelError(Exception):
         pass
-
-    import contextlib
 
     @contextlib.contextmanager
     def fake_acquire_pid_lock(*, run_dir: Path):  # type: ignore[no-untyped-def]
         del run_dir
-        raise _Sentinel("preflight passed; got to PID lock")
+        raise _SentinelError("preflight passed; got to PID lock")
         yield
 
     monkeypatch.setattr(daemon_main, "acquire_pid_lock", fake_acquire_pid_lock)
 
     args = _make_args(skip_preflight=False)
-    with pytest.raises(_Sentinel):
+    with pytest.raises(_SentinelError):
         await daemon_main._production_main(args)

@@ -52,6 +52,10 @@ from spark_modem.daemon.preflight import (
     preflight_check,
     write_last_config_error,
 )
+from spark_modem.daemon.preflight_triple import (
+    UnknownFleetTriple,
+    preflight_check_known_fleet_triple,
+)
 from spark_modem.event_logger.writer import EventLogWriter
 from spark_modem.event_sources.supervisor import restart_on_crash
 from spark_modem.inventory.udev import UdevInventory
@@ -212,6 +216,22 @@ async def _production_main(args: argparse.Namespace) -> int:
             except Exception:
                 logger.exception("failed to write last-config-error marker")
             logger.error("preflight failed: %s", exc)
+            return 78
+
+    # Step 3.5: X-03 known-fleet triple preflight (Phase 5 addition).
+    # Runs AFTER FR-60 (binary check) and BEFORE acquire_pid_lock (so
+    # failure does not leave a stale PID lock). Same exit-code-78 +
+    # last-config-error marker contract as FR-60; boot classifier reads
+    # the marker on next boot and emits DaemonRestart(reason=CONFIG_INVALID).
+    if not args.skip_preflight:
+        try:
+            await preflight_check_known_fleet_triple()
+        except UnknownFleetTriple as exc:
+            try:
+                write_last_config_error(run_dir=run_dir, message=str(exc))
+            except Exception:
+                logger.exception("failed to write last-config-error marker")
+            logger.error("unknown fleet triple: %s", exc)
             return 78
 
     # Step 4: read clean-shutdown marker; classify prior run.
