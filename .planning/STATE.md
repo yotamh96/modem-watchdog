@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 05-06-PLAN.md (debian/install + debian/dirs ship /etc/spark-modem-watchdog/known-fleet/; X-* deliverable family complete end-to-end)
-last_updated: "2026-05-11T09:16:33.530Z"
+stopped_at: "Completed 05-07-PLAN.md (operator-doc plan: SIGNOFF.md template + SOAK_RUNBOOK.md + docs/RUNBOOK.md cross-ref; Phase 5 automated deliverables complete, only manual 05-08 soak execution remains)"
+last_updated: "2026-05-11T09:24:43.309Z"
 last_activity: 2026-05-11
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 41
-  completed_plans: 39
-  percent: 95
+  completed_plans: 40
+  percent: 98
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 05 (bench-field-shadow) — EXECUTING
-Plan: 05-01/05-02/05-03/05-04/05-05 done; 05-06/07/08 still pending
-Status: Wave-3 plan 05-04 complete; X-* deliverable family (X-01 capture verb, X-02 PII redaction, X-03 daemon gate) shipped end-to-end on dev host; ready for 05-06 (.deb install of /etc/spark-modem-watchdog/known-fleet/)
+Plan: 05-01..05-07 done; 05-08 (operator-manual / human-driven soak) is the only remaining plan
+Status: Wave-5 plan 05-07 complete; SIGNOFF.md + SOAK_RUNBOOK.md operator artifacts authored; docs/RUNBOOK.md cross-references the soak procedure. Phase 5 automated deliverables are now complete; only the manual 3+ week soak execution (05-08) remains.
 Last activity: 2026-05-11
 
-Progress: [██████████] 95%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -93,6 +93,7 @@ Progress: [██████████] 95%
 | Phase 05 P05-03 | 11min | 3 tasks | 9 files |
 | Phase 05 P05-04 | ~6min | 2 tasks (4 TDD commits) tasks | 5 files files |
 | Phase 05-bench-field-shadow P05-06 | 4min | 2 tasks | 3 files |
+| Phase 05-bench-field-shadow P07 | 3m 12s | 3 tasks tasks | 4 files files |
 
 ## Accumulated Context
 
@@ -318,6 +319,9 @@ Recent decisions affecting current work:
 - Plan 05-04: _production_main integration test must monkeypatch daemon_main.build_default_settings directly (NOT SPARK_MODEM_* env vars) — build_default_settings hardcodes /tmp/spark-modem-cli paths and does not consume env vars; module-attr setattr swap is the cleanest seam (Rule 2 deviation from plan-text)
 - Plan 05-06: ship tests/fixtures/fleet → /etc/spark-modem-watchdog/known-fleet/ via debian/install (declarative dh_install; RESEARCH Q10 final); no changes to postinst or rules
 - Plan 05-06: anti-pattern pin tests (test_no_known_fleet_references_in_postinst + test_no_known_fleet_references_in_rules) lock the RESEARCH Q10 design choice as regression gates
+- Plan 05-07: SIGNOFF.md is a fillable TEMPLATE — every operator slot left blank (engineer name, box-ids, soak windows, gate ✅/❌, R-02 rate, F-04 log). Pre-filling operator judgment would invalidate the audit trail.
+- Plan 05-07: SOAK_RUNBOOK.md describes the ADR-0013 one-hot label anti-pattern in prose only (no literal 'modem_state{state=' syntax in the file) so copy-paste-prone operators cannot accidentally adopt the wrong shape.
+- Plan 05-07: docs/RUNBOOK.md gets exactly +2 lines (cross-reference to SOAK_RUNBOOK.md); the broader stale-docs rewrite (ROADMAP SC#1-3, MIGRATION Phase 1-2, PROJECT.md 'v1 keeps fleet online') stays deferred per CONTEXT.md.
 
 ### Pending Todos
 
@@ -336,8 +340,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-11T09:16:24.945Z
-Stopped at: Completed 05-06-PLAN.md (debian/install + debian/dirs ship /etc/spark-modem-watchdog/known-fleet/; X-* deliverable family complete end-to-end)
+Last session: 2026-05-11T09:24:31.554Z
+Stopped at: Completed 05-07-PLAN.md (operator-doc plan: SIGNOFF.md template + SOAK_RUNBOOK.md + docs/RUNBOOK.md cross-ref; Phase 5 automated deliverables complete, only manual 05-08 soak execution remains)
 Resume file: None
 
 **Planned Phase:** 5 (Bench & Field Shadow) — 8 plans — 2026-05-11T07:40:08.287Z
