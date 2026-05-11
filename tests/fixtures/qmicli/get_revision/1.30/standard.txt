@@ -1,0 +1,4 @@
+# libqmi_version: 1.30
+[/dev/cdc-wdm0] Device revisions retrieved:
+	Revision: 'SWI9X30C_02.38.00.00'
+	Boot code: 'SWI9X30C_02.38.00.00'

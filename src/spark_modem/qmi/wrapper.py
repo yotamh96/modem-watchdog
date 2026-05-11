@@ -233,6 +233,26 @@ class QmiWrapper:
             timeout_s=_DEFAULT_TIMEOUT_S,
         )
 
+    async def dms_get_revision(self) -> CompletedProcess:
+        """Read EM7421 firmware revision string (e.g. 'SWI9X30C_02.38.00.00').
+
+        Read-only verb (does NOT set _in_critical_section); routes through
+        subproc.runner (SP-04) and always passes --device-open-proxy (FR-74).
+        Added in Phase 5 for fleet-fixture capture (X-02): downstream callers
+        are `ctl capture-fleet-fixture` and `preflight_check_known_fleet_triple`.
+        """
+        return await self._runner.run(
+            self._argv(
+                [
+                    "qmicli",
+                    "--device-open-proxy",
+                    f"--device={self._device}",
+                    "--dms-get-revision",
+                ]
+            ),
+            timeout_s=_DEFAULT_TIMEOUT_S,
+        )
+
     # ---- state-changing methods (set _in_critical_section = True) ------
 
     async def dms_set_operating_mode(self, mode: str) -> CompletedProcess:
