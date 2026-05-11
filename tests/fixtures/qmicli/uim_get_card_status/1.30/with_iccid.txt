@@ -1,0 +1,17 @@
+# libqmi_version: 1.30
+[/dev/cdc-wdm0] Successfully got card status:
+Provisioning applications:
+	Primary GW:   slot '1', application '1'
+	Primary 1X:   session doesn't exist
+	Secondary GW: session doesn't exist
+	Secondary 1X: session doesn't exist
+Slot [1]:
+	Card state: 'present'
+	UIM ID: '8997201700123456789'
+	ICCID: '8997201700123456789'
+	Applications:
+		Application [1]:
+			Application type: 'usim (2)'
+			Application state: 'ready'
+			ICCID: '8997201700123456789'
+			IMSI: '425010012345678'
