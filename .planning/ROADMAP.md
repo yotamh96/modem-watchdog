@@ -378,7 +378,26 @@ Phases 1-2)
      flagged for either fixture capture or fleet upgrade before Phase
      6 begins.
 
-**Plans**: TBD
+> **Note (2026-05-11):** SC #1/#2/#3 above describe the original
+> shadow-vs-v1 framing. Per `.planning/phases/05-bench-field-shadow/05-CONTEXT.md`
+> scope_pivot, v1 has been retired across the fleet; v2 runs at canonical
+> paths from day 1. `tools/compare_v1_v2.py`, `99-shadow.yaml`, and
+> `-v2`-suffixed paths are NOT built. The effective Phase 5 exit gates
+> are the locked R-/S-/F-/X- decisions in 05-CONTEXT.md + the M-metrics
+> in PROJECT.md § 8. Doc-rewrite of SC#1/#2/#3 is deferred per CONTEXT.md
+> Deferred Ideas (Phase 7 or doc-fixup phase).
+
+**Plans**: 8 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — `dms_get_revision` qmicli verb + parser + per-libqmi-version fixtures (X-02 firmware probe)
+- [ ] 05-02-PLAN.md — Version-detection helpers: libqmi + Zao SDK + FleetTriple orchestrator (X-03 triple)
+- [ ] 05-03-PLAN.md — `spark-modem ctl capture-fleet-fixture` CLI verb + PII redaction (X-01, X-02)
+- [ ] 05-04-PLAN.md — `preflight_check_known_fleet_triple` daemon preflight + main.py wiring (X-03)
+- [ ] 05-05-PLAN.md — Soak audit tools: `tools/audit_soak_zao.py` + `tools/audit_soak_exhausted.py` (S-01 #2, S-01 #3 / M4)
+- [ ] 05-06-PLAN.md — `.deb` ships `/etc/spark-modem-watchdog/known-fleet/` via debian/install (X-03)
+- [ ] 05-07-PLAN.md — Operator docs: SIGNOFF.md template + SOAK_RUNBOOK.md + RUNBOOK.md cross-reference (S-04, F-04)
+- [ ] 05-08-PLAN.md — Manual operator workflow: R-01 trace pull → bench 1-week soak → field 2-week soak → X-04 sweep → R-02 replay-harness → SIGNOFF commit (R-01, R-02, S-02, S-03, S-04, X-04)
 
 ### Phase 6: Cutover & Fleet Rollout
 
@@ -462,7 +481,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 2. Core Daemon | 9/10 | In Progress | - |
 | 3. Linux Event Sources & Lifecycle | 9/9 | Complete | 2026-05-08 |
 | 4. Destructive Actions & HIL | 0/7 | Not started | - |
-| 5. Bench & Field Shadow | 0/TBD | Not started | - |
+| 5. Bench & Field Shadow | 0/8 | Planned | - |
 | 6. Cutover & Fleet Rollout | 0/TBD | Not started | - |
 | 7. v1 Decommission & Archive | 0/TBD | Not started | - |
 
