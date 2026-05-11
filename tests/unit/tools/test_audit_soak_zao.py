@@ -200,3 +200,52 @@ def test_since_iso_filters_events(tmp_path: Path, audit_module) -> None:
     assert rc == 1
     report = json.loads(out.read_text())
     assert report["violations"] == 1
+
+
+def test_zao_log_size_cap_raises(tmp_path: Path, audit_module, monkeypatch) -> None:
+    """Phase 5 WR-01: a Zao log exceeding ``_MAX_ZAO_LOG_BYTES`` is rejected.
+
+    The audit's read path is unbounded by default; an accidentally
+    uncompressed or pathological multi-GiB log would consume RAM. The
+    parser now stats the file up-front and raises a ``RuntimeError``
+    with a clear message above the cap. Validated by monkey-patching
+    the cap to a tiny value so the test does not need to materialise
+    a multi-GiB file.
+    """
+    zao_log = tmp_path / "zao.log"
+    _write_zao_log(zao_log, [("2026-05-11T00:00:00+00:00", {1: "active"})])
+    # Shrink the cap so this 1-block file exceeds it.
+    monkeypatch.setattr(audit_module, "_MAX_ZAO_LOG_BYTES", 4)
+    with pytest.raises(RuntimeError, match="Zao log"):
+        audit_module._parse_zao_blocks(zao_log)
+
+
+def test_zao_log_streamed_not_fully_read(tmp_path: Path, audit_module) -> None:
+    """Phase 5 WR-01: ``_parse_zao_blocks`` reads via streaming (line-by-line).
+
+    Smoke-tests that ``_parse_zao_blocks`` produces the same output for
+    a moderately large synthetic log as the on-disk per-line shape would,
+    confirming the streaming refactor preserves the parser contract.
+    """
+    zao_log = tmp_path / "zao.log"
+    # Build a log with 5 distinct blocks, each with 4 line statuses.
+    blocks_input = [
+        (
+            f"2026-05-11T00:0{i}:00+00:00",
+            {1: "active" if i % 2 == 0 else "inactive", 2: "inactive", 3: "active", 4: "inactive"},
+        )
+        for i in range(5)
+    ]
+    _write_zao_log(zao_log, blocks_input)
+    blocks = audit_module._parse_zao_blocks(zao_log)
+    assert len(blocks) == 5
+    # Block 0 (i=0): line 1 active, line 3 active -> {1, 3}.
+    assert blocks[0].active_lines == frozenset({1, 3})
+    # Block 1 (i=1): line 1 inactive, line 3 active -> {3}.
+    assert blocks[1].active_lines == frozenset({3})
+
+
+def test_zao_log_missing_returns_empty(tmp_path: Path, audit_module) -> None:
+    """Missing Zao log path returns ``[]`` (existing contract preserved)."""
+    missing = tmp_path / "no_such_log.log"
+    assert audit_module._parse_zao_blocks(missing) == []

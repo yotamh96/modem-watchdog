@@ -107,6 +107,15 @@ _RASCOW_TS_RE = re.compile(
 _USB_PATH_LINE_RE = re.compile(r"\.(\d+)$")
 
 
+# Defensive size cap on Zao log reads (Phase 5 WR-01). The audit needs every
+# RASCOW_STAT block in the window, but the read path was previously unbounded
+# (`Path.read_text()`); a pathological / accidentally-uncompressed multi-GiB
+# log would consume RAM. The production zao_log/version.py uses a 64 KiB cap
+# for banner detection; here we keep the full file but stream it, and refuse
+# files larger than 1 GiB with a clear operator-visible error.
+_MAX_ZAO_LOG_BYTES = 1 * 1024 * 1024 * 1024  # 1 GiB
+
+
 def _derive_line_from_usb_path(usb_path: str) -> int | None:
     """Derive the Zao line (1..4) from the trailing segment of usb_path.
 
@@ -135,27 +144,47 @@ def _parse_zao_blocks(zao_log: Path) -> list[_ZaoBlock]:
     status='active' contribute to active_lines; everything else (inactive,
     unknown, etc.) is ignored. Forward walk; result sorted by ts_iso
     ascending (file order; Zao appends chronologically).
+
+    Phase 5 WR-01: stats the file up-front and refuses files larger than
+    ``_MAX_ZAO_LOG_BYTES`` (1 GiB). For files within the cap, streams
+    the read line-by-line instead of loading the whole file into memory
+    so a multi-MiB Zao log does not balloon RSS during an audit run.
     """
     try:
-        text = zao_log.read_text(encoding="utf-8", errors="replace")
+        size = zao_log.stat().st_size
     except FileNotFoundError:
         return []
+    if size > _MAX_ZAO_LOG_BYTES:
+        raise RuntimeError(
+            f"Zao log {zao_log} is {size} bytes (cap {_MAX_ZAO_LOG_BYTES}); "
+            "rotate or pre-filter before auditing"
+        )
     blocks: list[_ZaoBlock] = []
     current_ts: str | None = None
     current_lines: set[int] = set()
-    for raw in text.splitlines():
-        m = _RASCOW_TS_RE.match(raw)
-        if m is None:
-            continue
-        ts, line_str, status = m.groups()
-        if current_ts is None:
-            current_ts = ts
-        elif ts != current_ts:
-            blocks.append(_ZaoBlock(ts_iso=current_ts, active_lines=frozenset(current_lines)))
-            current_ts = ts
-            current_lines = set()
-        if status.lower() == "active":
-            current_lines.add(int(line_str))
+    try:
+        with zao_log.open("r", encoding="utf-8", errors="replace") as fh:
+            for raw_line in fh:
+                # rstrip the newline (and any trailing \r on CRLF-encoded inputs);
+                # _RASCOW_TS_RE is line-anchored via .match() and unaffected by
+                # leading whitespace per the existing fixture shape.
+                m = _RASCOW_TS_RE.match(raw_line.rstrip("\r\n"))
+                if m is None:
+                    continue
+                ts, line_str, status = m.groups()
+                if current_ts is None:
+                    current_ts = ts
+                elif ts != current_ts:
+                    blocks.append(
+                        _ZaoBlock(ts_iso=current_ts, active_lines=frozenset(current_lines))
+                    )
+                    current_ts = ts
+                    current_lines = set()
+                if status.lower() == "active":
+                    current_lines.add(int(line_str))
+    except FileNotFoundError:
+        # Race between stat() and open() — treat as absent for the audit.
+        return []
     if current_ts is not None:
         blocks.append(_ZaoBlock(ts_iso=current_ts, active_lines=frozenset(current_lines)))
     return blocks
