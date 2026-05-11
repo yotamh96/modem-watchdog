@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-02-PLAN.md (qmi/version.py + zao_log/version.py + FleetTriple wire + compute_fleet_triple orchestrator — three-source version detection for Plans 05-03 + 05-04)
-last_updated: "2026-05-11T08:37:59.804Z"
+stopped_at: Completed 05-03-PLAN.md (capture-fleet-fixture CLI verb + redact_pii_from_raw_qmicli helper + 17 plan-scope tests; X-01 + X-02 deliverable, X-03 chicken-and-egg fix shipped)
+last_updated: "2026-05-11T08:56:31.218Z"
 last_activity: 2026-05-11
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 41
-  completed_plans: 36
-  percent: 88
+  completed_plans: 37
+  percent: 90
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 05 (bench-field-shadow) — EXECUTING
-Plan: 05-05 done (parallel wave-1 dispatched sequentially); 05-02/03/04/06/07/08 still pending
-Status: Ready to execute next wave-1 plan or move to wave-2
+Plan: 05-01/05-02/05-03/05-05 done; 05-04/06/07/08 still pending
+Status: Wave-3 plan 05-03 complete; ready for 05-04 (preflight_check_known_fleet_triple) which consumes triple.json files this plan now emits
 Last activity: 2026-05-11
 
-Progress: [█████████░] 88%
+Progress: [█████████░] 90%
 
 ## Performance Metrics
 
@@ -90,6 +90,7 @@ Progress: [█████████░] 88%
 | Phase 05 P01 | 5min | 2 tasks (4 TDD commits) tasks | 6 files files |
 | Phase 05 P05 | 7min | 2 tasks (4 TDD commits) tasks | 5 files files |
 | Phase 05 P02 | 7min | 3 tasks (6 TDD commits) tasks | 8 files files |
+| Phase 05 P05-03 | 11min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -302,6 +303,11 @@ Recent decisions affecting current work:
 - Plan 05-02: FleetTriple uses inline ConfigDict(frozen=True, extra='forbid') instead of inheriting BaseWire from wire/_base.py — version.py already imports qmi/errors, parsers/get_revision, subproc, AND zao_log/version; adding wire/_base would deepen the chain unnecessarily and the inline config is two lines; W-02 wire discipline preserved verbatim
 - Plan 05-02: QmiError on dms_get_revision surfaces as QmiVersionDetectionFailed (raise, not silent fallback) — daemon preflight (X-03) needs firmware failure to surface; SDK fallback to 'unknown' is allowed (no universal detection) but firmware fallback to 'unknown' would defeat the known-fleet-triple gate
 - Plan 05-02: Two Zao banner regex candidates in priority order (modern zao_remote_endpoint/X.Y.Z first, legacy zao-remote-endpoint X.Y.Z second); 64 KiB head-read cap (_HEAD_BYTES) pins T-05-02-01 DoS mitigation; dpkg-query subprocess fallback (RESEARCH Q3 §295) deferred to future ADR if banner-absent becomes fleet-wide
+- Plan 05-03: redact_pii_from_raw_qmicli covers FOUR patterns (ICCID, UIM ID, IMSI, IPv4) — UIM ID added (Rule 2) because real qmicli uim_get_card_status carries the ICCID identifier under both labels; omitting UIM ID would leak the same identifier under a different label
+- Plan 05-03: QMICLI_CAPTURE_VERBS locked at exactly 7 (CONTEXT.md X-02 upper bound was 8; dropped wds_get_packet_service_status — datapath state is volatile and depends on network conditions, not box config); locked-set pinned by test_qmicli_capture_verbs_list_is_locked_at_7
+- Plan 05-03: spark-modem ctl capture-fleet-fixture runs WITHOUT the daemon (X-03 chicken-and-egg fix); does NOT import daemon.main, does NOT participate in preflight, does NOT acquire the PID lock; engineer can capture the fleet triple on a daemon-less box before populating /etc/spark-modem-watchdog/known-fleet/
+- Plan 05-03: per-modem fixture subdirs keyed by usb_path (ADR-0009), NEVER cdc-wdmN; cdc-wdm appears ONLY in the qmicli --device=/dev/cdc-wdmN interpolation; pinned by test_modem_subdirs_match_usb_path_shape
+- Plan 05-03: ASYNC240 compliance via 5 sync helpers + asyncio.to_thread wrapping (_zao_log_rascow_tail, _write_modem_verb_output, _build_triple_dict, _write_triple_and_sample, _prepare_out_dirs); cleaner than per-line # noqa and matches the Phase 4 fault_inject.py pattern
 
 ### Pending Todos
 
@@ -320,8 +326,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-11T08:37:59.784Z
-Stopped at: Completed 05-02-PLAN.md (qmi/version.py + zao_log/version.py + FleetTriple wire + compute_fleet_triple orchestrator — three-source version detection for Plans 05-03 + 05-04)
+Last session: 2026-05-11T08:56:09.757Z
+Stopped at: Completed 05-03-PLAN.md (capture-fleet-fixture CLI verb + redact_pii_from_raw_qmicli helper + 17 plan-scope tests; X-01 + X-02 deliverable, X-03 chicken-and-egg fix shipped)
 Resume file: None
 
 **Planned Phase:** 5 (Bench & Field Shadow) — 8 plans — 2026-05-11T07:40:08.287Z
