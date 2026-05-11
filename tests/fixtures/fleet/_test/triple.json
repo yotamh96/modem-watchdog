@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "em7421_firmware": "SWI9X30C_02.38.00.00",
+  "zao_sdk": "2.1.0",
+  "libqmi": "1.30.6",
+  "first_seen_box_id": "_test",
+  "first_seen_iso": "2026-05-11T00:00:00Z",
+  "_comment": "Example fixture committed in Plan 05-03; real per-box fixtures are added during X-04 capture sweep before Phase 6."
+}
