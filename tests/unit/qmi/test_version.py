@@ -105,3 +105,144 @@ async def test_filenotfound_raises_qmiversiondetectionfailed(
 
 def test_qmiversiondetectionfailed_is_runtimeerror() -> None:
     assert issubclass(QmiVersionDetectionFailed, RuntimeError)
+
+
+# ---------------------------------------------------------------------------
+# Task 3: FleetTriple + compute_fleet_triple
+# ---------------------------------------------------------------------------
+
+
+class _FakeWrapper:
+    """Minimal duck-typed stand-in for QmiWrapper.
+
+    The production ``QmiWrapper.dms_get_revision`` (Plan 05-01) returns a
+    ``CompletedProcess``; this fake returns one too. ``compute_fleet_triple``
+    accepts ``wrapper: object`` and only calls ``wrapper.dms_get_revision()``
+    so structural typing is sufficient (no need to subclass QmiWrapper or
+    its Protocol seam).
+    """
+
+    def __init__(self, *, stdout: bytes, exit_code: int = 0) -> None:
+        self._stdout = stdout
+        self._exit_code = exit_code
+
+    async def dms_get_revision(self) -> CompletedProcess:
+        return CompletedProcess.make(
+            argv=["qmicli", "--dms-get-revision"],
+            exit_code=self._exit_code,
+            stdout=self._stdout,
+            stderr=b"",
+            duration_monotonic=0.0,
+            timed_out=False,
+        )
+
+
+_GET_REVISION_FIXTURE = (
+    Path(__file__).resolve().parents[2]
+    / "fixtures"
+    / "qmicli"
+    / "get_revision"
+    / "1.30"
+    / "standard.txt"
+)
+_ZAO_FIXTURE_ROOT = (
+    Path(__file__).resolve().parents[2] / "fixtures" / "zao_log" / "version"
+)
+
+
+def test_fleet_triple_is_frozen_and_extra_forbid() -> None:
+    """FleetTriple is byte-reproducible: frozen + extra='forbid'."""
+    from pydantic import ValidationError
+
+    from spark_modem.qmi.version import FleetTriple
+
+    triple = FleetTriple(em7421_firmware="X", zao_sdk="Y", libqmi="Z")
+    # extra=forbid: unknown fields rejected.
+    with pytest.raises(ValidationError):
+        FleetTriple(  # type: ignore[call-arg]
+            em7421_firmware="X",
+            zao_sdk="Y",
+            libqmi="Z",
+            extra="nope",
+        )
+    # frozen: post-construction mutation rejected.
+    with pytest.raises(ValidationError):
+        triple.em7421_firmware = "mutated"  # type: ignore[misc]
+
+
+async def test_compute_fleet_triple_happy_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    """All three probes succeed; FleetTriple has all three fields populated."""
+    from spark_modem.qmi.version import compute_fleet_triple
+
+    libqmi_body = (_FIXTURE_ROOT / "1.30" / "standard.txt").read_bytes()
+
+    async def fake_run(
+        argv: list[str], *, timeout_s: float, **_kw: object
+    ) -> CompletedProcess:
+        del timeout_s
+        return _make_cp(argv=argv, exit_code=0, stdout=libqmi_body)
+
+    monkeypatch.setattr(subproc_runner, "run", fake_run)
+
+    fw_body = _GET_REVISION_FIXTURE.read_bytes()
+    wrapper = _FakeWrapper(stdout=fw_body)
+    zao_path = _ZAO_FIXTURE_ROOT / "banner_present.txt"
+
+    triple = await compute_fleet_triple(wrapper=wrapper, zao_log_path=zao_path)
+    assert triple.em7421_firmware == "SWI9X30C_02.38.00.00"
+    assert triple.zao_sdk == "2.1.0"
+    assert triple.libqmi == "1.30.6"
+
+
+async def test_compute_fleet_triple_zao_unknown_sentinel(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No Zao banner → zao_sdk = 'unknown' (preflight decides what to do)."""
+    from spark_modem.qmi.version import compute_fleet_triple
+
+    libqmi_body = (_FIXTURE_ROOT / "1.30" / "standard.txt").read_bytes()
+
+    async def fake_run(
+        argv: list[str], *, timeout_s: float, **_kw: object
+    ) -> CompletedProcess:
+        del timeout_s
+        return _make_cp(argv=argv, exit_code=0, stdout=libqmi_body)
+
+    monkeypatch.setattr(subproc_runner, "run", fake_run)
+
+    fw_body = _GET_REVISION_FIXTURE.read_bytes()
+    wrapper = _FakeWrapper(stdout=fw_body)
+    zao_path = _ZAO_FIXTURE_ROOT / "no_banner.txt"
+
+    triple = await compute_fleet_triple(wrapper=wrapper, zao_log_path=zao_path)
+    assert triple.zao_sdk == "unknown"
+    # Other two fields still populated.
+    assert triple.em7421_firmware == "SWI9X30C_02.38.00.00"
+    assert triple.libqmi == "1.30.6"
+
+
+async def test_compute_fleet_triple_firmware_qmierror_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Malformed dms_get_revision stdout → QmiVersionDetectionFailed."""
+    from spark_modem.qmi.version import compute_fleet_triple
+
+    libqmi_body = (_FIXTURE_ROOT / "1.30" / "standard.txt").read_bytes()
+
+    async def fake_run(
+        argv: list[str], *, timeout_s: float, **_kw: object
+    ) -> CompletedProcess:
+        del timeout_s
+        return _make_cp(argv=argv, exit_code=0, stdout=libqmi_body)
+
+    monkeypatch.setattr(subproc_runner, "run", fake_run)
+
+    # Wrapper returns malformed stdout → parse_get_revision returns QmiError →
+    # compute_fleet_triple raises QmiVersionDetectionFailed.
+    wrapper = _FakeWrapper(stdout=b"completely malformed")
+    zao_path = _ZAO_FIXTURE_ROOT / "banner_present.txt"
+
+    with pytest.raises(
+        QmiVersionDetectionFailed, match="dms_get_revision returned QmiError"
+    ):
+        await compute_fleet_triple(wrapper=wrapper, zao_log_path=zao_path)
