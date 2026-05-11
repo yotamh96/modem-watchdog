@@ -1,0 +1,3 @@
+2026-05-11T14:32:00.123Z INFO zao_remote_endpoint/2.1.0 starting
+2026-05-11T14:32:00.234Z INFO RASCOW_STAT line=1 status=active
+2026-05-11T14:32:00.345Z INFO RASCOW_STAT line=2 status=active
