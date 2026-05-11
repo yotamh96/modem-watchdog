@@ -40,6 +40,7 @@ import re
 import sys
 from collections.abc import Iterator
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 
 # NOTE: tools/ is SP-04-exempt and audit-only. We deliberately do NOT
@@ -190,17 +191,36 @@ def _parse_zao_blocks(zao_log: Path) -> list[_ZaoBlock]:
     return blocks
 
 
-def _find_contemporaneous_block(blocks: list[_ZaoBlock], event_ts: str) -> _ZaoBlock | None:
-    """Return the latest block with ts_iso <= event_ts, or None.
+def _normalise_iso_ts(ts: str) -> datetime:
+    """Parse an ISO-8601 timestamp into a timezone-aware ``datetime``.
 
-    String comparison is sound here because both sides are normalised
-    ISO-8601 with the same zone offset shape (Phase 2 emits +00:00;
-    Zao emits +00:00 in production). For mixed offsets the operator
-    would normalise upstream before running the audit.
+    Phase 5 WR-04: pure string comparison broke on mixed zone shapes
+    (event uses ``+00:00``; Zao build emits ``Z``). Python 3.12's
+    ``datetime.fromisoformat`` accepts both forms, so parsing both
+    sides up-front and comparing as ``datetime`` is robust.
+
+    Returns the parsed ``datetime``. Raises ``ValueError`` on
+    malformed input — the audit's caller is expected to feed only
+    timestamps that have already passed the ``_RASCOW_TS_RE`` /
+    ``isinstance(ts, str)`` shape checks, so unparseable strings
+    here indicate a genuine bug worth surfacing.
     """
+    return datetime.fromisoformat(ts)
+
+
+def _find_contemporaneous_block(blocks: list[_ZaoBlock], event_ts: str) -> _ZaoBlock | None:
+    """Return the latest block with ts <= event_ts, or None.
+
+    Phase 5 WR-04: previously compared ``b.ts_iso <= event_ts`` as
+    strings, which broke when Zao emitted ``Z`` and events used
+    ``+00:00`` (or vice-versa). Now parses both sides via
+    ``datetime.fromisoformat`` so ``2026-05-11T00:00:00Z`` and
+    ``2026-05-11T00:00:00+00:00`` correctly compare equal.
+    """
+    event_dt = _normalise_iso_ts(event_ts)
     latest: _ZaoBlock | None = None
     for b in blocks:
-        if b.ts_iso <= event_ts:
+        if _normalise_iso_ts(b.ts_iso) <= event_dt:
             latest = b
         else:
             break
@@ -221,13 +241,17 @@ def _audit(
 ) -> _AuditResult:
     result = _AuditResult()
     blocks = _parse_zao_blocks(zao_log)
+    # Phase 5 WR-04: parse the lower-bound up-front so the per-event check
+    # compares datetimes (not strings); event timestamps in the same shape
+    # but different zone suffixes would otherwise slip through the filter.
+    since_dt: datetime | None = _normalise_iso_ts(since_iso) if since_iso is not None else None
     for raw_event in _read_events_as_raw_dicts(events_path):
         if raw_event.get("kind") != "action_planned":
             continue
         ts = raw_event.get("ts_iso")
         if not isinstance(ts, str):
             continue
-        if since_iso is not None and ts < since_iso:
+        if since_dt is not None and _normalise_iso_ts(ts) < since_dt:
             continue
         usb_path = raw_event.get("usb_path")
         if not isinstance(usb_path, str):

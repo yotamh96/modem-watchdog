@@ -249,3 +249,62 @@ def test_zao_log_missing_returns_empty(tmp_path: Path, audit_module) -> None:
     """Missing Zao log path returns ``[]`` (existing contract preserved)."""
     missing = tmp_path / "no_such_log.log"
     assert audit_module._parse_zao_blocks(missing) == []
+
+
+def test_mixed_zone_offset_z_and_plus_zero_match(tmp_path: Path, audit_module) -> None:
+    """Phase 5 WR-04: ``_find_contemporaneous_block`` must treat ``Z`` and
+    ``+00:00`` suffixes as equivalent.
+
+    Pure string comparison sorted ``Z`` (0x5A) AFTER ``+`` (0x2B) which
+    means ``2026-05-11T00:00:00Z > 2026-05-11T00:00:00+00:00`` returned
+    True, so a Zao block stamped with ``Z`` would NOT match an event
+    stamped with ``+00:00`` even though they refer to the same instant.
+    The audit then silently classified violations as
+    ``no_zao_snapshot_for_cycle`` and missed real M4 problems.
+
+    Synthesise the failure case: event ts uses ``+00:00``, Zao log uses
+    ``Z`` for the same wallclock. Expect a violation, not an unknown.
+    """
+    events = tmp_path / "events.jsonl"
+    _write_event(
+        events,
+        _action_planned("2026-05-11T00:00:00+00:00", usb_path="2-3.1.1"),
+    )
+    zao_log = tmp_path / "zao.log"
+    # Write the Zao block with the trailing-Z shape.
+    zao_log.write_text(
+        "2026-05-11T00:00:00Z ZaoInfraCtrl RASCOW_STAT line=1 status=active\n"
+    )
+    out = tmp_path / "report.json"
+    rc = audit_module.main(
+        ["--events", str(events), "--zao-log", str(zao_log), "--out", str(out)]
+    )
+    assert rc == 1, "violation should be detected across Z vs +00:00 zone shapes"
+    report = json.loads(out.read_text())
+    assert report["violations"] == 1
+    assert report["unknown_no_zao_snapshot"] == 0
+    assert report["details"][0]["classification"] == "violation"
+
+
+def test_mixed_zone_offset_plus_zero_event_z_block_clean(
+    tmp_path: Path, audit_module
+) -> None:
+    """Phase 5 WR-04: same wallclock with mixed shapes + INACTIVE line ->
+    audit must still classify as clean (no violation, no unknown)."""
+    events = tmp_path / "events.jsonl"
+    _write_event(
+        events,
+        _action_planned("2026-05-11T00:00:00+00:00", usb_path="2-3.1.1"),
+    )
+    zao_log = tmp_path / "zao.log"
+    zao_log.write_text(
+        "2026-05-11T00:00:00Z ZaoInfraCtrl RASCOW_STAT line=1 status=inactive\n"
+    )
+    out = tmp_path / "report.json"
+    rc = audit_module.main(
+        ["--events", str(events), "--zao-log", str(zao_log), "--out", str(out)]
+    )
+    assert rc == 0
+    report = json.loads(out.read_text())
+    assert report["violations"] == 0
+    assert report["unknown_no_zao_snapshot"] == 0
