@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 05-04-PLAN.md (X-03 preflight_check_known_fleet_triple module + daemon/main.py wiring; 12 plan-scope tests; X-* deliverable family complete end-to-end on dev host)
-last_updated: "2026-05-11T09:08:28.011Z"
+stopped_at: Completed 05-06-PLAN.md (debian/install + debian/dirs ship /etc/spark-modem-watchdog/known-fleet/; X-* deliverable family complete end-to-end)
+last_updated: "2026-05-11T09:16:33.530Z"
 last_activity: 2026-05-11
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 41
-  completed_plans: 38
-  percent: 93
+  completed_plans: 39
+  percent: 95
 ---
 
 # Project State
@@ -30,7 +30,7 @@ Plan: 05-01/05-02/05-03/05-04/05-05 done; 05-06/07/08 still pending
 Status: Wave-3 plan 05-04 complete; X-* deliverable family (X-01 capture verb, X-02 PII redaction, X-03 daemon gate) shipped end-to-end on dev host; ready for 05-06 (.deb install of /etc/spark-modem-watchdog/known-fleet/)
 Last activity: 2026-05-11
 
-Progress: [█████████░] 93%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -92,6 +92,7 @@ Progress: [█████████░] 93%
 | Phase 05 P02 | 7min | 3 tasks (6 TDD commits) tasks | 8 files files |
 | Phase 05 P05-03 | 11min | 3 tasks | 9 files |
 | Phase 05 P05-04 | ~6min | 2 tasks (4 TDD commits) tasks | 5 files files |
+| Phase 05-bench-field-shadow P05-06 | 4min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -315,6 +316,8 @@ Recent decisions affecting current work:
 - Plan 05-04: same --skip-preflight guard shared with FR-60 — wrapped inside existing 'if not args.skip_preflight:' block so spark-modem-watchdog --laptop --skip-preflight workflow on non-Jetson dev hosts is preserved end-to-end (T-05-04-04 mitigation)
 - Plan 05-04: _load_known_triples is sync (not async) — pathlib operations on local filesystem are fast and known-fleet dir has at most ~10 entries; production preflight runs ONCE at startup before READY=1 so blocking the event loop for ~1ms is acceptable; ASYNC240 not triggered because the function is plain sync def
 - Plan 05-04: _production_main integration test must monkeypatch daemon_main.build_default_settings directly (NOT SPARK_MODEM_* env vars) — build_default_settings hardcodes /tmp/spark-modem-cli paths and does not consume env vars; module-attr setattr swap is the cleanest seam (Rule 2 deviation from plan-text)
+- Plan 05-06: ship tests/fixtures/fleet → /etc/spark-modem-watchdog/known-fleet/ via debian/install (declarative dh_install; RESEARCH Q10 final); no changes to postinst or rules
+- Plan 05-06: anti-pattern pin tests (test_no_known_fleet_references_in_postinst + test_no_known_fleet_references_in_rules) lock the RESEARCH Q10 design choice as regression gates
 
 ### Pending Todos
 
@@ -333,8 +336,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-11T09:08:27.996Z
-Stopped at: Completed 05-04-PLAN.md (X-03 preflight_check_known_fleet_triple module + daemon/main.py wiring; 12 plan-scope tests; X-* deliverable family complete end-to-end on dev host)
+Last session: 2026-05-11T09:16:24.945Z
+Stopped at: Completed 05-06-PLAN.md (debian/install + debian/dirs ship /etc/spark-modem-watchdog/known-fleet/; X-* deliverable family complete end-to-end)
 Resume file: None
 
 **Planned Phase:** 5 (Bench & Field Shadow) — 8 plans — 2026-05-11T07:40:08.287Z

@@ -395,7 +395,7 @@ Plans:
 - [x] 05-03-PLAN.md — `spark-modem ctl capture-fleet-fixture` CLI verb + PII redaction (X-01, X-02)
 - [x] 05-04-PLAN.md — `preflight_check_known_fleet_triple` daemon preflight + main.py wiring (X-03)
 - [x] 05-05-PLAN.md — Soak audit tools: `tools/audit_soak_zao.py` + `tools/audit_soak_exhausted.py` (S-01 #2, S-01 #3 / M4)
-- [ ] 05-06-PLAN.md — `.deb` ships `/etc/spark-modem-watchdog/known-fleet/` via debian/install (X-03)
+- [x] 05-06-PLAN.md — `.deb` ships `/etc/spark-modem-watchdog/known-fleet/` via debian/install (X-03)
 - [ ] 05-07-PLAN.md — Operator docs: SIGNOFF.md template + SOAK_RUNBOOK.md + RUNBOOK.md cross-reference (S-04, F-04)
 - [ ] 05-08-PLAN.md — Manual operator workflow: R-01 trace pull → bench 1-week soak → field 2-week soak → X-04 sweep → R-02 replay-harness → SIGNOFF commit (R-01, R-02, S-02, S-03, S-04, X-04)
 
