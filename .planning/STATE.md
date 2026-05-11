@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 05-03-PLAN.md (capture-fleet-fixture CLI verb + redact_pii_from_raw_qmicli helper + 17 plan-scope tests; X-01 + X-02 deliverable, X-03 chicken-and-egg fix shipped)
-last_updated: "2026-05-11T08:56:31.218Z"
+status: completed
+stopped_at: Completed 05-04-PLAN.md (X-03 preflight_check_known_fleet_triple module + daemon/main.py wiring; 12 plan-scope tests; X-* deliverable family complete end-to-end on dev host)
+last_updated: "2026-05-11T09:08:28.011Z"
 last_activity: 2026-05-11
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 41
-  completed_plans: 37
-  percent: 90
+  completed_plans: 38
+  percent: 93
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 05 (bench-field-shadow) — EXECUTING
-Plan: 05-01/05-02/05-03/05-05 done; 05-04/06/07/08 still pending
-Status: Wave-3 plan 05-03 complete; ready for 05-04 (preflight_check_known_fleet_triple) which consumes triple.json files this plan now emits
+Plan: 05-01/05-02/05-03/05-04/05-05 done; 05-06/07/08 still pending
+Status: Wave-3 plan 05-04 complete; X-* deliverable family (X-01 capture verb, X-02 PII redaction, X-03 daemon gate) shipped end-to-end on dev host; ready for 05-06 (.deb install of /etc/spark-modem-watchdog/known-fleet/)
 Last activity: 2026-05-11
 
-Progress: [█████████░] 90%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -91,6 +91,7 @@ Progress: [█████████░] 90%
 | Phase 05 P05 | 7min | 2 tasks (4 TDD commits) tasks | 5 files files |
 | Phase 05 P02 | 7min | 3 tasks (6 TDD commits) tasks | 8 files files |
 | Phase 05 P05-03 | 11min | 3 tasks | 9 files |
+| Phase 05 P05-04 | ~6min | 2 tasks (4 TDD commits) tasks | 5 files files |
 
 ## Accumulated Context
 
@@ -308,6 +309,12 @@ Recent decisions affecting current work:
 - Plan 05-03: spark-modem ctl capture-fleet-fixture runs WITHOUT the daemon (X-03 chicken-and-egg fix); does NOT import daemon.main, does NOT participate in preflight, does NOT acquire the PID lock; engineer can capture the fleet triple on a daemon-less box before populating /etc/spark-modem-watchdog/known-fleet/
 - Plan 05-03: per-modem fixture subdirs keyed by usb_path (ADR-0009), NEVER cdc-wdmN; cdc-wdm appears ONLY in the qmicli --device=/dev/cdc-wdmN interpolation; pinned by test_modem_subdirs_match_usb_path_shape
 - Plan 05-03: ASYNC240 compliance via 5 sync helpers + asyncio.to_thread wrapping (_zao_log_rascow_tail, _write_modem_verb_output, _build_triple_dict, _write_triple_and_sample, _prepare_out_dirs); cleaner than per-line # noqa and matches the Phase 4 fault_inject.py pattern
+- Plan 05-04: UnknownFleetTriple subclasses RuntimeError (NOT PreflightFailed) — matches PreflightFailed shape per CONTEXT.md X-03 but composes at call site in daemon/main.py with sibling try/except; inheritance would conflate exit-code semantics across the two preflight gates
+- Plan 05-04: Test-injection seam via local_triple: FleetTriple | None = None parameter — production callers pass None and _compute_local_triple hits sysfs+qmicli+Zao log; tests inject the FleetTriple directly so unit suite runs hardware-free on Windows dev hosts (mirrors Plan 05-02's wrapper: object duck-typing)
+- Plan 05-04: Step 3.5 placement in _production_main — preflight_check_known_fleet_triple runs AFTER FR-60 preflight_check and BEFORE classify_prior_run + acquire_pid_lock; failure path returns 78 without ever holding PID lock (T-05-04-06 mitigation) and without sd_notify('READY=1') ever firing (systemd marks boot as failed via Type=notify)
+- Plan 05-04: same --skip-preflight guard shared with FR-60 — wrapped inside existing 'if not args.skip_preflight:' block so spark-modem-watchdog --laptop --skip-preflight workflow on non-Jetson dev hosts is preserved end-to-end (T-05-04-04 mitigation)
+- Plan 05-04: _load_known_triples is sync (not async) — pathlib operations on local filesystem are fast and known-fleet dir has at most ~10 entries; production preflight runs ONCE at startup before READY=1 so blocking the event loop for ~1ms is acceptable; ASYNC240 not triggered because the function is plain sync def
+- Plan 05-04: _production_main integration test must monkeypatch daemon_main.build_default_settings directly (NOT SPARK_MODEM_* env vars) — build_default_settings hardcodes /tmp/spark-modem-cli paths and does not consume env vars; module-attr setattr swap is the cleanest seam (Rule 2 deviation from plan-text)
 
 ### Pending Todos
 
@@ -326,8 +333,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-11T08:56:09.757Z
-Stopped at: Completed 05-03-PLAN.md (capture-fleet-fixture CLI verb + redact_pii_from_raw_qmicli helper + 17 plan-scope tests; X-01 + X-02 deliverable, X-03 chicken-and-egg fix shipped)
+Last session: 2026-05-11T09:08:27.996Z
+Stopped at: Completed 05-04-PLAN.md (X-03 preflight_check_known_fleet_triple module + daemon/main.py wiring; 12 plan-scope tests; X-* deliverable family complete end-to-end on dev host)
 Resume file: None
 
 **Planned Phase:** 5 (Bench & Field Shadow) — 8 plans — 2026-05-11T07:40:08.287Z
