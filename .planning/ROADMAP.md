@@ -401,17 +401,45 @@ Plans:
 
 ### Phase 05.1: deb-packaging-hotfix (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
-**Depends on:** Phase 5
-**Plans:** 6 plans
+**Goal**: `dpkg -i spark-modem-watchdog_2.0.*_arm64.deb` followed by
+`systemctl start spark-modem-watchdog.service` reaches `active (running)`
+with `sd_notify READY=1` on a bench Jetson (JetPack 5.1.5 / Ubuntu 20.04 /
+systemd 245 / aarch64). Three known bugs fixed: (1) `spark_modem` not on
+`sys.path` of the bundled venv → fixed by `uv pip install .` inside
+`override_dh_auto_install`; (2) no daemon entry point → fixed by adding
+`spark-modem-watchdog` to `pyproject.toml [project.scripts]`; (3) systemd-
+245 `LoadCredential=` incompatibility → fixed by a code-side fallback in
+`Settings.resolve_hmac_secret_path()`. Regression gate (D-01) lands so
+the same class of bug cannot recur silently.
+
+**Requirements**: (no formal v1 REQ-IDs — inserted hotfix; indirectly
+tied to NFR-30 root-only secrets via L-03 mode/owner check, and ADR-0011
+HMAC discipline via L-01..L-05)
+
+**Depends on**: Phase 5
+
+**Success Criteria** (EXIT bar pattern per D-03, mirroring Phase 4):
+  The committed `.planning/phases/05.1-deb-packaging-hotfix/EXIT-CHECKLIST.md`
+  has every V-03 gate row marked PASS by the on-site engineer. The
+  checklist's 9 rows are: (1) .deb built from merged hotfix branch;
+  (2) `dpkg -i` returns 0; (3) operator provisions HMAC secret;
+  (4) `systemctl start` returns 0; (5) `is-active` reports `active`;
+  (6) `journalctl` shows `Started ...` with no ERROR/CRITICAL;
+  (7) `/run/spark-modem-watchdog/lock` present + owned by root;
+  (8) `/run/spark-modem-watchdog/metrics.sock` scrape returns valid
+  Prometheus text; (9) daemon reaches Healthy on all 4 modems within
+  60s (NFR-13). The aarch64 GHA install test (V-02) gates the .deb
+  artifact in CI; the cross-platform unit-file audit (V-04) gates the
+  unit ↔ pyproject ↔ install layout on every dev-host pytest.
+
+**Plans**: 6 plans
 
 Plans:
-- [x] 05.1-01-PLAN.md — pyproject [project.scripts] + daemon _sync_main + debian/rules uv pip install . (I-01/I-02/I-04/I-05) — completed 2026-05-12
-- [ ] 05.1-02-PLAN.md — Settings.resolve_hmac_secret_path() + ctl config-check verb + postinst HMAC placeholder (L-02/L-03/L-05)
-- [ ] 05.1-03-PLAN.md — service unit ExecStart* paths repointed to /opt/.../python/bin/ (I-03; L-01 preserved)
+- [x] 05.1-01-PLAN.md — pyproject.toml [project.scripts] + daemon _sync_main inline + debian/rules uv pip install . + .install/.dirs lib-line removal (I-01, I-02, I-04, I-05) — completed 2026-05-12
+- [ ] 05.1-02-PLAN.md — Settings.resolve_hmac_secret_path() (L-02) + ctl config-check verb (L-05) + postinst HMAC placeholder write (L-03)
+- [ ] 05.1-03-PLAN.md — debian/spark-modem-watchdog.service ExecStart* paths repointed to /opt/.../python/bin/ (I-03; L-01 preserved)
 - [ ] 05.1-04-PLAN.md — EXIT-CHECKLIST.md operator template (V-03)
-- [ ] 05.1-05-PLAN.md — postinst smoke + unit-file audit + CI install test incl. systemd-analyze verify (V-01/V-02/V-04; L-04 verifier)
+- [ ] 05.1-05-PLAN.md — Postinst smoke extension (V-01) + unit-file audit V-04 (a/b/c) + CI install test strict superset incl. systemd-analyze verify (V-02 + L-04 forcing function)
 - [ ] 05.1-06-PLAN.md — ROADMAP.md goal rewrite + debian/changelog 2.0.1-1 entry
 
 ### Phase 6: Cutover & Fleet Rollout
