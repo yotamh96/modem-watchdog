@@ -75,6 +75,33 @@ jobs:
               # (b) Both console scripts present and executable.
               test -x /opt/spark-modem-watchdog/python/bin/spark-modem
               test -x /opt/spark-modem-watchdog/python/bin/spark-modem-watchdog
+              # (b.1) No builder DESTDIR path may leak into any installed shim.
+              # Catches the 2026-05-12 deploy bug where uv pip install baked the
+              # build-time --python destdir into every shim trampolines exec line,
+              # producing 127 on every shim invocation on the target. The shim
+              # rewrite in debian/rules Step 3.6 makes this assertion trivial;
+              # the assertion is here so a future regression fails at CI time,
+              # not at first systemd start on a bench Jetson.
+              if grep -rqF "/_work/" /opt/spark-modem-watchdog/python/bin/; then
+                echo "ERROR: builder /_work/ path leaked into installed shim trampolines" >&2
+                grep -rlF "/_work/" /opt/spark-modem-watchdog/python/bin/ >&2
+                exit 1
+              fi
+              # (b.2) Shim trampoline must successfully exec the bundled
+              # interpreter end-to-end. We invoke `spark-modem ctl config-check`
+              # which is expected to exit NON-ZERO at install time (placeholder
+              # HMAC sentinel fails the check — by design); the assertion is
+              # only that the exit code is NOT 127, the symptom of a broken
+              # trampoline that cant find its interpreter.
+              set +e
+              /opt/spark-modem-watchdog/python/bin/spark-modem ctl config-check >/dev/null 2>&1
+              SHIM_EC=$?
+              set -e
+              if [ "$SHIM_EC" -eq 127 ]; then
+                echo "ERROR: spark-modem shim trampoline failed to exec (exit 127)" >&2
+                head -3 /opt/spark-modem-watchdog/python/bin/spark-modem >&2
+                exit 1
+              fi
               # (c) HMAC placeholder file at the L-03 path / mode / owner / content.
               test -f /etc/spark-modem-watchdog/hmac-secret
               test "$(stat -c %a /etc/spark-modem-watchdog/hmac-secret)" = "600"

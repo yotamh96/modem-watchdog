@@ -88,6 +88,29 @@ override_dh_auto_install: debian/python-build-standalone/.unpacked
 		--no-deps --no-build-isolation \
 		.
 
+	# Step 3.6 (Phase 05.1 deploy hotfix): rewrite generated console-script
+	# trampolines to strip the builder DESTDIR prefix from their `exec` lines.
+	# Every shim that pip/uv installs under python/bin/ is a polyglot launcher
+	# with the build-time --python path absolutely baked into a shell `exec`
+	# directive — affects our `spark-modem` and `spark-modem-watchdog` shims
+	# AND every runtime-lib shim (dhcp-server-detector, dotenv, httpx, the
+	# pyroute2-* family). PBS python itself is fully relocatable (real ELF,
+	# self-locating), but the shim trampolines are not. Without this rewrite,
+	# every shim fails on the installed Jetson with exit 127:
+	#   /bin/sh: exec: /home/.../debian/.../python3.12: not found
+	# Strip $(DESTDIR) from any file containing it so /opt/... is the only
+	# path that survives into the shipped .deb. Bench Jetson install on
+	# 2026-05-12 was the first to surface this (CI deb 56a6ab1).
+	grep -rlF "$(DESTDIR)/opt/spark-modem-watchdog" $(VENVDIR) | \
+		xargs --no-run-if-empty sed -i "s|$(DESTDIR)/opt/spark-modem-watchdog|/opt/spark-modem-watchdog|g"
+	# Sanity: refuse to seal the .deb if any DESTDIR prefix survived the
+	# rewrite. The sed above is broad on purpose; this is the safety net.
+	if grep -rlF "$(DESTDIR)/opt/spark-modem-watchdog" $(VENVDIR) >/dev/null 2>&1; then \
+		echo "ERROR: builder DESTDIR prefix still present in $(VENVDIR) after shim rewrite" >&2; \
+		grep -rlF "$(DESTDIR)/opt/spark-modem-watchdog" $(VENVDIR) >&2; \
+		exit 1; \
+	fi
+
 	# Strip the bundled python's pip/setuptools/wheel + uv — build-time tools
 	# only; not shipped on the box (NFR-51).
 	$(VENVDIR)/bin/python3.12 -m pip uninstall -y uv pip setuptools wheel || true
