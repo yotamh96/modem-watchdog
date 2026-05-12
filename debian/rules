@@ -143,6 +143,18 @@ override_dh_auto_install: debian/python-build-standalone/.unpacked
 	SPARK_MODEM_PYTHON=$(VENVDIR)/bin/python3.12 \
 		bash $(CURDIR)/scripts/postinst_smoke_test.sh
 
+	# Phase 05.1 NFR-51 hotfix: wipe all __pycache__ from the bundled python.
+	# Build-time imports (ensurepip, pip install uv, uv pip install ., postinst
+	# smoke import of spark_modem.{daemon,cli}.main) leave behind .pyc files
+	# all over site-packages and the trimmed stdlib. The .deb is designed to
+	# ship WITHOUT a pre-warmed pyc cache — see the NFR-13 comment above —
+	# but those build-side-effect .pyc files contradict that and push the
+	# .deb size over the 40 MiB ceiling. Lazy compile reconstructs them at
+	# 1-2s amortised cost on the daemon's first import after install. CI run
+	# 25719215887 was 41 MiB (target: 40 MiB) before this scrub.
+	find $(VENVDIR)/lib/python3.12 -type d -name __pycache__ \
+		-exec rm -rf {} + 2>/dev/null || true
+
 # Disable Python bytecode compilation by debhelper's dh_python — we compileall'd
 # against SOURCE_DATE_EPOCH already and don't want dh_python to re-compile and
 # de-reproduce.
