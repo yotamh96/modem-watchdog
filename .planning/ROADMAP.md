@@ -40,6 +40,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Linux Event Sources & Lifecycle** ✅ 2026-05-08 - udev/rtnetlink/inotify/dmesg, sd_notify, signal handling, PID-lock, per-modem flocks (build D + E)
 - [x] **Phase 4: Destructive Actions & HIL** - soft/modem/usb/driver_reset wired up, signal-gate end-to-end, qmi-proxy crash recovery, HIL CI lane (build F) — code complete 2026-05-10; Phase 4 EXIT contingent on first green nightly HIL run on bench Jetson + replay-harness >=95% gate (Plan 04-07 bench-Jetson human-verify auto-approved under --auto)
 - [x] **Phase 5: Bench & Field Shadow** ✅ 2026-05-11 - code-complete on Plans 05-01..05-07 (X-* fleet-triple chain + audit tools + .deb shipment + operator docs); Plan 05-08 (multi-week operator soak + SIGNOFF) tracked in 05-HUMAN-UAT.md
+- [x] **Phase 05.1: deb-packaging-hotfix (INSERTED)** ✅ 2026-05-12 - .deb install pipeline unblocked: 3 bugs retired (I-01 sys.path, I-02/I-04 entry-point, L-02 LoadCredential silent-ignore on systemd 245) + V-01/V-02/V-04 regression gates landed; bench Jetson dpkg-install + ExecStartPre gates pass; L-04 verdict captured (WARN, code-side fallback handles it)
+- [x] **Phase 05.2: daemon-startup-hotfix (INSERTED)** ✅ 2026-05-12 - Daemon `_production_main` now constructs `Settings()` directly instead of the CLI laptop-sandbox factory `build_default_settings()`; bench Jetson `ExecStart` no longer mkdirs `/tmp/spark-modem-cli` against `ProtectSystem=strict`'s read-only `/tmp`
 - [ ] **Phase 6: Cutover & Fleet Rollout** - MIGRATION Phases 3-5: one box live → 10% canary → 100% rolling; meet M1-M7 success metrics
 - [ ] **Phase 7: v1 Decommission & Archive** - MIGRATION Phase 6: purge v1 packages, archive scripts, update agent docs
 
@@ -436,11 +438,59 @@ HMAC discipline via L-01..L-05)
 
 Plans:
 - [x] 05.1-01-PLAN.md — pyproject.toml [project.scripts] + daemon _sync_main inline + debian/rules uv pip install . + .install/.dirs lib-line removal (I-01, I-02, I-04, I-05) — completed 2026-05-12
-- [ ] 05.1-02-PLAN.md — Settings.resolve_hmac_secret_path() (L-02) + ctl config-check verb (L-05) + postinst HMAC placeholder write (L-03)
-- [ ] 05.1-03-PLAN.md — debian/spark-modem-watchdog.service ExecStart* paths repointed to /opt/.../python/bin/ (I-03; L-01 preserved)
-- [ ] 05.1-04-PLAN.md — EXIT-CHECKLIST.md operator template (V-03)
-- [ ] 05.1-05-PLAN.md — Postinst smoke extension (V-01) + unit-file audit V-04 (a/b/c) + CI install test strict superset incl. systemd-analyze verify (V-02 + L-04 forcing function)
-- [ ] 05.1-06-PLAN.md — ROADMAP.md goal rewrite + debian/changelog 2.0.1-1 entry
+- [x] 05.1-02-PLAN.md — Settings.resolve_hmac_secret_path() (L-02) + ctl config-check verb (L-05) + postinst HMAC placeholder write (L-03) — completed 2026-05-12
+- [x] 05.1-03-PLAN.md — debian/spark-modem-watchdog.service ExecStart* paths repointed to /opt/.../python/bin/ (I-03; L-01 preserved) — completed 2026-05-12
+- [x] 05.1-04-PLAN.md — EXIT-CHECKLIST.md operator template (V-03) — completed 2026-05-12
+- [x] 05.1-05-PLAN.md — Postinst smoke extension (V-01) + unit-file audit V-04 (a/b/c) + CI install test strict superset incl. systemd-analyze verify (V-02 + L-04 forcing function) — completed 2026-05-12
+- [x] 05.1-06-PLAN.md — ROADMAP.md goal rewrite + debian/changelog 2.0.1-1 entry — completed 2026-05-12
+
+Post-phase deploy hotfixes landed on main after the 6 plans (chain of 4
+follow-up commits, applied in the same session): `78d1359` install
+setuptools+wheel in Step 2; `56a6ab1` scrub __pycache__ to honor NFR-51;
+`7d45b14` strip builder DESTDIR from shim trampolines + V-02 gates;
+`10cec6d` scope the sed rewrite to bin/ only. Each was caught by a CI
+run or the first bench Jetson install and fixed inline. The L-04
+systemd-analyze verdict on Ubuntu 20.04 / systemd 245 was captured as
+WARN (silent-ignore branch) — no drop-in override needed; the L-02
+code-side fallback handles it.
+
+### Phase 05.2: daemon-startup-hotfix (INSERTED)
+
+**Goal**: After Phase 05.1 unblocked the .deb pipeline, the bench Jetson
+install of `spark-modem-watchdog_2.0.0-0.gite49dc7b-1_arm64.deb` reached
+the daemon's `ExecStart` and exploded with
+`OSError: [Errno 30] Read-only file system: '/tmp/spark-modem-cli'`.
+Root cause: `daemon/main.py:_production_main` was calling
+`build_default_settings()` (the CLI laptop-sandbox factory which hardcodes
+every path under `/tmp/spark-modem-cli/`) instead of `Settings()` (which
+uses production defaults `/var/lib/`, `/run/`, `/var/log/` with normal
+pydantic-settings env-var override semantics). The systemd unit's
+`ProtectSystem=strict` correctly renders `/tmp` read-only inside the
+service namespace, so the daemon's mkdir failed with EROFS — the unit
+hardening is doing its job; the daemon was asking for the wrong path.
+
+**Requirements**: (no formal v1 REQ-IDs — single-task hotfix; indirectly
+tied to NFR-30 root-only-secrets pattern and the systemd hardening
+discipline locked in Phase 3 U-01..U-05)
+
+**Depends on**: Phase 05.1
+
+**Success Criteria** (what must be TRUE):
+  1. `daemon/main.py:_production_main` constructs `Settings()` directly,
+     no longer routing through `build_default_settings()`. The CLI
+     laptop-sandbox factory is reserved for `_laptop_main` and CLI
+     `recovery --diag-fixture=...` runs.
+  2. The .deb built from a commit containing this fix installs on a
+     bench Jetson and the daemon successfully passes its first cycle —
+     `Active: active (running)` + `sd_notify READY=1` — without any
+     `/tmp/spark-modem-cli` reference in the journal.
+  3. `mypy --strict src/spark_modem/daemon/main.py` and `ruff check`
+     stay green over the change. No other source files modified.
+
+**Plans**: 1 plan
+
+Plans:
+- [x] 05.2-01-PLAN.md — Use `Settings()` directly in `_production_main` instead of `build_default_settings()` — completed 2026-05-12 (commit e49dc7b; CI run 25725010483 PASS; bench Jetson verification pending in `.planning/phases/05.2-daemon-startup-hotfix/VERIFICATION.md`)
 
 ### Phase 6: Cutover & Fleet Rollout
 
@@ -525,6 +575,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. Linux Event Sources & Lifecycle | 9/9 | Complete | 2026-05-08 |
 | 4. Destructive Actions & HIL | 0/7 | Not started | - |
 | 5. Bench & Field Shadow | 7/8 | Complete (code) | 2026-05-11 |
+| 05.1. deb-packaging-hotfix (INSERTED) | 6/6 | Complete | 2026-05-12 |
+| 05.2. daemon-startup-hotfix (INSERTED) | 1/1 | Complete (bench verify pending) | 2026-05-12 |
 | 6. Cutover & Fleet Rollout | 0/TBD | Not started | - |
 | 7. v1 Decommission & Archive | 0/TBD | Not started | - |
 

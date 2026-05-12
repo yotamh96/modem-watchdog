@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: "Completed 05.1-05-PLAN.md (regression gate: V-01 smoke + V-04 audit + V-02 CI)"
-last_updated: "2026-05-12T06:51:45.515Z"
+stopped_at: "Phase 05.2 daemon-startup-hotfix retroactive trail captured (Settings() swap, commit e49dc7b); bench Jetson deploy verification pending"
+last_updated: "2026-05-12T09:30:00.000Z"
 last_activity: 2026-05-12
 progress:
-  total_phases: 8
-  completed_phases: 6
-  total_plans: 47
-  completed_plans: 47
+  total_phases: 9
+  completed_phases: 7
+  total_plans: 48
+  completed_plans: 48
   percent: 100
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-05)
 
 **Core value:** Maximize end-user uplink availability across the four bonded modems by applying minimum-impact recovery actions — and never running a destructive recovery that has zero chance of fixing the observed issue.
-**Current focus:** Phase 05.1 — deb-packaging-hotfix
+**Current focus:** Phase 05.2 — daemon-startup-hotfix (bench verify pending)
 
 ## Current Position
 
-Phase: 05.1 (deb-packaging-hotfix) — EXECUTING
-Plan: 6 of 6
-Status: Phase complete — ready for verification
+Phase: 05.2 (daemon-startup-hotfix) — COMPLETE (code + CI); bench Jetson verification pending
+Plan: 1 of 1
+Status: Phase complete — bench Jetson `apt install` + `systemctl start` outcome awaited
 Last activity: 2026-05-12
 
 Progress: [██████████] 100%
