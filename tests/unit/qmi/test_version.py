@@ -149,18 +149,43 @@ class _FakeWrapper:
     accepts ``wrapper: object`` and only calls ``wrapper.dms_get_revision()``
     so structural typing is sufficient (no need to subclass QmiWrapper or
     its Protocol seam).
+
+    Phase 05.5: supports a sequence of responses to exercise the retry
+    loop. Pass a single ``stdout`` (with optional ``exit_code`` / ``stderr``)
+    for the single-shot legacy shape; pass ``responses=[(exit, stdout,
+    stderr), ...]`` to drive a multi-attempt scenario. The fake exhausts
+    the sequence and repeats the final entry indefinitely so callers
+    don't have to think about IndexError on over-call.
     """
 
-    def __init__(self, *, stdout: bytes, exit_code: int = 0) -> None:
-        self._stdout = stdout
-        self._exit_code = exit_code
+    def __init__(
+        self,
+        *,
+        stdout: bytes | None = None,
+        exit_code: int = 0,
+        stderr: bytes = b"",
+        responses: list[tuple[int, bytes, bytes]] | None = None,
+    ) -> None:
+        if responses is None:
+            if stdout is None:
+                raise ValueError("either stdout= or responses= must be provided")
+            responses = [(exit_code, stdout, stderr)]
+        self._responses = list(responses)
+        self._call_count = 0
+
+    @property
+    def call_count(self) -> int:
+        return self._call_count
 
     async def dms_get_revision(self) -> CompletedProcess:
+        idx = min(self._call_count, len(self._responses) - 1)
+        self._call_count += 1
+        exit_code, stdout, stderr = self._responses[idx]
         return CompletedProcess.make(
             argv=["qmicli", "--dms-get-revision"],
-            exit_code=self._exit_code,
-            stdout=self._stdout,
-            stderr=b"",
+            exit_code=exit_code,
+            stdout=stdout,
+            stderr=stderr,
             duration_monotonic=0.0,
             timed_out=False,
         )
@@ -262,6 +287,80 @@ async def test_compute_fleet_triple_firmware_qmierror_raises(
     zao_path = _ZAO_FIXTURE_ROOT / "banner_present.txt"
 
     with pytest.raises(
-        QmiVersionDetectionFailed, match="dms_get_revision returned QmiError"
+        QmiVersionDetectionFailed,
+        match=r"dms_get_revision failed after 3 attempts: parser returned QmiError",
     ):
         await compute_fleet_triple(wrapper=wrapper, zao_log_path=zao_path)
+
+
+async def test_compute_fleet_triple_retries_transient_qmicli_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Phase 05.5: qmicli proxy-contention failures are transient.
+
+    First two attempts return exit_code=1 with the bench-Jetson "CID
+    allocation failed" stderr; third attempt returns the real revisions
+    body. compute_fleet_triple must retry past the transient failures
+    and return the parsed triple.
+    """
+    libqmi_body = (_FIXTURE_ROOT / "1.30" / "standard.txt").read_bytes()
+
+    async def fake_run(
+        argv: list[str], *, timeout_s: float, **_kw: object
+    ) -> CompletedProcess:
+        del timeout_s
+        return _make_cp(argv=argv, exit_code=0, stdout=libqmi_body)
+
+    monkeypatch.setattr(subproc_runner, "run", fake_run)
+
+    fw_body = _GET_REVISION_FIXTURE.read_bytes()
+    cid_fail_stderr = (
+        b"error: couldn't create client for the 'dms' service: "
+        b"CID allocation failed in the CTL client: Service mismatch "
+        b"(requested 'dms', got 'nas')\n"
+    )
+    wrapper = _FakeWrapper(
+        responses=[
+            (1, b"", cid_fail_stderr),
+            (1, b"", cid_fail_stderr),
+            (0, fw_body, b""),
+        ],
+    )
+    zao_path = _ZAO_FIXTURE_ROOT / "banner_present.txt"
+
+    triple = await compute_fleet_triple(wrapper=wrapper, zao_log_path=zao_path)
+    assert triple.em7421_firmware == "SWI9X30C_02.38.00.00"
+    assert wrapper.call_count == 3, "should have used all three retry attempts"
+
+
+async def test_compute_fleet_triple_exhausts_retries_with_stderr_in_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Phase 05.5: when every attempt fails with non-zero exit, the final
+    error must include the qmicli stderr so the operator sees the real
+    cause (CID allocation, endpoint hangup, etc.) instead of a misleading
+    parser-level "no revisions block in stdout" message.
+    """
+    libqmi_body = (_FIXTURE_ROOT / "1.30" / "standard.txt").read_bytes()
+
+    async def fake_run(
+        argv: list[str], *, timeout_s: float, **_kw: object
+    ) -> CompletedProcess:
+        del timeout_s
+        return _make_cp(argv=argv, exit_code=0, stdout=libqmi_body)
+
+    monkeypatch.setattr(subproc_runner, "run", fake_run)
+
+    cid_fail_stderr = b"CID allocation failed in the CTL client: endpoint hangup\n"
+    wrapper = _FakeWrapper(
+        responses=[(1, b"", cid_fail_stderr)],  # repeats indefinitely
+    )
+    zao_path = _ZAO_FIXTURE_ROOT / "banner_present.txt"
+
+    expected_pattern = (
+        r"dms_get_revision failed after 3 attempts: "
+        r"qmicli exit_code=1.*CID allocation failed"
+    )
+    with pytest.raises(QmiVersionDetectionFailed, match=expected_pattern):
+        await compute_fleet_triple(wrapper=wrapper, zao_log_path=zao_path)
+    assert wrapper.call_count == 3

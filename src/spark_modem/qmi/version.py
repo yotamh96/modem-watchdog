@@ -14,6 +14,7 @@ CLI capture path and the daemon preflight path always agree byte-for-byte.
 
 from __future__ import annotations
 
+import asyncio
 import re
 from pathlib import Path
 from typing import Final
@@ -25,6 +26,16 @@ from spark_modem.qmi.parsers.get_revision import parse_get_revision
 from spark_modem.subproc import runner as subproc_runner
 from spark_modem.subproc.result import CompletedProcess
 from spark_modem.zao_log.version import detect_zao_sdk_version
+
+# Phase 05.5: firmware probe retry budget. The qmi-proxy CID allocation
+# races with Zao's continuous NAS/UIM queries — bench Jetson 2026-05-12
+# observed roughly a 25% per-call failure rate with "Service mismatch
+# (requested 'dms', got 'nas'/'uim')" or "endpoint hangup" stderr. Three
+# attempts brings cumulative success > 99%; 0.5s spacing between attempts
+# is empirically enough for the in-flight Zao query to release its CID.
+_FIRMWARE_PROBE_ATTEMPTS: Final[int] = 3
+_FIRMWARE_PROBE_BACKOFF_S: Final[float] = 0.5
+
 
 _LIBQMI_VERSION_RE: Final[re.Pattern[str]] = re.compile(
     # Accept BOTH the `qmicli X.Y.Z` first line (always present) AND the
@@ -137,23 +148,54 @@ async def compute_fleet_triple(
 
     # Duck-typed: wrapper must have ``async def dms_get_revision() -> CompletedProcess``.
     # See Plan 05-01 SUMMARY for the production QmiWrapper.dms_get_revision signature.
-    cp: CompletedProcess = await wrapper.dms_get_revision()  # type: ignore[attr-defined]
-    parsed = parse_get_revision(cp.stdout)
-    if isinstance(parsed, QmiError):
+    #
+    # Phase 05.5: retry on transient qmi-proxy failures. When qmicli's CID
+    # allocation races with Zao's concurrent NAS/UIM queries, qmicli exits
+    # non-zero with stderr like "CID allocation failed ... Service mismatch
+    # (requested 'dms', got 'nas')" or "endpoint hangup" and stdout empty.
+    # The parser correctly returns UNEXPECTED_OUTPUT in that case (no
+    # `Device revision retrieved` header in the empty body) but the actual
+    # cause is upstream contention, not a parser issue. Retry up to
+    # _FIRMWARE_PROBE_ATTEMPTS times with _FIRMWARE_PROBE_BACKOFF_S spacing
+    # so the in-flight Zao request can release its CID.
+    revision: str | None = None
+    last_error: str = "unreachable"
+    for attempt in range(_FIRMWARE_PROBE_ATTEMPTS):
+        cp: CompletedProcess = await wrapper.dms_get_revision()  # type: ignore[attr-defined]
+        if cp.exit_code != 0:
+            stderr_excerpt = cp.stderr[:_STDERR_EXCERPT_BYTES]
+            last_error = (
+                f"qmicli exit_code={cp.exit_code} stderr={stderr_excerpt!r}"
+            )
+        else:
+            parsed = parse_get_revision(cp.stdout)
+            if isinstance(parsed, QmiError):
+                last_error = (
+                    f"parser returned QmiError: reason={parsed.reason.value} "
+                    f"detail={parsed.detail!r}"
+                )
+            elif parsed.revision is None:
+                last_error = (
+                    "parser returned revision=None "
+                    "(impossible if MISSING_FIELD raised)"
+                )
+            else:
+                revision = parsed.revision
+                break
+        # Don't sleep after the final attempt — sleep is between retries only.
+        if attempt < _FIRMWARE_PROBE_ATTEMPTS - 1:
+            await asyncio.sleep(_FIRMWARE_PROBE_BACKOFF_S)
+
+    if revision is None:
         raise QmiVersionDetectionFailed(
-            f"dms_get_revision returned QmiError: reason={parsed.reason.value} "
-            f"detail={parsed.detail!r}"
-        )
-    if parsed.revision is None:
-        raise QmiVersionDetectionFailed(
-            "dms_get_revision parser returned revision=None "
-            "(impossible if MISSING_FIELD raised)"
+            f"dms_get_revision failed after {_FIRMWARE_PROBE_ATTEMPTS} attempts: "
+            f"{last_error}"
         )
 
     zao_sdk = detect_zao_sdk_version(zao_log_path)
 
     return FleetTriple(
-        em7421_firmware=parsed.revision,
+        em7421_firmware=revision,
         zao_sdk=zao_sdk if zao_sdk is not None else _ZAO_SDK_UNKNOWN_SENTINEL,
         libqmi=libqmi,
     )
