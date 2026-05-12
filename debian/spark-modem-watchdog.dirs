@@ -5,4 +5,3 @@
 /var/log/spark-modem-watchdog
 /run/spark-modem-watchdog
 /opt/spark-modem-watchdog/libexec
-/opt/spark-modem-watchdog/lib

@@ -71,6 +71,19 @@ override_dh_auto_install: debian/python-build-standalone/.unpacked
 		--no-deps --require-hashes \
 		-r packaging/requirements.lock
 
+	# Step 3.5 (Phase 05.1 I-01): install spark_modem itself into the bundled
+	# venv's site-packages. --no-deps because runtime libs are already locked
+	# at step 3 above; --no-build-isolation because we want uv to use the
+	# setuptools ALREADY present in the bundled venv (cheap, deterministic,
+	# offline). Setuptools is uninstalled by the NEXT step — must run BEFORE
+	# the uninstall sweep below (I-05). After this step, the bundled venv's
+	# site-packages contains spark_modem/, and python/bin/ contains both
+	# spark-modem and spark-modem-watchdog console-script shims.
+	$(VENVDIR)/bin/python3.12 -m uv pip install \
+		--python $(VENVDIR)/bin/python3.12 \
+		--no-deps --no-build-isolation \
+		.
+
 	# Strip the bundled python's pip/setuptools/wheel + uv — build-time tools
 	# only; not shipped on the box (NFR-51).
 	$(VENVDIR)/bin/python3.12 -m pip uninstall -y uv pip setuptools wheel || true

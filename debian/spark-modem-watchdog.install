@@ -3,7 +3,10 @@
 # pip install + compileall). It is NOT shipped via this .install file because
 # dh_install would copy a *fresh* PBS tree on top, clobbering the site-packages
 # we populated.
-src/spark_modem /opt/spark-modem-watchdog/lib/
+# Phase 05.1 I-01: src/spark_modem is installed via `uv pip install .` inside
+# override_dh_auto_install (drops it into the bundled venv's site-packages).
+# The previous `src/spark_modem /opt/spark-modem-watchdog/lib/` line was a
+# bug — the lib/ path was never on sys.path of the bundled python.
 scripts/postinst_smoke_test.sh /opt/spark-modem-watchdog/libexec/
 debian/spark-modem-watchdog.service /lib/systemd/system/
 debian/conf.d/00-carriers.yaml /etc/spark-modem-watchdog/conf.d/
