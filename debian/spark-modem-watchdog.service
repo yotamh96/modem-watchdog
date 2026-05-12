@@ -11,16 +11,15 @@ NotifyAccess=main
 # FR-60 + B-03 belt-and-suspenders B: smoke-test on every start.
 ExecStartPre=/opt/spark-modem-watchdog/libexec/postinst_smoke_test.sh
 
-# U-05: pre-flight Settings validate before main process. Catches bad
-# config rollouts BEFORE the main daemon process boots, so a bad
-# config doesn't trip StartLimitBurst (PITFALLS §4.2).
-ExecStartPre=/opt/spark-modem-watchdog/bin/spark-modem ctl config-check
+# U-05 / L-05: pre-flight Settings + HMAC secret validate before main process.
+# Catches bad config rollouts (and missing/placeholder HMAC secrets) BEFORE
+# the main daemon process boots, so a bad config doesn't trip StartLimitBurst
+# (PITFALLS §4.2).
+ExecStartPre=/opt/spark-modem-watchdog/python/bin/spark-modem ctl config-check
 
-# Phase 3 wires the real entry point. The wrapper script lives in
-# /opt/spark-modem-watchdog/bin/ and is provided by the .deb postinst
-# (Phase 4 follow-up: verify wrapper exists; current .deb scaffold may
-# need an additional ExecStart shim).
-ExecStart=/opt/spark-modem-watchdog/bin/spark-modem-watchdog
+# Daemon entry point — console-script auto-materialized by [project.scripts]
+# in pyproject.toml during override_dh_auto_install (Phase 05.1 I-01/I-02/I-04).
+ExecStart=/opt/spark-modem-watchdog/python/bin/spark-modem-watchdog
 
 # U-02: clean SIGTERM exit must not trigger restart. Default StartLimit
 # (5 restarts in 10s) bricks fleet on bad config rollout (PITFALLS §4.2).
