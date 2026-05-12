@@ -39,6 +39,7 @@ from spark_modem.cli.clients import (
     _NoZaoTailer,
     build_default_settings,
 )
+from spark_modem.config.settings import Settings
 from spark_modem.daemon.cycle_driver import CycleDriver
 from spark_modem.daemon.cycle_scheduler import CycleScheduler
 from spark_modem.daemon.lifecycle import (
@@ -187,9 +188,15 @@ async def _production_main(args: argparse.Namespace) -> int:
     # Step 1: argparse already done (caller); args.skip_preflight read below.
 
     # Step 2: build Settings; on validation failure write last-config-error
-    # and exit non-zero.
+    # and exit non-zero. Use Settings() directly (production defaults from
+    # config/settings.py: /var/lib/, /run/, /var/log/) overridable via env
+    # vars per pydantic-settings. Do NOT use build_default_settings() — that
+    # is the CLI laptop-sandbox factory which hardcodes every path under
+    # /tmp/spark-modem-cli/ and explodes against the systemd unit's
+    # ProtectSystem=strict + read-only /tmp namespace (EROFS at mkdir).
+    # Bench Jetson deploy 2026-05-12 caught this.
     try:
-        settings = build_default_settings()
+        settings = Settings()
     except Exception as exc:
         # Settings validation failed — write the marker and exit. The next
         # boot's classifier reads this and reports CONFIG_INVALID via
