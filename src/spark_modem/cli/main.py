@@ -23,6 +23,7 @@ from spark_modem.cli import recovery as recovery_cmd
 from spark_modem.cli import reset as reset_cmd
 from spark_modem.cli import status as status_cmd
 from spark_modem.cli.ctl import capture_fleet_fixture as ctl_capture_fleet
+from spark_modem.cli.ctl import config_check as ctl_config_check
 from spark_modem.cli.ctl import history as ctl_history
 from spark_modem.cli.ctl import maintenance as ctl_maintenance
 from spark_modem.cli.ctl import support_bundle as ctl_support_bundle
@@ -164,6 +165,13 @@ def _build_parser() -> argparse.ArgumentParser:  # noqa: PLR0915 - argparse subp
 
     p_maint_st = p_maint_sub.add_parser("status", help="Show maintenance status")
     p_maint_st.set_defaults(func=ctl_maintenance.run_status)
+
+    # ctl config-check (U-05 / L-05) — pre-flight Settings + HMAC secret validate
+    p_cc = ctl_sub.add_parser(
+        "config-check",
+        help="Validate settings + HMAC secret file (run by ExecStartPre)",
+    )
+    p_cc.set_defaults(func=ctl_config_check.run)
 
     # ctl support-bundle
     p_sb = ctl_sub.add_parser(

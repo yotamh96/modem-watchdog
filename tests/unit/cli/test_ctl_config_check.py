@@ -5,8 +5,8 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import types
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -50,15 +50,13 @@ async def test_placeholder_sentinel_returns_2(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # behavior 2: file contains the placeholder sentinel
-    secret_path.write_bytes(b"REPLACE_THIS_BEFORE_FIRST_START_SEE_RUNBOOK\n")
-    os.chmod(secret_path, 0o600)
+    secret_path.write_bytes(b"REPLACE_THIS_BEFORE_FIRST_START_SEE_RUNBOOK\n")  # noqa: ASYNC240
+    secret_path.chmod(0o600)  # noqa: ASYNC240
 
     real_stat = os.stat
 
     def fake_stat(path: str | bytes | os.PathLike[str]) -> os.stat_result:
         st = real_stat(path)
-        import types
-
         return types.SimpleNamespace(  # type: ignore[return-value]
             st_mode=st.st_mode,
             st_uid=0,
@@ -78,15 +76,13 @@ async def test_empty_file_returns_2(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # behavior 3: file is 0 bytes
-    secret_path.write_bytes(b"")
-    os.chmod(secret_path, 0o600)
+    secret_path.write_bytes(b"")  # noqa: ASYNC240
+    secret_path.chmod(0o600)  # noqa: ASYNC240
 
     real_stat = os.stat
 
     def fake_stat(path: str | bytes | os.PathLike[str]) -> os.stat_result:
         st = real_stat(path)
-        import types
-
         return types.SimpleNamespace(  # type: ignore[return-value]
             st_mode=st.st_mode,
             st_uid=0,
@@ -105,8 +101,8 @@ async def test_wrong_mode_returns_2(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     # behavior 4: file has mode 0644 (not 0600)
-    secret_path.write_bytes(b"realsecretbytes\n")
-    os.chmod(secret_path, 0o644)
+    secret_path.write_bytes(b"realsecretbytes\n")  # noqa: ASYNC240
+    secret_path.chmod(0o644)  # noqa: ASYNC240
     rc = await config_check.run(argparse.Namespace())
     assert rc == 2
     err = capsys.readouterr().err
@@ -119,15 +115,13 @@ async def test_green_path(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # behavior 5: file exists, non-empty, not sentinel, mode 0600, owner root:root (mocked)
-    secret_path.write_bytes(b"realsecretbytes_at_least_one_byte\n")
-    os.chmod(secret_path, 0o600)
+    secret_path.write_bytes(b"realsecretbytes_at_least_one_byte\n")  # noqa: ASYNC240
+    secret_path.chmod(0o600)  # noqa: ASYNC240
 
     real_stat = os.stat
 
     def fake_stat(path: str | bytes | os.PathLike[str]) -> os.stat_result:
         st = real_stat(path)
-        import types
-
         return types.SimpleNamespace(  # type: ignore[return-value]
             st_mode=st.st_mode,
             st_uid=0,
