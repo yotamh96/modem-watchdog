@@ -1,0 +1,9 @@
+# libqmi_version: 1.30
+# source: bench Jetson Orin NX, JetPack 5.1.5, Ubuntu 20.04, libqmi 1.30.4
+# modem: SWI9X50C (NOT the SWI9X30C that the upstream-Debian standard fixture uses)
+# captured: 2026-05-12 during phase 05.4 hotfix deploy walk
+# distinguishing trait: SINGULAR "Device revision retrieved" header (no "s"),
+# and ONLY the Revision: line — no Boot code: line. libqmi adapts the header
+# wording to the field count.
+[/dev/cdc-wdm0] Device revision retrieved:
+	Revision: 'SWI9X50C_01.14.03.00 b06bd3 jenkins 2020/09/23 10:53:35'

@@ -71,6 +71,23 @@ def test_result_is_frozen_and_ignores_extra_fields() -> None:
     assert not hasattr(silent, "unknown_field")
 
 
+def test_parser_accepts_singular_revision_header_jetpack() -> None:
+    """Phase 05.4 regression: libqmi 1.30 emits SINGULAR 'Device revision
+    retrieved' (no plural 's') when only the Revision line is present and
+    no Boot code line follows. Bench Jetson 2026-05-12 (SWI9X50C modem)
+    surfaced this — the parser previously hardcoded the plural form and
+    rejected the entire stdout with QmiError(UNEXPECTED_OUTPUT).
+    """
+    body = (
+        _FIXTURES_ROOT / "get_revision" / "1.30" / "jetpack-singular.txt"
+    ).read_bytes()
+    result = parse_get_revision(body)
+    assert isinstance(result, GetRevisionResult)
+    assert result.revision == (
+        "SWI9X50C_01.14.03.00 b06bd3 jenkins 2020/09/23 10:53:35"
+    )
+
+
 def test_parser_accepts_libqmi_1_32_fixture() -> None:
     """The parser handles the libqmi 1.32 fixture identically — Revision
     line shape has not changed across 1.30→1.32 per RESEARCH Q3 A4/A5.
