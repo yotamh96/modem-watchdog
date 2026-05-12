@@ -42,6 +42,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Bench & Field Shadow** ✅ 2026-05-11 - code-complete on Plans 05-01..05-07 (X-* fleet-triple chain + audit tools + .deb shipment + operator docs); Plan 05-08 (multi-week operator soak + SIGNOFF) tracked in 05-HUMAN-UAT.md
 - [x] **Phase 05.1: deb-packaging-hotfix (INSERTED)** ✅ 2026-05-12 - .deb install pipeline unblocked: 3 bugs retired (I-01 sys.path, I-02/I-04 entry-point, L-02 LoadCredential silent-ignore on systemd 245) + V-01/V-02/V-04 regression gates landed; bench Jetson dpkg-install + ExecStartPre gates pass; L-04 verdict captured (WARN, code-side fallback handles it)
 - [x] **Phase 05.2: daemon-startup-hotfix (INSERTED)** ✅ 2026-05-12 - Daemon `_production_main` now constructs `Settings()` directly instead of the CLI laptop-sandbox factory `build_default_settings()`; bench Jetson `ExecStart` no longer mkdirs `/tmp/spark-modem-cli` against `ProtectSystem=strict`'s read-only `/tmp`
+- [x] **Phase 05.3: libqmi-version-regex-hotfix (INSERTED)** ✅ 2026-05-12 - `_LIBQMI_VERSION_RE` broadened to match both `qmicli X.Y.Z` and `Compiled with libqmi-glib X.Y.Z` formats; JetPack 5.1.5 / libqmi 1.30.4 output (qmicli-only banner, no libqmi-glib footer) now parses correctly through the Phase 5 X-03 preflight
 - [ ] **Phase 6: Cutover & Fleet Rollout** - MIGRATION Phases 3-5: one box live → 10% canary → 100% rolling; meet M1-M7 success metrics
 - [ ] **Phase 7: v1 Decommission & Archive** - MIGRATION Phase 6: purge v1 packages, archive scripts, update agent docs
 
@@ -490,7 +491,49 @@ discipline locked in Phase 3 U-01..U-05)
 **Plans**: 1 plan
 
 Plans:
-- [x] 05.2-01-PLAN.md — Use `Settings()` directly in `_production_main` instead of `build_default_settings()` — completed 2026-05-12 (commit e49dc7b; CI run 25725010483 PASS; bench Jetson verification pending in `.planning/phases/05.2-daemon-startup-hotfix/VERIFICATION.md`)
+- [x] 05.2-01-PLAN.md — Use `Settings()` directly in `_production_main` instead of `build_default_settings()` — completed 2026-05-12 (commit e49dc7b; CI run 25725010483 PASS; bench Jetson 2026-05-12 10:25 UTC PASS — failure mode shifted from EROFS to structured 78/CONFIG preflight rejection, proving the Settings swap worked)
+
+### Phase 05.3: libqmi-version-regex-hotfix (INSERTED)
+
+**Goal**: The Phase 05.2 fix unblocked the daemon's filesystem-init step,
+and the bench Jetson then surfaced a deeper structured rejection at
+Phase 5's X-03 fleet-triple preflight: `qmicli --version stdout did not
+match libqmi-glib regex`. The bench Jetson runs JetPack 5.1.5 / Ubuntu
+20.04 / libqmi 1.30.4, whose `qmicli --version` emits only the first-line
+`qmicli 1.30.4` banner — there is no `Compiled with libqmi-glib X.Y.Z`
+footer that the existing regex required. Broaden the regex to accept
+either form (qmicli and libqmi-glib are lockstep so the version matches
+either way), add a fixture captured from the bench Jetson, and a
+regression test.
+
+**Requirements**: (no formal v1 REQ-IDs — single-task regex hotfix; Phase
+5 X-02 / X-03 preflight chain from plans 05-02 and 05-04 stays semantically
+intact)
+
+**Depends on**: Phase 05.2
+
+**Success Criteria** (what must be TRUE):
+  1. `_LIBQMI_VERSION_RE` matches both `qmicli X.Y.Z` and
+     `Compiled with libqmi-glib X.Y.Z` strings. The two existing fixture
+     tests continue to pass without modification because qmicli and
+     libqmi-glib are versioned lockstep upstream.
+  2. A new fixture
+     `tests/fixtures/qmicli/version/1.30/jetpack-1.30.4.txt` captures
+     the bench Jetson's exact stdout (qmicli banner + Copyright +
+     license + freedom + no-warranty, no libqmi-glib footer).
+  3. A new test
+     `test_detect_libqmi_version_parses_jetpack_qmicli_only_format`
+     asserts `"1.30.4"` is parsed from the new fixture; pytest reports
+     ≥11 passed on `tests/unit/qmi/test_version.py`.
+  4. The bench Jetson's daemon `ExecStart` no longer fails with the
+     `did not match libqmi-glib regex` message. (It may still fail at
+     a deeper known-fleet allow-list check — that is a separate
+     operator gate outside 05.3 scope.)
+
+**Plans**: 1 plan
+
+Plans:
+- [x] 05.3-01-PLAN.md — `_LIBQMI_VERSION_RE` broadened + bench Jetson fixture + regression test — completed 2026-05-12 (mypy/ruff/pytest all green locally; CI + bench verification tracked in `.planning/phases/05.3-libqmi-version-regex-hotfix/VERIFICATION.md`)
 
 ### Phase 6: Cutover & Fleet Rollout
 
@@ -576,7 +619,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Destructive Actions & HIL | 0/7 | Not started | - |
 | 5. Bench & Field Shadow | 7/8 | Complete (code) | 2026-05-11 |
 | 05.1. deb-packaging-hotfix (INSERTED) | 6/6 | Complete | 2026-05-12 |
-| 05.2. daemon-startup-hotfix (INSERTED) | 1/1 | Complete (bench verify pending) | 2026-05-12 |
+| 05.2. daemon-startup-hotfix (INSERTED) | 1/1 | Complete (bench PASS) | 2026-05-12 |
+| 05.3. libqmi-version-regex-hotfix (INSERTED) | 1/1 | Complete (bench verify pending) | 2026-05-12 |
 | 6. Cutover & Fleet Rollout | 0/TBD | Not started | - |
 | 7. v1 Decommission & Archive | 0/TBD | Not started | - |
 
