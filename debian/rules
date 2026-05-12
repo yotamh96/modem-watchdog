@@ -56,12 +56,16 @@ override_dh_auto_install: debian/python-build-standalone/.unpacked
 	mkdir -p $(VENVDIR)
 	cp -a debian/python-build-standalone/python/. $(VENVDIR)/
 
-	# Step 2: bootstrap pip and install uv as a build-time tool.
-	# uv is installed into the bundled python temporarily; it's uninstalled after
-	# use so it doesn't bloat the shipped package (NFR-51).
+	# Step 2: bootstrap pip and install uv + setuptools + wheel as build-time tools.
+	# All four are installed into the bundled python temporarily; all are
+	# uninstalled by the sweep below so they don't bloat the shipped package (NFR-51).
+	# setuptools + wheel are required by Step 3.5's `uv pip install . --no-build-isolation`
+	# — Python 3.12's ensurepip no longer bundles setuptools (deprecated and removed
+	# in 3.12), so it must be installed explicitly here. Plan 05.1-01's first cut
+	# assumed ensurepip would supply setuptools; CI run 25718980881 disproved it.
 	mkdir -p $(PIPCACHE)
 	$(VENVDIR)/bin/python3.12 -m ensurepip --upgrade
-	$(VENVDIR)/bin/python3.12 -m pip install --no-cache-dir 'uv>=0.5,<1'
+	$(VENVDIR)/bin/python3.12 -m pip install --no-cache-dir 'uv>=0.5,<1' setuptools wheel
 
 	# Step 3: install all 10 runtime libs into the bundled python, locked against
 	# packaging/requirements.lock. --no-deps prevents resolver expansion;
