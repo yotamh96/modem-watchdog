@@ -20,6 +20,7 @@ dev = [
 
 [project.scripts]
 spark-modem = "spark_modem.cli.main:main"
+spark-modem-watchdog = "spark_modem.daemon.main:_sync_main"
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]

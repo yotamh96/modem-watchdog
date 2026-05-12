@@ -310,5 +310,14 @@ async def main(argv: list[str] | None = None) -> int:
     return await _production_main(args)
 
 
+def _sync_main(argv: list[str] | None = None) -> int:
+    """Sync wrapper for [project.scripts] console-script entry point (I-04).
+
+    systemd Type=notify spawns this via the spark-modem-watchdog console
+    script materialized by `uv pip install .` (Phase 05.1 I-01 + I-02).
+    """
+    return asyncio.run(main(argv))
+
+
 if __name__ == "__main__":
-    sys.exit(asyncio.run(main()))
+    sys.exit(_sync_main())
