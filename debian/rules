@@ -98,16 +98,24 @@ override_dh_auto_install: debian/python-build-standalone/.unpacked
 	# self-locating), but the shim trampolines are not. Without this rewrite,
 	# every shim fails on the installed Jetson with exit 127:
 	#   /bin/sh: exec: /home/.../debian/.../python3.12: not found
-	# Strip $(DESTDIR) from any file containing it so /opt/... is the only
-	# path that survives into the shipped .deb. Bench Jetson install on
+	# Strip $(DESTDIR) from any text file under bin/. Bench Jetson install on
 	# 2026-05-12 was the first to surface this (CI deb 56a6ab1).
-	grep -rlF "$(DESTDIR)/opt/spark-modem-watchdog" $(VENVDIR) | \
+	#
+	# SCOPE WARNING: this MUST be limited to $(VENVDIR)/bin/. Earlier wider
+	# sweeps across $(VENVDIR) corrupted .pyc bytecode files in lib/ —
+	# Python's marshal format encodes co_filename as a length-prefixed
+	# string, so shortening the path inside a .pyc breaks the layout and
+	# produces "ValueError: bad marshal data (unknown type code)" on the
+	# next interpreter startup. .pyc files with stale destdir paths in
+	# their co_filename are functionally harmless (only affect traceback
+	# display) so we deliberately leave lib/**/*.pyc alone.
+	grep -rlF "$(DESTDIR)/opt/spark-modem-watchdog" $(VENVDIR)/bin/ 2>/dev/null | \
 		xargs --no-run-if-empty sed -i "s|$(DESTDIR)/opt/spark-modem-watchdog|/opt/spark-modem-watchdog|g"
-	# Sanity: refuse to seal the .deb if any DESTDIR prefix survived the
-	# rewrite. The sed above is broad on purpose; this is the safety net.
-	if grep -rlF "$(DESTDIR)/opt/spark-modem-watchdog" $(VENVDIR) >/dev/null 2>&1; then \
-		echo "ERROR: builder DESTDIR prefix still present in $(VENVDIR) after shim rewrite" >&2; \
-		grep -rlF "$(DESTDIR)/opt/spark-modem-watchdog" $(VENVDIR) >&2; \
+	# Sanity: refuse to seal the .deb if any DESTDIR prefix survived inside
+	# a bin/ trampoline. Scoped to bin/ for the same reason as the rewrite.
+	if grep -rlF "$(DESTDIR)/opt/spark-modem-watchdog" $(VENVDIR)/bin/ >/dev/null 2>&1; then \
+		echo "ERROR: builder DESTDIR prefix still present in $(VENVDIR)/bin/ after shim rewrite" >&2; \
+		grep -rlF "$(DESTDIR)/opt/spark-modem-watchdog" $(VENVDIR)/bin/ >&2; \
 		exit 1; \
 	fi
 
