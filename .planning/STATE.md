@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed Phase 05.1 Plan 01 (install-pipeline + entry-point fixes: pyproject [project.scripts] + _sync_main + debian/rules Step 3.5)"
-last_updated: "2026-05-12T06:23:13Z"
-last_activity: 2026-05-12 -- Phase 05.1 Plan 01 complete (commits d027188, b842ff6)
+stopped_at: Completed 05.1-02-PLAN.md (HMAC-secret discipline + ctl config-check)
+last_updated: "2026-05-12T06:34:09.818Z"
+last_activity: 2026-05-12
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 47
-  completed_plans: 42
-  percent: 89
+  completed_plans: 43
+  percent: 91
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 05.1 (deb-packaging-hotfix) — EXECUTING
-Plan: 2 of 6
-Status: Executing Phase 05.1
-Last activity: 2026-05-12 -- Phase 05.1 Plan 01 complete (install-pipeline + entry-point fixes)
+Plan: 3 of 6
+Status: Ready to execute
+Last activity: 2026-05-12
 
-Progress: [██████████] 98%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
@@ -96,6 +96,7 @@ Progress: [██████████] 98%
 | Phase 05-bench-field-shadow P05-06 | 4min | 2 tasks | 3 files |
 | Phase 05-bench-field-shadow P07 | 3m 12s | 3 tasks tasks | 4 files files |
 | Phase 05.1-deb-packaging-hotfix P01 | 2m 29s | 2 tasks | 5 files |
+| Phase 05.1 P02 | 398 | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -330,6 +331,9 @@ Recent decisions affecting current work:
 - Plan 05-07: SIGNOFF.md is a fillable TEMPLATE — every operator slot left blank (engineer name, box-ids, soak windows, gate ✅/❌, R-02 rate, F-04 log). Pre-filling operator judgment would invalidate the audit trail.
 - Plan 05-07: SOAK_RUNBOOK.md describes the ADR-0013 one-hot label anti-pattern in prose only (no literal 'modem_state{state=' syntax in the file) so copy-paste-prone operators cannot accidentally adopt the wrong shape.
 - Plan 05-07: docs/RUNBOOK.md gets exactly +2 lines (cross-reference to SOAK_RUNBOOK.md); the broader stale-docs rewrite (ROADMAP SC#1-3, MIGRATION Phase 1-2, PROJECT.md 'v1 keeps fleet online') stays deferred per CONTEXT.md.
+- L-02: resolve_hmac_secret_path() reads CREDENTIALS_DIRECTORY env at call time; falls back to /etc/spark-modem-watchdog/hmac-secret for systemd-245 compat
+- L-03: postinst writes placeholder sentinel with [[ ! -f ]] idempotency guard, mode 0600 root:root
+- L-05: ctl config-check pre-flight validator rejects missing/placeholder/empty/wrong-mode secrets; exit 2 + stderr
 
 ### Pending Todos
 
@@ -348,9 +352,9 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: --stopped-at
-Stopped at: Phase 05.1 context gathered (deb-packaging-hotfix: 3 bugs, minimum+regression-gate scope, pip-install spark_modem into venv, LoadCredential+code-fallback, dockerized aarch64 CI install test)
-Resume file: --resume-file
+Last session: 2026-05-12T06:34:09.801Z
+Stopped at: Completed 05.1-02-PLAN.md (HMAC-secret discipline + ctl config-check)
+Resume file: None
 
 **Planned Phase:** 05.1 (deb-packaging-hotfix) — 6 plans — 2026-05-12T05:57:20.614Z
 **Phase 2 status:** ✅ COMPLETE — all 10 plans shipped, replay harness 100% v1 agreement, 1675-test suite green in 11.82s
