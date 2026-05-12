@@ -399,6 +399,21 @@ Plans:
 - [x] 05-07-PLAN.md — Operator docs: SIGNOFF.md template + SOAK_RUNBOOK.md + RUNBOOK.md cross-reference (S-04, F-04)
 - [x] 05-08-PLAN.md — Manual operator workflow: R-01 trace pull → bench 1-week soak → field 2-week soak → X-04 sweep → R-02 replay-harness → SIGNOFF commit (R-01, R-02, S-02, S-03, S-04, X-04)
 
+### Phase 05.1: deb-packaging-hotfix (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 5
+**Plans:** 6 plans
+
+Plans:
+- [x] 05.1-01-PLAN.md — pyproject [project.scripts] + daemon _sync_main + debian/rules uv pip install . (I-01/I-02/I-04/I-05) — completed 2026-05-12
+- [ ] 05.1-02-PLAN.md — Settings.resolve_hmac_secret_path() + ctl config-check verb + postinst HMAC placeholder (L-02/L-03/L-05)
+- [ ] 05.1-03-PLAN.md — service unit ExecStart* paths repointed to /opt/.../python/bin/ (I-03; L-01 preserved)
+- [ ] 05.1-04-PLAN.md — EXIT-CHECKLIST.md operator template (V-03)
+- [ ] 05.1-05-PLAN.md — postinst smoke + unit-file audit + CI install test incl. systemd-analyze verify (V-01/V-02/V-04; L-04 verifier)
+- [ ] 05.1-06-PLAN.md — ROADMAP.md goal rewrite + debian/changelog 2.0.1-1 entry
+
 ### Phase 6: Cutover & Fleet Rollout
 
 **Goal**: Cut v2 live on one field box for two weeks (MIGRATION Phase 3)

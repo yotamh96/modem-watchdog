@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: "Phase 05.1 context gathered (deb-packaging-hotfix: 3 bugs, minimum+regression-gate scope, pip-install spark_modem into venv, LoadCredential+code-fallback, dockerized aarch64 CI install test)"
-last_updated: "2026-05-11T12:11:17.896Z"
-last_activity: 2026-05-11
+status: executing
+stopped_at: "Completed Phase 05.1 Plan 01 (install-pipeline + entry-point fixes: pyproject [project.scripts] + _sync_main + debian/rules Step 3.5)"
+last_updated: "2026-05-12T06:23:13Z"
+last_activity: 2026-05-12 -- Phase 05.1 Plan 01 complete (commits d027188, b842ff6)
 progress:
   total_phases: 8
   completed_phases: 5
-  total_plans: 41
-  completed_plans: 41
-  percent: 100
+  total_plans: 47
+  completed_plans: 42
+  percent: 89
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-05)
 
 **Core value:** Maximize end-user uplink availability across the four bonded modems by applying minimum-impact recovery actions — and never running a destructive recovery that has zero chance of fixing the observed issue.
-**Current focus:** Phase 05 — bench-field-shadow
+**Current focus:** Phase 05.1 — deb-packaging-hotfix
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-11
+Phase: 05.1 (deb-packaging-hotfix) — EXECUTING
+Plan: 2 of 6
+Status: Executing Phase 05.1
+Last activity: 2026-05-12 -- Phase 05.1 Plan 01 complete (install-pipeline + entry-point fixes)
 
 Progress: [██████████] 98%
 
@@ -95,6 +95,7 @@ Progress: [██████████] 98%
 | Phase 05 P05-04 | ~6min | 2 tasks (4 TDD commits) tasks | 5 files files |
 | Phase 05-bench-field-shadow P05-06 | 4min | 2 tasks | 3 files |
 | Phase 05-bench-field-shadow P07 | 3m 12s | 3 tasks tasks | 4 files files |
+| Phase 05.1-deb-packaging-hotfix P01 | 2m 29s | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -138,6 +139,8 @@ Recent decisions affecting current work:
 - types-PyYAML installed as dev dep for mypy --strict on yaml_merge.py
 - Pin cpython-3.12.13+20260504-aarch64-unknown-linux-gnu-install_only.tar.gz (SHA256 8a27d68c0dec7573c269e16da61fed358e4bb9f986ae976549ca87ed49fe1506) as bundled CPython for .deb
 - postinst masks ModemManager.service (hardware constraint: Zao requires exclusive modem access)
+- Phase 05.1 Plan 01 (I-01): uv pip install . --no-deps --no-build-isolation in debian/rules Step 3.5 ships spark_modem into bundled venv site-packages (between requirements.lock install and pip uninstall sweep per I-05)
+- Phase 05.1 Plan 01 (I-02/I-04): spark-modem-watchdog console-script declared in pyproject.toml [project.scripts]; _sync_main() wrapper inline in daemon/main.py wraps asyncio.run(main(argv)); if __name__ updated to call _sync_main()
 - LoadCredential= in systemd unit for HMAC secret (ADR-0011); credential path /etc/spark-modem-watchdog/hmac-secret
 - Plan 02-01: tests/fakes/ houses six hardware-free fakes (Runner/Clock/ZaoTailer/WebhookPoster/Inventory/DNSResolver) — single import surface for all Phase 2 unit tests
 - Plan 02-01: FixtureInventory carries a local _FixtureModemDescriptor pydantic shape; Plan 02-04 will promote to production InventorySource Protocol type and update the fake
@@ -349,7 +352,7 @@ Last session: --stopped-at
 Stopped at: Phase 05.1 context gathered (deb-packaging-hotfix: 3 bugs, minimum+regression-gate scope, pip-install spark_modem into venv, LoadCredential+code-fallback, dockerized aarch64 CI install test)
 Resume file: --resume-file
 
-**Planned Phase:** 5 (Bench & Field Shadow) — 8 plans — 2026-05-11T07:40:08.287Z
+**Planned Phase:** 05.1 (deb-packaging-hotfix) — 6 plans — 2026-05-12T05:57:20.614Z
 **Phase 2 status:** ✅ COMPLETE — all 10 plans shipped, replay harness 100% v1 agreement, 1675-test suite green in 11.82s
 **Phase 3 status:** ✅ COMPLETE — all 9 plans shipped; integration tier scaffold + SC #1..#5 lifecycle tests + real-logrotate cron exercise + cross-platform unit-file audit; 1835 unit + integration tests green in 17.94s on Windows dev host (M7 30s budget preserved)
 **Plan 03-09 status:** ✅ COMPLETE — approved-with-deferral
