@@ -47,26 +47,51 @@ jobs:
           echo "Size: ${SIZE_MIB} MiB"
           test "$SIZE_MIB" -le 40
 
-      - name: Smoke-install in clean container
+      - name: Install + verify in clean Ubuntu 20.04 arm64 container (Phase 05.1 V-02)
         run: |
-          # Run the .deb through `apt install` in a clean Ubuntu 20.04 arm64 container
-          # to validate the postinst smoke test (B-03 belt-and-suspenders A) end-to-end.
+          # V-02: strict superset of the prior Phase 1 "Smoke-install in clean
+          # container" step. Asserts (a) postinst smoke green, (b) both console
+          # scripts present + executable, (c) HMAC placeholder file at 0600
+          # root:root with the placeholder sentinel content, (d) systemd-analyze
+          # verify exits 0 against the unit file in this Ubuntu 20.04 / systemd
+          # 245 container (the L-04 forcing function — if LoadCredential= hard-
+          # fails parsing on 245, this step fails CI and the plan adds a drop-in
+          # override in a follow-up).
           DEB=$(ls dist/spark-modem-watchdog_*_arm64.deb | head -n1)
           docker run --rm --platform linux/arm64 \
             -v "$PWD/dist":/dist:ro \
             ubuntu:20.04 \
-            bash -lc "
+            bash -lc '
               set -euo pipefail
               export DEBIAN_FRONTEND=noninteractive
               apt-get update >/dev/null
-              # Install the deb and any apt-resolvable Depends.
-              apt-get install -y --no-install-recommends /dist/$(basename $DEB) || {
-                echo 'apt install failed — postinst smoke test rejected the package.' >&2
+              # systemd is needed for systemd-analyze (the L-04 verifier).
+              apt-get install -y --no-install-recommends systemd /dist/'"$(basename $DEB)"' || {
+                echo "apt install failed — postinst smoke test rejected the package." >&2
                 exit 1
               }
-              # Re-run the smoke test directly to confirm.
+              # (a) Re-run the postinst smoke directly. B-03 belt-and-suspenders.
               /opt/spark-modem-watchdog/libexec/postinst_smoke_test.sh
-            "
+              # (b) Both console scripts present and executable.
+              test -x /opt/spark-modem-watchdog/python/bin/spark-modem
+              test -x /opt/spark-modem-watchdog/python/bin/spark-modem-watchdog
+              # (c) HMAC placeholder file at the L-03 path / mode / owner / content.
+              test -f /etc/spark-modem-watchdog/hmac-secret
+              test "$(stat -c %a /etc/spark-modem-watchdog/hmac-secret)" = "600"
+              test "$(stat -c %u:%g /etc/spark-modem-watchdog/hmac-secret)" = "0:0"
+              grep -qF "REPLACE_THIS_BEFORE_FIRST_START_SEE_RUNBOOK" /etc/spark-modem-watchdog/hmac-secret
+              # (d) L-04 forcing function: systemd-analyze verify against the
+              # installed unit file. Ubuntu 20.04 ships systemd 245.4-4ubuntu3;
+              # LoadCredential= was introduced in systemd 247. If 245 hard-
+              # fails on unknown directives, this step fails CI; if it silent-
+              # ignores or warns, this step passes.
+              #
+              # NOTE: systemd-analyze verify returns 0 if the unit parses cleanly;
+              # warnings (not errors) go to stderr. We capture stderr so the L-04
+              # verdict is observable in the CI log — operators can read this in
+              # the workflow output and update RUNBOOK.md if a warning surfaces.
+              systemd-analyze verify /lib/systemd/system/spark-modem-watchdog.service 2>&1
+            '
 
       - uses: actions/upload-artifact@v4
         with:
