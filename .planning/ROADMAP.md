@@ -44,6 +44,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 05.2: daemon-startup-hotfix (INSERTED)** ✅ 2026-05-12 - Daemon `_production_main` now constructs `Settings()` directly instead of the CLI laptop-sandbox factory `build_default_settings()`; bench Jetson `ExecStart` no longer mkdirs `/tmp/spark-modem-cli` against `ProtectSystem=strict`'s read-only `/tmp`
 - [x] **Phase 05.3: libqmi-version-regex-hotfix (INSERTED)** ✅ 2026-05-12 - `_LIBQMI_VERSION_RE` broadened to match both `qmicli X.Y.Z` and `Compiled with libqmi-glib X.Y.Z` formats; JetPack 5.1.5 / libqmi 1.30.4 output (qmicli-only banner, no libqmi-glib footer) now parses correctly through the Phase 5 X-03 preflight
 - [x] **Phase 05.4: dms-revision-parser-hotfix (INSERTED)** ✅ 2026-05-12 - `parse_get_revision` header check broadened to accept both `Device revisions retrieved` (plural — when both Revision + Boot code lines are present) and `Device revision retrieved` (singular — when only Revision is present); bench Jetson SWI9X50C modem stdout now parses through the X-03 preflight's second probe
+- [x] **Phase 05.5: qmi-proxy-retry-hotfix (INSERTED)** ✅ 2026-05-12 - `compute_fleet_triple` firmware probe now retries 3× with 0.5s backoff on transient qmi-proxy contention failures (CID allocation races with Zao's continuous NAS/UIM queries; ~25% per-call failure rate observed → ~99% cumulative success); raised error message now includes qmicli stderr instead of misleading "no revisions block in stdout"
 - [ ] **Phase 6: Cutover & Fleet Rollout** - MIGRATION Phases 3-5: one box live → 10% canary → 100% rolling; meet M1-M7 success metrics
 - [ ] **Phase 7: v1 Decommission & Archive** - MIGRATION Phase 6: purge v1 packages, archive scripts, update agent docs
 
@@ -578,6 +579,55 @@ Phase 5 X-02 / X-03 fleet-triple chain semantics preserved)
 Plans:
 - [x] 05.4-01-PLAN.md — `parse_get_revision` header regex + bench Jetson fixture + regression test — completed 2026-05-12 (mypy/ruff/pytest all green locally, 18/18; CI + bench verification tracked in `.planning/phases/05.4-dms-revision-parser-hotfix/VERIFICATION.md`)
 
+### Phase 05.5: qmi-proxy-retry-hotfix (INSERTED)
+
+**Goal**: Phase 05.4 verified the parser fix deployed correctly to the
+bench Jetson — but the daemon kept producing the same surface error.
+Manual qmicli probes revealed the actual cause: **qmi-proxy CID
+allocation races with Zao's continuous NAS/UIM queries**, producing
+"Service mismatch (requested 'dms', got 'nas'/'uim')" or "endpoint
+hangup" failures at roughly a 25% per-call rate. The daemon's
+single-shot probe was hitting these transients and surfacing them as
+a misleading parser-level "no revisions block in stdout" error.
+Wrap the firmware probe in a 3-attempt retry loop with 0.5s backoff,
+check `cp.exit_code` before parsing, and include the actual qmicli
+stderr in the final raised error.
+
+**Requirements**: (no formal v1 REQ-IDs — single-task retry hotfix;
+Phase 5 X-03 preflight contract preserved)
+
+**Depends on**: Phase 05.4
+
+**Success Criteria** (what must be TRUE):
+  1. `compute_fleet_triple` retries the firmware probe up to 3 times
+     with 0.5s spacing on `cp.exit_code != 0` OR parser returning
+     UNEXPECTED_OUTPUT / revision=None. Three attempts brings
+     cumulative success above 99% at the bench's observed 25%
+     per-call failure rate.
+  2. On exhausted retries, the raised `QmiVersionDetectionFailed`
+     message contains both `"failed after 3 attempts"` AND the
+     underlying cause (qmicli stderr excerpt OR parser error). The
+     operator never again sees a misleading "no revisions block in
+     stdout" when the real cause is upstream CID contention.
+  3. Two new unit tests cover (a) the transient-failure-then-success
+     path with `call_count == 3` and (b) all-attempts-fail with the
+     stderr threaded into the final error. The existing
+     parser-error test is updated to match the new wording while
+     preserving semantic intent. pytest reports ≥98 passed on
+     `tests/unit/qmi/`.
+  4. The bench Jetson's daemon `ExecStart` no longer fails with the
+     same `dms_get_revision returned QmiError: reason=unexpected_output
+     detail='no revisions block in stdout'` message. Failure may
+     shift to (a) the third preflight probe (Zao SDK detection),
+     (b) the known-fleet allow-list check, or (best case) the daemon
+     reaches `active (running)`. All three outcomes are outside 05.5
+     scope.
+
+**Plans**: 1 plan
+
+Plans:
+- [x] 05.5-01-PLAN.md — firmware-probe retry loop (3× / 0.5s) + classified-failure error message + 2 new tests + 1 updated test — completed 2026-05-12 (mypy/ruff/pytest all green locally, 98/98; CI + bench verification tracked in `.planning/phases/05.5-qmi-proxy-retry-hotfix/VERIFICATION.md`)
+
 ### Phase 6: Cutover & Fleet Rollout
 
 **Goal**: Cut v2 live on one field box for two weeks (MIGRATION Phase 3)
@@ -664,7 +714,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 05.1. deb-packaging-hotfix (INSERTED) | 6/6 | Complete | 2026-05-12 |
 | 05.2. daemon-startup-hotfix (INSERTED) | 1/1 | Complete (bench PASS) | 2026-05-12 |
 | 05.3. libqmi-version-regex-hotfix (INSERTED) | 1/1 | Complete (bench verify pending) | 2026-05-12 |
-| 05.4. dms-revision-parser-hotfix (INSERTED) | 1/1 | Complete (bench verify pending) | 2026-05-12 |
+| 05.4. dms-revision-parser-hotfix (INSERTED) | 1/1 | Complete (parser deployed; upstream blocked) | 2026-05-12 |
+| 05.5. qmi-proxy-retry-hotfix (INSERTED) | 1/1 | Complete (bench verify pending) | 2026-05-12 |
 | 6. Cutover & Fleet Rollout | 0/TBD | Not started | - |
 | 7. v1 Decommission & Archive | 0/TBD | Not started | - |
 
