@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: "Phase 05.2 bench PASS (failure shifted EROFS → 78/CONFIG); Phase 05.3 libqmi regex broadened + tests green; bench Jetson re-deploy pending"
-last_updated: "2026-05-12T10:45:00.000Z"
+stopped_at: "Phase 05.3 bench PASS (failure shifted to dms_get_revision parser); Phase 05.4 parser regex broadened + tests green (18/18); bench Jetson re-deploy pending"
+last_updated: "2026-05-12T11:45:00.000Z"
 last_activity: 2026-05-12
 progress:
-  total_phases: 10
-  completed_phases: 8
-  total_plans: 49
-  completed_plans: 49
+  total_phases: 11
+  completed_phases: 9
+  total_plans: 50
+  completed_plans: 50
   percent: 100
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-05)
 
 **Core value:** Maximize end-user uplink availability across the four bonded modems by applying minimum-impact recovery actions — and never running a destructive recovery that has zero chance of fixing the observed issue.
-**Current focus:** Phase 05.3 — libqmi-version-regex-hotfix (bench re-deploy pending)
+**Current focus:** Phase 05.4 — dms-revision-parser-hotfix (bench re-deploy pending)
 
 ## Current Position
 
-Phase: 05.3 (libqmi-version-regex-hotfix) — COMPLETE (code + local tests); CI + bench Jetson verification pending
+Phase: 05.4 (dms-revision-parser-hotfix) — COMPLETE (code + local tests, 18/18 green); CI + bench Jetson verification pending
 Plan: 1 of 1
-Status: Phase 05.2 bench PASS confirmed; 05.3 regex fix landed locally; awaiting CI build + bench Jetson re-install
+Status: Phase 05.3 bench PASS confirmed; 05.4 parser regex broadened locally; awaiting CI build + bench Jetson re-install
 Last activity: 2026-05-12
 
 Progress: [██████████] 100%

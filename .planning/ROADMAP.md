@@ -43,6 +43,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 05.1: deb-packaging-hotfix (INSERTED)** ✅ 2026-05-12 - .deb install pipeline unblocked: 3 bugs retired (I-01 sys.path, I-02/I-04 entry-point, L-02 LoadCredential silent-ignore on systemd 245) + V-01/V-02/V-04 regression gates landed; bench Jetson dpkg-install + ExecStartPre gates pass; L-04 verdict captured (WARN, code-side fallback handles it)
 - [x] **Phase 05.2: daemon-startup-hotfix (INSERTED)** ✅ 2026-05-12 - Daemon `_production_main` now constructs `Settings()` directly instead of the CLI laptop-sandbox factory `build_default_settings()`; bench Jetson `ExecStart` no longer mkdirs `/tmp/spark-modem-cli` against `ProtectSystem=strict`'s read-only `/tmp`
 - [x] **Phase 05.3: libqmi-version-regex-hotfix (INSERTED)** ✅ 2026-05-12 - `_LIBQMI_VERSION_RE` broadened to match both `qmicli X.Y.Z` and `Compiled with libqmi-glib X.Y.Z` formats; JetPack 5.1.5 / libqmi 1.30.4 output (qmicli-only banner, no libqmi-glib footer) now parses correctly through the Phase 5 X-03 preflight
+- [x] **Phase 05.4: dms-revision-parser-hotfix (INSERTED)** ✅ 2026-05-12 - `parse_get_revision` header check broadened to accept both `Device revisions retrieved` (plural — when both Revision + Boot code lines are present) and `Device revision retrieved` (singular — when only Revision is present); bench Jetson SWI9X50C modem stdout now parses through the X-03 preflight's second probe
 - [ ] **Phase 6: Cutover & Fleet Rollout** - MIGRATION Phases 3-5: one box live → 10% canary → 100% rolling; meet M1-M7 success metrics
 - [ ] **Phase 7: v1 Decommission & Archive** - MIGRATION Phase 6: purge v1 packages, archive scripts, update agent docs
 
@@ -535,6 +536,48 @@ intact)
 Plans:
 - [x] 05.3-01-PLAN.md — `_LIBQMI_VERSION_RE` broadened + bench Jetson fixture + regression test — completed 2026-05-12 (mypy/ruff/pytest all green locally; CI + bench verification tracked in `.planning/phases/05.3-libqmi-version-regex-hotfix/VERIFICATION.md`)
 
+### Phase 05.4: dms-revision-parser-hotfix (INSERTED)
+
+**Goal**: Phase 05.3 unblocked the libqmi-version probe; the bench Jetson
+then surfaced the next layer — `dms_get_revision` parser rejecting the
+SWI9X50C modem stdout with `no revisions block in stdout`. The bench
+modem emits a singular `Device revision retrieved:` header (no plural
+'-s') because only a `Revision:` line is present, no `Boot code:` line
+follows. libqmi adapts the header text to the field count; the parser
+was hardcoded to the plural form. Broaden the response-header check to
+accept both forms, capture the bench Jetson's stdout as a fixture, and
+add a regression test.
+
+**Requirements**: (no formal v1 REQ-IDs — single-task parser hotfix;
+Phase 5 X-02 / X-03 fleet-triple chain semantics preserved)
+
+**Depends on**: Phase 05.3
+
+**Success Criteria** (what must be TRUE):
+  1. `parse_get_revision` accepts both `Device revisions retrieved`
+     (plural — with Boot code line) and `Device revision retrieved`
+     (singular — Revision only). The two existing happy-path tests
+     against the plural fixtures continue to pass.
+  2. A new fixture
+     `tests/fixtures/qmicli/get_revision/1.30/jetpack-singular.txt`
+     captures the bench Jetson's verbatim stdout (singular header,
+     tab-indented `Revision: 'SWI9X50C_01.14.03.00 ...'`).
+  3. A new test
+     `test_parser_accepts_singular_revision_header_jetpack` asserts the
+     full SWI9X50C revision string (including build-id + jenkins build
+     path) is captured; pytest reports ≥18 passed on the combined
+     parser + version test suites.
+  4. The bench Jetson's daemon `ExecStart` no longer fails with
+     `dms_get_revision returned QmiError: reason=unexpected_output
+     detail='no revisions block in stdout'`. (Failure may shift to
+     the third preflight probe — Zao SDK version detection — or to
+     the known-fleet allow-list check; both are outside 05.4 scope.)
+
+**Plans**: 1 plan
+
+Plans:
+- [x] 05.4-01-PLAN.md — `parse_get_revision` header regex + bench Jetson fixture + regression test — completed 2026-05-12 (mypy/ruff/pytest all green locally, 18/18; CI + bench verification tracked in `.planning/phases/05.4-dms-revision-parser-hotfix/VERIFICATION.md`)
+
 ### Phase 6: Cutover & Fleet Rollout
 
 **Goal**: Cut v2 live on one field box for two weeks (MIGRATION Phase 3)
@@ -621,6 +664,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 05.1. deb-packaging-hotfix (INSERTED) | 6/6 | Complete | 2026-05-12 |
 | 05.2. daemon-startup-hotfix (INSERTED) | 1/1 | Complete (bench PASS) | 2026-05-12 |
 | 05.3. libqmi-version-regex-hotfix (INSERTED) | 1/1 | Complete (bench verify pending) | 2026-05-12 |
+| 05.4. dms-revision-parser-hotfix (INSERTED) | 1/1 | Complete (bench verify pending) | 2026-05-12 |
 | 6. Cutover & Fleet Rollout | 0/TBD | Not started | - |
 | 7. v1 Decommission & Archive | 0/TBD | Not started | - |
 
