@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 05.1-03-PLAN.md (systemd unit ExecStart* repoint to python/bin/)
-last_updated: "2026-05-12T06:45:15.193Z"
+status: verifying
+stopped_at: "Completed 05.1-05-PLAN.md (regression gate: V-01 smoke + V-04 audit + V-02 CI)"
+last_updated: "2026-05-12T06:51:45.515Z"
 last_activity: 2026-05-12
 progress:
   total_phases: 8
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 47
-  completed_plans: 46
-  percent: 98
+  completed_plans: 47
+  percent: 100
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 
 Phase: 05.1 (deb-packaging-hotfix) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-12
 
-Progress: [██████████] 98%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -100,6 +100,7 @@ Progress: [██████████] 98%
 | Phase 05.1-deb-packaging-hotfix P04 | 105 | 1 tasks | 1 files |
 | Phase 05.1-deb-packaging-hotfix P06 | 2 | 2 tasks | 2 files |
 | Phase 05.1-deb-packaging-hotfix P03 | 84 | 1 tasks | 1 files |
+| Phase 05.1-deb-packaging-hotfix P05 | 222 | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -343,6 +344,9 @@ Recent decisions affecting current work:
 - ROADMAP Phase 05.1 entry uses EXIT bar Success Criteria pattern mirroring Phase 4 (per D-03)
 - I-03 (executed): /opt/spark-modem-watchdog/bin/ dropped entirely from service unit; ExecStart* now reference /opt/spark-modem-watchdog/python/bin/ console-scripts directly
 - L-01 (honored): LoadCredential= line preserved byte-for-byte in service unit
+- V-01: postinst smoke now imports spark_modem.daemon.main + spark_modem.cli.main (12 total) — bug class retired at install + every start
+- V-04: three audit assertions in test_unit_file_audit.py catch drift between unit/pyproject/install; runs cross-platform on every dev-host pytest
+- V-02: build-deb.yml Smoke-install step replaced with strict superset asserting console scripts, HMAC placeholder, and systemd-analyze verify (L-04 verdict surfaces in CI)
 
 ### Pending Todos
 
@@ -361,8 +365,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-12T06:45:15.173Z
-Stopped at: Completed 05.1-03-PLAN.md (systemd unit ExecStart* repoint to python/bin/)
+Last session: 2026-05-12T06:51:45.498Z
+Stopped at: Completed 05.1-05-PLAN.md (regression gate: V-01 smoke + V-04 audit + V-02 CI)
 Resume file: None
 
 **Planned Phase:** 05.1 (deb-packaging-hotfix) — 6 plans — 2026-05-12T05:57:20.614Z
