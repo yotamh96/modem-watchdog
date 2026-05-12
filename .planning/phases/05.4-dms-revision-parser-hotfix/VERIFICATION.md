@@ -1,8 +1,11 @@
 ---
 phase: 05.4-dms-revision-parser-hotfix
-verdict: PENDING_BENCH_DEPLOY
-ci_verdict: PENDING
+verdict: PASS_DEPLOYED_BUT_UPSTREAM_BLOCKED
+ci_verdict: PASS
 local_verdict: PASS
+bench_verdict: PARSER_DEPLOYED_AND_CORRECT (new failure surfaces in qmicli proxy contention layer — tracked as Phase 05.5)
+bench_install_deb: spark-modem-watchdog_2.0.0-0.git1aff8f11-1_arm64.deb
+bench_verified: 2026-05-12 12:20 UTC
 ---
 
 # Phase 05.4 — VERIFICATION
