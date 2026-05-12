@@ -1,8 +1,11 @@
 ---
 phase: 05.5-qmi-proxy-retry-hotfix
-verdict: PENDING_BENCH_DEPLOY
-ci_verdict: PENDING
+verdict: PASS
+ci_verdict: PASS
 local_verdict: PASS
+bench_verdict: PASS (firmware probe cleared transient qmi-proxy failures; all three preflight probes succeeded; deeper architectural gap surfaced — production main loop wiring is a documented placeholder, tracked as Phase 05.6)
+bench_install_deb: spark-modem-watchdog_2.0.0-0.gitf4de86c1-1_arm64.deb
+bench_verified: 2026-05-12 12:54 UTC
 ---
 
 # Phase 05.5 — VERIFICATION
@@ -48,36 +51,57 @@ install gate. The retry behavior is primarily covered by the new unit
 tests; CI cannot reproduce the actual qmi-proxy / Zao race because the
 V-02 container has no Zao process running. Run number TBD.
 
-## Bench Jetson evidence (PENDING — append below once available)
+## Bench Jetson evidence (CONFIRMED 2026-05-12 12:54 UTC)
 
-After `sudo apt install ./spark-modem-watchdog_2.0.0-0.git<sha>-1_arm64.deb`
-on the bench Jetson:
+Bench Jetson install of CI .deb gitf4de86c1. After the operator captured
+the local triple via `spark-modem ctl capture-fleet-fixture` and seeded
+`/etc/spark-modem-watchdog/known-fleet/bench-jetson-1/`, the daemon's
+ExecStart finally exited cleanly:
 
 ```
-systemctl status spark-modem-watchdog --no-pager --lines=0
-journalctl -u spark-modem-watchdog --since "30 sec ago" --no-pager | tail -40
+Process: 957098 ExecStart=/opt/spark-modem-watchdog/python/bin/spark-modem-watchdog
+  (code=exited, status=0/SUCCESS)
 ```
 
-Expected (one of):
-- **Best case:** `Active: active (running)` + `sd_notify READY=1`. Would
-  mean the bench's triple `(SWI9X50C_01.14.03.00, <zao_sdk>, 1.30.4)`
-  happens to match an existing known-fleet allow-list entry.
-- **Likely case A:** ExecStart exits 78/CONFIG with a Zao SDK
-  detection error (`zao_sdk: unknown` because the daemon couldn't find
-  the Zao banner in `/var/log/zao/zao.log` — possibly because Zao logs
-  somewhere else on this bench, or the banner format differs from the
-  fixtures). Phase 05.6 territory.
-- **Likely case B:** ExecStart exits 78/CONFIG with `unknown fleet
-  triple: triple (SWI9X50C_..., <zao_sdk>, 1.30.4) not in known-fleet
-  allow-list`. Phase 05.5 worked end-to-end (all three probes parsed);
-  operator must provision a known-fleet entry for this bench.
-- **NOT-expected:** the same `dms_get_revision returned QmiError`
-  message. If that happens, either the new .deb didn't deploy OR the
-  retry budget is too small for this bench's actual contention rate
-  (consider bumping `_FIRMWARE_PROBE_ATTEMPTS`).
+All three preflight probes succeeded end-to-end (libqmi version, firmware
+revision via the new retry loop, Zao SDK detection returning `unknown`
+sentinel), the known-fleet allow-list match passed, and the daemon's
+production main function returned `0`.
+
+**However**, systemd then reported `Result: 'protocol'` — the `Type=notify`
+unit never received `READY=1`. Investigation traced this to a
+**documented placeholder** at `src/spark_modem/daemon/main.py:306`: the
+production `_production_main` acquires the PID lock and immediately
+returns 0 with `_ = ...` no-op statements keeping the eventual-use
+imports live. The actual TaskGroup + cycle loop + `sd.ready()` wiring
+that Plan 03-09 was supposed to land never did (Plan 03-09 was marked
+"completed approved-with-deferral" without the production-path
+integration body). This is outside Phase 05.5 scope — Phase 05.5's
+own work (retry firmware probe on qmi-proxy contention) verifiably
+succeeded. Phase 05.6 owns the production main loop wiring.
+
+## Phase 05.x hotfix chain — final state
+
+| Phase | Hotfix | Bench verdict |
+|-------|--------|---------------|
+| 05.1 | deb-packaging (sys.path / entry-point / LoadCredential / regression gates) | PASS |
+| 05.2 | daemon Settings() instead of CLI laptop-sandbox factory | PASS |
+| 05.3 | libqmi version regex accepts qmicli-only format | PASS |
+| 05.4 | dms_get_revision parser accepts singular header form | PASS (parser deployed correctly) |
+| 05.5 | firmware probe retries on qmi-proxy CID contention | PASS |
+| 05.6 | (new) production-main-loop wiring | TBD — planning artifact created, implementation deferred |
+
+The Phase 05.x hotfix chain delivered what its name says: the
+infrastructure plumbing (.deb install + daemon settings + qmicli/libqmi
+parsing + known-fleet preflight + qmi-proxy retry) is now end-to-end
+functional on the bench Jetson. The daemon's actual main-loop body is
+the next layer.
 
 ## Verdict
 
 - **Local:** PASS (mypy + ruff + pytest all green; 98/98)
-- **CI:** PENDING
-- **Bench Jetson:** PENDING (record outcome inline above when available)
+- **CI:** PASS (run 25735143279, commit f4de86c)
+- **Bench Jetson:** PASS for the 05.5 scope (firmware probe cleared,
+  preflight passed end-to-end, daemon reached its main function). The
+  next layer up — actual TaskGroup wiring inside `_production_main` —
+  is a documented placeholder and tracked as Phase 05.6.
