@@ -17,6 +17,8 @@ available in the dev venv by the time this plan executes (wave 3).
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -240,6 +242,23 @@ class Settings(BaseSettings):
                 "set SPARK_MODEM_WEBHOOK_ALLOW_HTTP=true to allow plain HTTP"
             )
         return self
+
+    def resolve_hmac_secret_path(self) -> Path:
+        """L-02: systemd 247+ sets CREDENTIALS_DIRECTORY; fall back to /etc/.../hmac-secret.
+
+        Single file on disk serves both worlds: the LoadCredential= directive
+        in spark-modem-watchdog.service points at the same path the fallback
+        reads directly. On Ubuntu 20.04 / systemd 245 (PROJECT.md Hardware
+        target) CREDENTIALS_DIRECTORY is unset and we fall back to /etc/.
+
+        Reads os.environ at call time, not at construction (Settings.frozen=True
+        does not cache env lookups; LoadCredential populates the env at unit
+        start, which is AFTER Settings was first built in the test path).
+        """
+        creddir = os.environ.get("CREDENTIALS_DIRECTORY")
+        if creddir:
+            return Path(creddir) / "spark-modem-watchdog.hmac-secret"
+        return Path("/etc/spark-modem-watchdog/hmac-secret")
 
     @classmethod
     def from_yaml_layer(cls, yaml_dict: dict[str, Any]) -> Settings:
