@@ -1,3 +1,32 @@
+spark-modem-watchdog (2.0.1-1) UNRELEASED; urgency=medium
+
+  * Phase 05.1 hotfix: bench Jetson .deb install now reaches active (running)
+    with sd_notify READY=1.
+  * Fix (bug #1): ship spark_modem package via `uv pip install .` inside
+    override_dh_auto_install (I-01); removes the
+    src/spark_modem /opt/spark-modem-watchdog/lib/ install map line that
+    left the daemon package off the bundled venv's sys.path.
+  * Fix (bug #2): add `spark-modem-watchdog` console script (I-02 + I-04) —
+    systemd ExecStart no longer hits 203/EXEC. Daemon entry point is now
+    /opt/spark-modem-watchdog/python/bin/spark-modem-watchdog.
+  * Fix (bug #3): HMAC-secret fallback for systemd 245 (L-02) — daemon
+    reads from /etc/spark-modem-watchdog/hmac-secret directly if
+    CREDENTIALS_DIRECTORY is unset (Ubuntu 20.04 ships systemd 245;
+    LoadCredential= was introduced in systemd 247). LoadCredential=
+    directive preserved in the unit file (L-01) for future systemd 247+
+    boxes.
+  * Postinst now writes a 0600 root:root placeholder HMAC secret (L-03);
+    `spark-modem ctl config-check` (ExecStartPre) refuses to boot with
+    the placeholder sentinel.
+  * Regression gate: extended postinst smoke now imports
+    spark_modem.daemon.main + spark_modem.cli.main (V-01); new aarch64
+    Docker install test in CI asserts both console scripts present,
+    HMAC placeholder file 0600 root:root, and systemd-analyze verify
+    exits 0 (V-02; verifies L-04); 3 new unit-file audit assertions
+    catch unit ↔ pyproject ↔ install drift (V-04).
+
+ -- spark-modem-watchdog devs <dev@draco.co.il>  Tue, 12 May 2026 00:00:00 +0000
+
 spark-modem-watchdog (2.0.0-1) UNRELEASED; urgency=medium
 
   * Initial 2.0 release: Python rewrite of v1 bash toolchain.
