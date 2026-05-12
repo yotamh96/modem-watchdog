@@ -25,6 +25,14 @@ libs = [
     "httpx",
     "sdnotify",
     "psutil",
+    # Phase 05.1 V-01: the daemon + CLI must be importable for the
+    # .deb to be functional. These imports catch the bug class
+    # "spark_modem not on sys.path of the bundled venv" — the
+    # original Phase 1 smoke only imported the 10 runtime libs,
+    # never the daemon package itself, which is how bug #1 slipped
+    # through Phase 1 CI.
+    "spark_modem.daemon.main",
+    "spark_modem.cli.main",
 ]
 failures = []
 for name in libs:
@@ -37,6 +45,6 @@ if failures:
     for n, etype, msg in failures:
         print(f"  - {n}: {etype}: {msg}", file=sys.stderr)
     sys.exit(1)
-print(f"OK: all {len(libs)} runtime libs import under {sys.executable}")
+print(f"OK: all {len(libs)} runtime libs + daemon entry points import under {sys.executable}")
 sys.exit(0)
 ' || exit 1
