@@ -1,8 +1,11 @@
 ---
 phase: 05.3-libqmi-version-regex-hotfix
-verdict: PENDING_BENCH_DEPLOY
-ci_verdict: PENDING
+verdict: PASS
+ci_verdict: PASS
 local_verdict: PASS
+bench_verdict: PASS (new failure surfaces in dms_get_revision parser — tracked as Phase 05.4)
+bench_install_deb: spark-modem-watchdog_2.0.0-0.git4d99a0dc-1_arm64.deb
+bench_verified: 2026-05-12 11:20 UTC
 ---
 
 # Phase 05.3 — VERIFICATION
