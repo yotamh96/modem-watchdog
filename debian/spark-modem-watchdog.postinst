@@ -34,6 +34,23 @@ case "$1" in
       systemctl --system daemon-reload >/dev/null || true
     fi
 
+    # Phase 05.1 L-03: write a placeholder HMAC secret if no file exists yet.
+    # The operator MUST replace this BEFORE first start (see docs/RUNBOOK.md).
+    # ctl config-check (ExecStartPre) refuses to boot with the placeholder
+    # sentinel — surfaces "operator forgot" as a structured systemd-failure,
+    # not a webhook delivery failure mid-cycle.
+    #
+    # Idempotency: the [[ ! -f ]] guard prevents `dpkg --configure -a` from
+    # clobbering an operator-provisioned real secret on reinstall. The chmod
+    # + chown lines run AFTER the write so the file is never world-readable.
+    if [[ ! -f /etc/spark-modem-watchdog/hmac-secret ]]; then
+      install -d -m 0755 -o root -g root /etc/spark-modem-watchdog
+      printf 'REPLACE_THIS_BEFORE_FIRST_START_SEE_RUNBOOK\n' \
+        > /etc/spark-modem-watchdog/hmac-secret
+      chmod 0600 /etc/spark-modem-watchdog/hmac-secret
+      chown root:root /etc/spark-modem-watchdog/hmac-secret
+    fi
+
     # B-03 belt-and-suspenders A: smoke test LAST — fail the install if the
     # bundled Python or runtime libs are broken. Running last means user/dirs/mask
     # are already in place, so a retry (dpkg --configure -a) reaches this point
