@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05.1-04-PLAN.md (EXIT-CHECKLIST.md template for V-03)
-last_updated: "2026-05-12T06:37:11.846Z"
+stopped_at: Completed 05.1-06-PLAN.md (ROADMAP housekeeping + debian/changelog 2.0.1-1 entry)
+last_updated: "2026-05-12T06:41:14.407Z"
 last_activity: 2026-05-12
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 47
-  completed_plans: 44
-  percent: 94
+  completed_plans: 45
+  percent: 96
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 05.1 (deb-packaging-hotfix) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-05-12
 
-Progress: [█████████░] 94%
+Progress: [██████████] 96%
 
 ## Performance Metrics
 
@@ -98,6 +98,7 @@ Progress: [█████████░] 94%
 | Phase 05.1-deb-packaging-hotfix P01 | 2m 29s | 2 tasks | 5 files |
 | Phase 05.1 P02 | 398 | 3 tasks | 6 files |
 | Phase 05.1-deb-packaging-hotfix P04 | 105 | 1 tasks | 1 files |
+| Phase 05.1-deb-packaging-hotfix P06 | 2 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -337,6 +338,8 @@ Recent decisions affecting current work:
 - L-05: ctl config-check pre-flight validator rejects missing/placeholder/empty/wrong-mode secrets; exit 2 + stderr
 - EXIT-CHECKLIST.md template is intentionally blank — committing a partially-filled template before all gates pass would falsely signal Phase 05.1 exit
 - Step 3 Expected column requests stat output only (mode + ownership), not file contents, to prevent HMAC secret disclosure (T-05.1-15 mitigation)
+- Version 2.0.1-1 chosen (PEP-440 patch) over 2.0.0+hotfix.1 for debian/changelog — cleaner shape, universally supported by Debian and PEP-440 tooling
+- ROADMAP Phase 05.1 entry uses EXIT bar Success Criteria pattern mirroring Phase 4 (per D-03)
 
 ### Pending Todos
 
@@ -355,8 +358,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-12T06:37:11.828Z
-Stopped at: Completed 05.1-04-PLAN.md (EXIT-CHECKLIST.md template for V-03)
+Last session: 2026-05-12T06:41:14.392Z
+Stopped at: Completed 05.1-06-PLAN.md (ROADMAP housekeeping + debian/changelog 2.0.1-1 entry)
 Resume file: None
 
 **Planned Phase:** 05.1 (deb-packaging-hotfix) — 6 plans — 2026-05-12T05:57:20.614Z
