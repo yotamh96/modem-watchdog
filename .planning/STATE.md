@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05.1-02-PLAN.md (HMAC-secret discipline + ctl config-check)
-last_updated: "2026-05-12T06:34:09.818Z"
+stopped_at: Completed 05.1-04-PLAN.md (EXIT-CHECKLIST.md template for V-03)
+last_updated: "2026-05-12T06:37:11.846Z"
 last_activity: 2026-05-12
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 47
-  completed_plans: 43
-  percent: 91
+  completed_plans: 44
+  percent: 94
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 05.1 (deb-packaging-hotfix) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-05-12
 
-Progress: [█████████░] 91%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
@@ -97,6 +97,7 @@ Progress: [█████████░] 91%
 | Phase 05-bench-field-shadow P07 | 3m 12s | 3 tasks tasks | 4 files files |
 | Phase 05.1-deb-packaging-hotfix P01 | 2m 29s | 2 tasks | 5 files |
 | Phase 05.1 P02 | 398 | 3 tasks | 6 files |
+| Phase 05.1-deb-packaging-hotfix P04 | 105 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -334,6 +335,8 @@ Recent decisions affecting current work:
 - L-02: resolve_hmac_secret_path() reads CREDENTIALS_DIRECTORY env at call time; falls back to /etc/spark-modem-watchdog/hmac-secret for systemd-245 compat
 - L-03: postinst writes placeholder sentinel with [[ ! -f ]] idempotency guard, mode 0600 root:root
 - L-05: ctl config-check pre-flight validator rejects missing/placeholder/empty/wrong-mode secrets; exit 2 + stderr
+- EXIT-CHECKLIST.md template is intentionally blank — committing a partially-filled template before all gates pass would falsely signal Phase 05.1 exit
+- Step 3 Expected column requests stat output only (mode + ownership), not file contents, to prevent HMAC secret disclosure (T-05.1-15 mitigation)
 
 ### Pending Todos
 
@@ -352,8 +355,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-12T06:34:09.801Z
-Stopped at: Completed 05.1-02-PLAN.md (HMAC-secret discipline + ctl config-check)
+Last session: 2026-05-12T06:37:11.828Z
+Stopped at: Completed 05.1-04-PLAN.md (EXIT-CHECKLIST.md template for V-03)
 Resume file: None
 
 **Planned Phase:** 05.1 (deb-packaging-hotfix) — 6 plans — 2026-05-12T05:57:20.614Z
