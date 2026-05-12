@@ -66,6 +66,29 @@ async def test_detect_libqmi_version_parses_1_30(monkeypatch: pytest.MonkeyPatch
     assert seen_argv == [["qmicli", "--version"]]
 
 
+async def test_detect_libqmi_version_parses_jetpack_qmicli_only_format(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Phase 05.3 regression: `qmicli --version` on JetPack 5.1.5 / libqmi 1.30.4
+    prints ONLY the first `qmicli X.Y.Z` line — no `Compiled with libqmi-glib
+    X.Y.Z` footer. The old regex assumed the libqmi-glib footer was always
+    present and rejected this output, causing daemon preflight to fail with
+    `unknown fleet triple` on a real bench Jetson (commit e49dc7b deploy walk
+    2026-05-12). The new regex accepts either the `qmicli` line OR the
+    `libqmi-glib` footer — qmicli is a frontend for libqmi-glib and they
+    ship lockstep, so the version is byte-identical regardless of which
+    string matches.
+    """
+    body = (_FIXTURE_ROOT / "1.30" / "jetpack-1.30.4.txt").read_bytes()
+
+    async def fake_run(argv: list[str], *, timeout_s: float, **_kw: object) -> CompletedProcess:
+        del timeout_s
+        return _make_cp(argv=argv, exit_code=0, stdout=body)
+
+    monkeypatch.setattr(subproc_runner, "run", fake_run)
+    assert await detect_libqmi_version() == "1.30.4"
+
+
 async def test_detect_libqmi_version_parses_1_32(monkeypatch: pytest.MonkeyPatch) -> None:
     body = (_FIXTURE_ROOT / "1.32" / "standard.txt").read_bytes()
 

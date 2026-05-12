@@ -27,7 +27,16 @@ from spark_modem.subproc.result import CompletedProcess
 from spark_modem.zao_log.version import detect_zao_sdk_version
 
 _LIBQMI_VERSION_RE: Final[re.Pattern[str]] = re.compile(
-    r"libqmi-glib\s+(\d+\.\d+\.\d+)", re.IGNORECASE
+    # Accept BOTH the `qmicli X.Y.Z` first line (always present) AND the
+    # `Compiled with libqmi-glib X.Y.Z` footer (only on builds that include it).
+    # The JetPack 5.1.5 / Ubuntu 20.04 libqmi 1.30.4 build prints ONLY the
+    # `qmicli` line — no `libqmi-glib` footer. The two strings carry the same
+    # version (qmicli is a frontend for libqmi-glib and they ship lockstep
+    # from the same source tree), so matching either is correct. Bench Jetson
+    # deploy 2026-05-12 (commit e49dc7b .deb) caught this with a Phase 5 X-03
+    # preflight rejection — Phase 05.3 hotfix.
+    r"(?:qmicli|libqmi-glib)\s+(\d+\.\d+\.\d+)",
+    re.IGNORECASE,
 )
 _DEFAULT_TIMEOUT_S: Final[float] = 2.0
 _STDOUT_EXCERPT_BYTES: Final[int] = 512

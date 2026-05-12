@@ -1,0 +1,11 @@
+# libqmi_version: 1.30
+# source: bench Jetson Orin NX, JetPack 5.1.5, Ubuntu 20.04
+# captured: 2026-05-12 during phase 05.3 hotfix deploy walk
+# distinguishing trait: NO "Compiled with libqmi-glib X.Y.Z" footer line —
+# the entire version is exposed only through the first `qmicli X.Y.Z` line.
+qmicli 1.30.4
+Copyright (C) 2012-2021 Aleksander Morgado
+License GPLv2+: GNU GPL version 2 or later <http://gnu.org/licenses/gpl-2.0.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
