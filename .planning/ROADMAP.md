@@ -45,6 +45,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 05.3: libqmi-version-regex-hotfix (INSERTED)** ✅ 2026-05-12 - `_LIBQMI_VERSION_RE` broadened to match both `qmicli X.Y.Z` and `Compiled with libqmi-glib X.Y.Z` formats; JetPack 5.1.5 / libqmi 1.30.4 output (qmicli-only banner, no libqmi-glib footer) now parses correctly through the Phase 5 X-03 preflight
 - [x] **Phase 05.4: dms-revision-parser-hotfix (INSERTED)** ✅ 2026-05-12 - `parse_get_revision` header check broadened to accept both `Device revisions retrieved` (plural — when both Revision + Boot code lines are present) and `Device revision retrieved` (singular — when only Revision is present); bench Jetson SWI9X50C modem stdout now parses through the X-03 preflight's second probe
 - [x] **Phase 05.5: qmi-proxy-retry-hotfix (INSERTED)** ✅ 2026-05-12 - `compute_fleet_triple` firmware probe now retries 3× with 0.5s backoff on transient qmi-proxy contention failures (CID allocation races with Zao's continuous NAS/UIM queries; ~25% per-call failure rate observed → ~99% cumulative success); raised error message now includes qmicli stderr instead of misleading "no revisions block in stdout"
+- [ ] **Phase 05.6: production-main-loop (INSERTED, SPEC ONLY)** 📋 2026-05-12 - Replace the documented placeholder in `_production_main` (lines 261-306) with the real TaskGroup wiring that Plan 03-09 was supposed to land: 4 event producers + cycle driver + sd_notify lifecycle + signal handlers. Five-plan breakdown suggested in `.planning/phases/05.6-production-main-loop/05.6-SPEC.md`. Surfaced by the bench Jetson deploy walk after Phases 05.1-05.5 unblocked everything else.
 - [ ] **Phase 6: Cutover & Fleet Rollout** - MIGRATION Phases 3-5: one box live → 10% canary → 100% rolling; meet M1-M7 success metrics
 - [ ] **Phase 7: v1 Decommission & Archive** - MIGRATION Phase 6: purge v1 packages, archive scripts, update agent docs
 
@@ -626,7 +627,53 @@ Phase 5 X-03 preflight contract preserved)
 **Plans**: 1 plan
 
 Plans:
-- [x] 05.5-01-PLAN.md — firmware-probe retry loop (3× / 0.5s) + classified-failure error message + 2 new tests + 1 updated test — completed 2026-05-12 (mypy/ruff/pytest all green locally, 98/98; CI + bench verification tracked in `.planning/phases/05.5-qmi-proxy-retry-hotfix/VERIFICATION.md`)
+- [x] 05.5-01-PLAN.md — firmware-probe retry loop (3× / 0.5s) + classified-failure error message + 2 new tests + 1 updated test — completed 2026-05-12 (mypy/ruff/pytest all green locally, 98/98; bench Jetson PASS — closed the Phase 05.x hotfix chain)
+
+### Phase 05.6: production-main-loop (INSERTED — SPEC ONLY)
+
+**Goal**: `_production_main` in `src/spark_modem/daemon/main.py` lines
+261-306 is a documented placeholder that acquires the PID lock and
+returns 0 immediately. The bench Jetson deploy walk on 2026-05-12 (after
+Phases 05.1-05.5 cleared the entire deploy plumbing) reached this
+placeholder and surfaced it as a `Type=notify` protocol violation —
+systemd reports `Result: 'protocol'` because `sd_notify READY=1` never
+fires. Replace the placeholder with the real TaskGroup wiring that Plan
+03-09 was supposed to land (4 event producers + cycle driver +
+sd_notify lifecycle + signal handlers). The lifecycle scaffold
+(SdNotifyLifecycle, acquire_pid_lock, signal handlers, cycle driver,
+cycle scheduler) already exists as modules — the work is genuinely
+"assemble" rather than "build."
+
+**Requirements**: (no formal v1 REQ-IDs — completes the deferred
+production-path wiring from Plan 03-09; depends on every lifecycle
+module landed in Phase 3 and every subsystem landed in Phases 1-2)
+
+**Depends on**: Phase 05.5
+
+**Success Criteria** (what must be TRUE):
+  1. On a bench Jetson with operator-provisioned HMAC secret +
+     known-fleet entry, `systemctl start spark-modem-watchdog` reaches
+     `Active: active (running)` with `sd_notify READY=1` within 60
+     seconds (NFR-13).
+  2. After ≥10 minutes of uptime: zero ERROR/CRITICAL in the journal;
+     `status.json` updates every cycle; `metrics.sock` returns valid
+     Prometheus text.
+  3. `systemctl stop spark-modem-watchdog` returns 0 within 5 seconds
+     (FR-53); a `daemon_stopped` event with `reason: sigterm` lands
+     in `events.jsonl` before exit.
+  4. `systemctl reload spark-modem-watchdog` reloads data-only fields
+     transactionally; topology fields emit a "restart required" warning
+     instead of misapplying.
+  5. Integration test catches a regression where someone re-removes the
+     TaskGroup wiring without needing a bench Jetson.
+
+**Plans**: 5 plans (suggested; authoritative breakdown comes from
+`/gsd-plan-phase 05.6` after a discuss-phase pass)
+
+Plans:
+- [ ] 05.6-SPEC.md — full scope, breakdown, risk register, acceptance
+  criteria, prerequisites already in place. Drives the subsequent
+  PLAN.md set via `/gsd-discuss-phase 05.6` then `/gsd-plan-phase 05.6`.
 
 ### Phase 6: Cutover & Fleet Rollout
 
@@ -715,7 +762,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 05.2. daemon-startup-hotfix (INSERTED) | 1/1 | Complete (bench PASS) | 2026-05-12 |
 | 05.3. libqmi-version-regex-hotfix (INSERTED) | 1/1 | Complete (bench verify pending) | 2026-05-12 |
 | 05.4. dms-revision-parser-hotfix (INSERTED) | 1/1 | Complete (parser deployed; upstream blocked) | 2026-05-12 |
-| 05.5. qmi-proxy-retry-hotfix (INSERTED) | 1/1 | Complete (bench verify pending) | 2026-05-12 |
+| 05.5. qmi-proxy-retry-hotfix (INSERTED) | 1/1 | Complete (bench PASS) | 2026-05-12 |
+| 05.6. production-main-loop (INSERTED) | 0/5 (spec only) | Not started | - |
 | 6. Cutover & Fleet Rollout | 0/TBD | Not started | - |
 | 7. v1 Decommission & Archive | 0/TBD | Not started | - |
 

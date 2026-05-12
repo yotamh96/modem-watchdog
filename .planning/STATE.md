@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: "Phase 05.4 parser deployed correctly; bench Jetson revealed qmi-proxy CID race with Zao; Phase 05.5 retry-loop hotfix landed locally (98/98 green); bench re-deploy pending"
-last_updated: "2026-05-12T12:45:00.000Z"
+status: planning
+stopped_at: "Phase 05.x hotfix chain (05.1-05.5) closed: all bench PASS. Bench deploy walk surfaced a deferred Plan 03-09 gap (production-main-loop placeholder) — Phase 05.6 SPEC.md drafted, awaiting /gsd-discuss-phase + /gsd-plan-phase pass"
+last_updated: "2026-05-12T13:30:00.000Z"
 last_activity: 2026-05-12
 progress:
-  total_phases: 12
-  completed_phases: 10
-  total_plans: 51
+  total_phases: 13
+  completed_phases: 11
+  total_plans: 56
   completed_plans: 51
-  percent: 100
+  percent: 91
 ---
 
 # Project State
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-05)
 
 **Core value:** Maximize end-user uplink availability across the four bonded modems by applying minimum-impact recovery actions — and never running a destructive recovery that has zero chance of fixing the observed issue.
-**Current focus:** Phase 05.5 — qmi-proxy-retry-hotfix (bench re-deploy pending)
+**Current focus:** Phase 05.6 — production-main-loop (SPEC drafted; awaiting plan-phase)
 
 ## Current Position
 
-Phase: 05.5 (qmi-proxy-retry-hotfix) — COMPLETE (code + local tests, 98/98 green); CI + bench Jetson verification pending
-Plan: 1 of 1
-Status: Phase 05.4 parser deployed and confirmed correct; bench surfaced qmi-proxy/Zao CID race; 05.5 retry-loop fix landed locally; awaiting CI build + bench re-install
+Phase: 05.6 (production-main-loop) — SPEC ONLY (not started)
+Plan: 0 of 5 (suggested breakdown in 05.6-SPEC.md)
+Status: Phase 05.x hotfix chain (05.1-05.5) is bench-PASS-closed. The deploy walk surfaced that Plan 03-09's production-path wiring was deferred and never landed — `_production_main` returns 0 immediately after `acquire_pid_lock`. Phase 05.6 SPEC.md captures the scope; run `/gsd-discuss-phase 05.6` then `/gsd-plan-phase 05.6` when ready to start.
 Last activity: 2026-05-12
 
 Progress: [██████████] 100%
