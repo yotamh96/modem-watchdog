@@ -31,6 +31,7 @@ import asyncio
 import logging
 import signal
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 from spark_modem.cli.clients import (
@@ -58,15 +59,25 @@ from spark_modem.daemon.preflight_triple import (
     preflight_check_known_fleet_triple,
 )
 from spark_modem.event_logger.writer import EventLogWriter
-from spark_modem.event_sources.supervisor import restart_on_crash
-from spark_modem.inventory.udev import UdevInventory
+
+# Imports kept alive for plans 05.6-02 / 03 / 04 (consumed by future task
+# additions; not referenced in the 05.6-01 spine body — noqa silences
+# the unused-import warning until plan 05.6-02 / 03 wires them).
+from spark_modem.event_sources.supervisor import restart_on_crash  # noqa: F401
+from spark_modem.inventory.udev import UdevInventory  # noqa: F401
 from spark_modem.state_store.store import StateStore
 from spark_modem.status_reporter.metrics_registry import MetricRegistry
+from spark_modem.status_reporter.status import write_status_json
 from spark_modem.subproc import runner as subproc_runner
 from spark_modem.webhook.poster import WebhookPoster
 from spark_modem.wire.carriers import CarrierTable
+from spark_modem.wire.status import (
+    StatusCycleSummary,
+    StatusModemSummary,
+    StatusReport,
+)
 from spark_modem.wire.webhook import DaemonRestart, WebhookEnvelope
-from spark_modem.zao_log.inotify_tailer import ZaoLogInotifyTailer
+from spark_modem.zao_log.inotify_tailer import ZaoLogInotifyTailer  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +183,94 @@ async def _laptop_main() -> int:
     return 0
 
 
-async def _production_main(args: argparse.Namespace) -> int:
+async def _stub_cycle_loop(
+    *,
+    settings: Settings,
+    sd: SdNotifyLifecycle,
+    state_root_path: Path,
+    cycle_interval: float,
+    shutdown_event: asyncio.Event,
+) -> None:
+    """Phase 05.6-01 stub cycle body.
+
+    Writes a placeholder status.json each cycle, fires sd.ready() once
+    after cycle 0, kicks the watchdog at cycle-end, and sleeps for
+    ``cycle_interval`` seconds (or until ``shutdown_event`` is set).
+    Plan 05.6-03 replaces this with the real CycleDriver invocation.
+    """
+    cycle_id = 0
+    while not shutdown_event.is_set():
+        # 1. Stub status.json so plan 05.6-05's integration test can
+        #    assert the file exists with the canonical 4-modem shape.
+        report = StatusReport(
+            last_modified=datetime.now(UTC).isoformat(),
+            cycle_index=cycle_id,
+            cycle=StatusCycleSummary(n=cycle_id, duration_seconds=0.0),
+            summary=StatusModemSummary(expected_modems=settings.expected_modem_count),
+            modems=[],
+        )
+        write_status_json(state_root_path / "status.json", report)
+
+        # 2. WATCHDOG=1 fires AFTER status.json is written
+        #    (PITFALLS §4.1 / Issue #5 cycle-end placement).
+        sd.watchdog_kick()
+
+        # 3. STATUS= per cycle (C-05 terse format; plan 05.6-03 fills
+        #    healthy/actions/drift after real cycle work).
+        sd.status(f"cycle={cycle_id} stub healthy=?/4 actions=0 drift=0.0s")
+
+        # 4. READY=1 only after cycle 0 completes (PITFALLS §4.1
+        #    "READY = real work done"; L-01 / C-04).
+        if cycle_id == 0:
+            sd.ready("stub-skeleton cycle 0 ok")
+
+        cycle_id += 1
+        try:
+            async with asyncio.timeout(cycle_interval):
+                await shutdown_event.wait()
+        except TimeoutError:
+            pass  # normal: cadence elapsed, run the next cycle
+
+
+async def _stub_sigterm_watcher(shutdown_event: asyncio.Event) -> None:
+    """Wait for SIGTERM. Plan 05.6-04 replaces this with SigtermChoreography."""
+    await shutdown_event.wait()
+    # Spine: just let the TaskGroup observe shutdown_event by returning.
+    # Plan 05.6-04 wires the 8-step choreography here.
+
+
+async def _stub_sighup_watcher(
+    shutdown_event: asyncio.Event,
+    sighup_event: asyncio.Event,
+) -> None:
+    """Drain SIGHUP events. Plan 05.6-04 replaces this with SighupSwapper.
+
+    Races the sighup event against the shutdown event so this watcher
+    exits promptly when the daemon is shutting down (otherwise the
+    inner ``await sighup_event.wait()`` would block forever if SIGHUP
+    never fires before SIGTERM does).
+    """
+    shutdown_task = asyncio.create_task(shutdown_event.wait())
+    sighup_task = asyncio.create_task(sighup_event.wait())
+    try:
+        while not shutdown_event.is_set():
+            done, _pending = await asyncio.wait(
+                {shutdown_task, sighup_task},
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            if sighup_task in done:
+                sighup_event.clear()
+                logger.info("sighup received (no-op in spine; wired in 05.6-04)")
+                sighup_task = asyncio.create_task(sighup_event.wait())
+            if shutdown_task in done:
+                break
+    finally:
+        for t in (shutdown_task, sighup_task):
+            if not t.done():
+                t.cancel()
+
+
+async def _production_main(args: argparse.Namespace) -> int:  # noqa: PLR0915
     """Phase 3 production main — long-lived event-driven loop (L-05).
 
     The production wiring is sketched here; full producer wiring lands
@@ -248,61 +346,51 @@ async def _production_main(args: argparse.Namespace) -> int:
     # Step 5: acquire PID lock at /run/.../lock (FR-61, ADR-0012).
     try:
         with acquire_pid_lock(run_dir=run_dir):
-            # Step 6: wire subsystems.
-            sd = SdNotifyLifecycle()
-            # NOTE: Plan 03-09 wires the production producers + cycle
-            # driver inside the TaskGroup below. Plan 03-06 ships the
-            # lifecycle scaffold; the producer-wiring shape is documented
-            # here so Plan 03-09 has a single consistent integration
-            # site.
-            del prior_reason, prior_uptime
-            del sd
+            # Step 6: wire the production sd_notify lifecycle + clock + shutdown events.
+            #
+            # The clock is _CliClock (production: real wall-clock + monotonic + unix_seconds);
+            # plans 05.6-02 / 03 / 04 add producers, the real cycle body, and choreography
+            # on top of this spine. This plan ships a STUB cycle loop only — proves the
+            # TaskGroup wiring is sound before the heavier subsystems land.
+            clock = _CliClock()
+            del clock  # plan 05.6-03 wires this into CycleDriver + SigtermChoreography
+            del prior_reason, prior_uptime  # consumed by plan 05.6-03's webhook boot envelope
 
-            # Step 8 + 9 + 10 (TaskGroup + first cycle + READY + cadence)
-            # are wired by Plan 03-09. The placeholder below documents
-            # the cycle-loop body order so the WATCHDOG-cycle-end
-            # invariant is auditable:
-            #
-            #     async with asyncio.TaskGroup() as tg:
-            #         tg.create_task(restart_on_crash("udev_producer", ...))
-            #         tg.create_task(restart_on_crash("rtnetlink_producer", ...))
-            #         tg.create_task(restart_on_crash("asyncinotify_producer", ...))
-            #         tg.create_task(restart_on_crash("kmsg_producer", ...))
-            #         tg.create_task(_cycle_loop())  # 5th task
-            #         tg.create_task(_sigterm_watcher(shutdown_event, choreography))
-            #         tg.create_task(_sighup_watcher(sighup_event, swapper))
-            #
-            #     async def _cycle_loop():
-            #         while not shutdown_event.is_set():
-            #             # 1. wait for wake (event_queue OR poll deadline)
-            #             await wake_signal_or_deadline()
-            #             # 2. run one cycle
-            #             result = await cycle_driver.run_one_cycle(cycle_id=...)
-            #             # 3. persist status.json (cycle is proven complete)
-            #             await status_reporter.write_status_json(result)
-            #             # 4. WATCHDOG=1 fires AFTER status.json write —
-            #             #    Issue #5 / PITFALLS §4.1 cycle-end placement
-            #             sd.watchdog_kick()
-            #             # 5. STATUS=... per cycle
-            #             sd.status(f"cycle={result.cycle_id} ...")
-            #
-            # Signal handler installation BEFORE TaskGroup (Pattern 7):
-            #     loop = asyncio.get_running_loop()
-            #     loop.add_signal_handler(signal.SIGTERM, shutdown_event.set)
-            #     loop.add_signal_handler(signal.SIGHUP, sighup_event.set)
-            # NEVER signal.signal() (CLAUDE.md anti-pattern).
-            #
-            # The hooks above are exercised end-to-end in Plan 03-09
-            # integration tests. Plan 03-06's daemon-side modules
-            # (lifecycle / sigterm / sighup / preflight) all land here.
-            # Production-path subsystems Plan 03-09 wires inside the
-            # TaskGroup body: UdevInventory replaces the laptop fixture
-            # InventorySource; ZaoLogInotifyTailer replaces the laptop
-            # _NoZaoTailer behind the same ZaoLogTailer Protocol surface.
-            _ = restart_on_crash  # keep the import live for Plan 03-09
-            _ = signal  # keep the import live for the eventual loop.add_signal_handler calls
-            _ = UdevInventory  # production-path InventorySource (Plan 03-09)
-            _ = ZaoLogInotifyTailer  # production-path ZaoLogTailer (Plan 03-09)
+            sd = SdNotifyLifecycle()
+
+            # Signal handler installation BEFORE the TaskGroup is entered (Pattern 7).
+            # CLAUDE.md anti-pattern: NEVER use the stdlib signal handler-installer
+            # from asyncio — call loop.add_signal_handler so the event-set fires on
+            # the running loop.
+            shutdown_event = asyncio.Event()
+            sighup_event = asyncio.Event()
+            loop = asyncio.get_running_loop()
+            loop.add_signal_handler(signal.SIGTERM, shutdown_event.set)
+            loop.add_signal_handler(signal.SIGHUP, sighup_event.set)
+
+            # Spine: 1 cycle task + 2 signal watchers. Plans 05.6-02 / 04 add
+            # producers + choreography on top. The TaskGroup exits when
+            # shutdown_event is set: ``_stub_cycle_loop`` notices,
+            # ``_stub_sigterm_watcher`` returns, ``_stub_sighup_watcher``'s outer
+            # while-condition flips false at the next iteration (or the inner
+            # wait gets cancelled).
+            cycle_interval = settings.cycle_interval_seconds
+            async with asyncio.TaskGroup() as tg:
+                tg.create_task(
+                    _stub_cycle_loop(
+                        settings=settings,
+                        sd=sd,
+                        state_root_path=state_root_path,
+                        cycle_interval=cycle_interval,
+                        shutdown_event=shutdown_event,
+                    )
+                )
+                tg.create_task(_stub_sigterm_watcher(shutdown_event))
+                tg.create_task(_stub_sighup_watcher(shutdown_event, sighup_event))
+
+            # Phase 05.6 SC #3 budget for graceful shutdown (≤5 s) is honored
+            # by plan 05.6-04's SigtermChoreography.execute(deadline_seconds=5.0).
+            # In the spine we just exit cleanly when the TaskGroup unwinds.
             return 0
     except PidLockHeldError as exc:
         logger.error("daemon already running: %s", exc)
