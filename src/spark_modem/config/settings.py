@@ -83,6 +83,12 @@ class Settings(BaseSettings):
         json_schema_extra=RELOAD_DATA,
         description="FR-25.1 cross-action ladder backoff (default 90s).",
     )
+    cycle_interval_seconds: float = Field(
+        default=60.0,
+        ge=1.0,
+        json_schema_extra=RELOAD_DATA,
+        description="C-01/C-02: production cycle cadence in seconds; SIGHUP can retune live.",
+    )
     healthy_streak_decay_k: int = Field(
         default=10,
         ge=1,
