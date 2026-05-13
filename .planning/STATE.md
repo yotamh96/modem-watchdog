@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: "Phase 05.x hotfix chain (05.1-05.5) closed: all bench PASS. Bench deploy walk surfaced a deferred Plan 03-09 gap (production-main-loop placeholder) — Phase 05.6 SPEC.md drafted, awaiting /gsd-discuss-phase + /gsd-plan-phase pass"
-last_updated: "2026-05-12T13:30:00.000Z"
+status: Phase 05.x hotfix chain (05.1-05.5) is bench-PASS-closed. The deploy walk surfaced that Plan 03-09's production-path wiring was deferred and never landed — `_production_main` returns 0 immediately after `acquire_pid_lock`. Phase 05.6 SPEC.md captures the scope; run `/gsd-discuss-phase 05.6` then `/gsd-plan-phase 05.6` when ready to start.
+stopped_at: Phase 05.6 context gathered (60s cycle, in-process main() integration test, defer cycle-time qmi-proxy retry, accept 5-plan slicing)
+last_updated: "2026-05-13T06:32:47.578Z"
 last_activity: 2026-05-12
 progress:
   total_phases: 13
-  completed_phases: 11
-  total_plans: 56
+  completed_phases: 10
+  total_plans: 51
   completed_plans: 51
-  percent: 91
+  percent: 100
 ---
 
 # Project State
@@ -365,9 +365,9 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-12T06:51:45.498Z
-Stopped at: Completed 05.1-05-PLAN.md (regression gate: V-01 smoke + V-04 audit + V-02 CI)
-Resume file: None
+Last session: --stopped-at
+Stopped at: Phase 05.6 context gathered (60s cycle, in-process main() integration test, defer cycle-time qmi-proxy retry, accept 5-plan slicing)
+Resume file: --resume-file
 
 **Planned Phase:** 05.1 (deb-packaging-hotfix) — 6 plans — 2026-05-12T05:57:20.614Z
 **Phase 2 status:** ✅ COMPLETE — all 10 plans shipped, replay harness 100% v1 agreement, 1675-test suite green in 11.82s
