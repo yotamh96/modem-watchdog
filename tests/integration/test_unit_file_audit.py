@@ -87,9 +87,9 @@ def test_restart_sec_10(unit_directives: dict[str, list[str]]) -> None:
     assert unit_directives.get("RestartSec") == ["10"]
 
 
-def test_watchdog_90s(unit_directives: dict[str, list[str]]) -> None:
-    # U-04
-    assert unit_directives.get("WatchdogSec") == ["90s"]
+def test_watchdog_180s(unit_directives: dict[str, list[str]]) -> None:
+    # U-04; Phase 05.6 C-03 bump (3× the 60s production cycle interval).
+    assert unit_directives.get("WatchdogSec") == ["180s"]
 
 
 def test_capability_bounding_set_phase4_forward(

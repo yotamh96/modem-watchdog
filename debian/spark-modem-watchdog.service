@@ -30,11 +30,13 @@ StartLimitBurst=20
 TimeoutStopSec=10s
 KillMode=mixed
 
-# U-04: WatchdogSec=90s. Daemon kicks WATCHDOG=1 at cycle-end (PITFALLS
-# §4.1); a stuck mid-cycle triggers systemd-managed restart at the 90s mark.
-# Phase 4 HIL stress tests verify the watchdog kicks even during cycles
-# approaching the 10s P99 budget (NFR-1).
-WatchdogSec=90s
+# U-04: WatchdogSec=180s = 3× cycle interval (PITFALLS §4.1; Phase 05.6 C-03).
+# Daemon kicks WATCHDOG=1 at cycle-end; a stuck mid-cycle triggers
+# systemd-managed restart at the 180s mark. Bumped from 90s (matched the
+# 30s laptop cadence) to track the Phase 05.6 C-01 60s production cycle.
+# Tunable indirectly via SPARK_MODEM_CYCLE_INTERVAL_SECONDS (RELOAD_DATA);
+# operators retuning cadence below ~60s should consider lowering this too.
+WatchdogSec=180s
 
 # NFR-30: daemon runs as root; Phase 3 needs CAP_NET_ADMIN on udev/pyroute2,
 # Phase 4 will exercise CAP_SYS_ADMIN/CAP_SYS_MODULE for usb_reset/driver_reset.
