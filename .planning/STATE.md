@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Phase 05.x hotfix chain (05.1-05.5) is bench-PASS-closed. The deploy walk surfaced that Plan 03-09's production-path wiring was deferred and never landed — `_production_main` returns 0 immediately after `acquire_pid_lock`. Phase 05.6 SPEC.md captures the scope; run `/gsd-discuss-phase 05.6` then `/gsd-plan-phase 05.6` when ready to start.
+status: executing
 stopped_at: Phase 05.6 context gathered (60s cycle, in-process main() integration test, defer cycle-time qmi-proxy retry, accept 5-plan slicing)
-last_updated: "2026-05-13T06:32:47.578Z"
-last_activity: 2026-05-12
+last_updated: "2026-05-13T07:37:28.190Z"
+last_activity: 2026-05-13 -- Phase 05.6 execution started
 progress:
   total_phases: 13
   completed_phases: 10
-  total_plans: 51
+  total_plans: 56
   completed_plans: 51
-  percent: 100
+  percent: 91
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-05)
 
 **Core value:** Maximize end-user uplink availability across the four bonded modems by applying minimum-impact recovery actions — and never running a destructive recovery that has zero chance of fixing the observed issue.
-**Current focus:** Phase 05.6 — production-main-loop (SPEC drafted; awaiting plan-phase)
+**Current focus:** Phase 05.6 — production-main-loop
 
 ## Current Position
 
-Phase: 05.6 (production-main-loop) — SPEC ONLY (not started)
-Plan: 0 of 5 (suggested breakdown in 05.6-SPEC.md)
-Status: Phase 05.x hotfix chain (05.1-05.5) is bench-PASS-closed. The deploy walk surfaced that Plan 03-09's production-path wiring was deferred and never landed — `_production_main` returns 0 immediately after `acquire_pid_lock`. Phase 05.6 SPEC.md captures the scope; run `/gsd-discuss-phase 05.6` then `/gsd-plan-phase 05.6` when ready to start.
-Last activity: 2026-05-12
+Phase: 05.6 (production-main-loop) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 05.6
+Last activity: 2026-05-13 -- Phase 05.6 execution started
 
 Progress: [██████████] 100%
 
@@ -369,7 +369,7 @@ Last session: --stopped-at
 Stopped at: Phase 05.6 context gathered (60s cycle, in-process main() integration test, defer cycle-time qmi-proxy retry, accept 5-plan slicing)
 Resume file: --resume-file
 
-**Planned Phase:** 05.1 (deb-packaging-hotfix) — 6 plans — 2026-05-12T05:57:20.614Z
+**Planned Phase:** 05.6 (production-main-loop) — 5 plans — 2026-05-13T07:15:11.588Z
 **Phase 2 status:** ✅ COMPLETE — all 10 plans shipped, replay harness 100% v1 agreement, 1675-test suite green in 11.82s
 **Phase 3 status:** ✅ COMPLETE — all 9 plans shipped; integration tier scaffold + SC #1..#5 lifecycle tests + real-logrotate cron exercise + cross-platform unit-file audit; 1835 unit + integration tests green in 17.94s on Windows dev host (M7 30s budget preserved)
 **Plan 03-09 status:** ✅ COMPLETE — approved-with-deferral
