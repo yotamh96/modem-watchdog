@@ -34,7 +34,7 @@ import sys
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol, cast
 
 from spark_modem.cli.clients import (
     _CliClock,
@@ -63,22 +63,22 @@ from spark_modem.daemon.preflight_triple import (
     UnknownFleetTriple,
     preflight_check_known_fleet_triple,
 )
-from spark_modem.event_logger.inotify_reopener import EventLogReopener  # noqa: F401
+from spark_modem.event_logger.inotify_reopener import EventLogReopener
 from spark_modem.event_logger.writer import EventLogWriter
-from spark_modem.event_sources.asyncinotify_producer import (  # noqa: F401
+from spark_modem.event_sources.asyncinotify_producer import (
     run_asyncinotify_producer,
 )
-from spark_modem.event_sources.kmsg_producer import run_kmsg_producer  # noqa: F401
-from spark_modem.event_sources.rtnetlink_producer import (  # noqa: F401
+from spark_modem.event_sources.kmsg_producer import run_kmsg_producer
+from spark_modem.event_sources.rtnetlink_producer import (
     run_rtnetlink_producer,
 )
 from spark_modem.event_sources.supervisor import (
     WakeSignal,
-    restart_on_crash,  # noqa: F401
+    restart_on_crash,
 )
-from spark_modem.event_sources.udev_producer import run_udev_producer  # noqa: F401
+from spark_modem.event_sources.udev_producer import run_udev_producer
 from spark_modem.inventory.udev import UdevInventory
-from spark_modem.kmsg.dedup import KmsgDedup  # noqa: F401
+from spark_modem.kmsg.dedup import KmsgDedup
 from spark_modem.state_store.store import StateStore
 from spark_modem.status_reporter.metrics_registry import MetricRegistry
 from spark_modem.status_reporter.status import write_status_json
@@ -456,31 +456,184 @@ async def _production_main(  # noqa: PLR0915
                 if zao_factory is not None
                 else ZaoLogInotifyTailer(log_path=zao_log_path)
             )
-            # Keep producer-side scaffolding alive for plans 05.6-02 task 2
-            # (producer wiring) and 05.6-03 (CycleDriver). The intentional
-            # tuple reference here just silences the "assigned but unused"
-            # lint until task 2 of this plan consumes them.
-            _ = (event_queue, event_log_path, inventory, zao_tailer, clock, sleeper)
+            # Keep ``inventory`` alive for plan 05.6-03 (CycleDriver wires it).
+            # Task 2 of this plan consumes the other scaffolding vars
+            # (event_queue, event_log_path, zao_tailer, clock, sleeper) inside
+            # the EventLogWriter context manager block below.
+            _ = inventory
 
-            # Spine: 1 cycle task + 2 signal watchers. Plans 05.6-02 / 04 add
-            # producers + choreography on top. The TaskGroup exits when
-            # shutdown_event is set: ``_stub_cycle_loop`` notices,
-            # ``_stub_sigterm_watcher`` returns, ``_stub_sighup_watcher``'s outer
-            # while-condition flips false at the next iteration (or the inner
-            # wait gets cancelled).
+            # Spine: 4 producers + 1 cycle task + 2 signal watchers (7 tasks).
+            # Plan 05.6-04 replaces _stub_sigterm_watcher / _stub_sighup_watcher
+            # with the SigtermChoreography / SighupSwapper wiring. The
+            # ``producer_tasks`` list is declared OUTSIDE the TaskGroup body
+            # so plan 05.6-04's choreography can read the 4 task handles at
+            # SIGTERM (sigterm.py:94-117 takes ``producer_tasks: list[Task]``).
             cycle_interval = settings.cycle_interval_seconds
-            async with asyncio.TaskGroup() as tg:
-                tg.create_task(
-                    _stub_cycle_loop(
-                        settings=settings,
-                        sd=sd,
-                        state_root_path=state_root_path,
-                        cycle_interval=cycle_interval,
-                        shutdown_event=shutdown_event,
+            producer_tasks: list[asyncio.Task[object]] = []
+            with EventLogWriter(event_log_path) as event_logger:
+                # KmsgDedup per-detail 30s window (CONTEXT.md E-03).
+                kmsg_dedup = KmsgDedup(window_seconds=30.0)
+
+                # Production HostIssueEmitter placeholder — plan 05.6-03 swaps
+                # in the CycleDriver-fed accumulator. For now: log at INFO so
+                # the journal records every detected host issue and the bench
+                # Jetson checkpoint can observe FR-14 detection working.
+                # T-05.6-02-01: raw_line is truncated to 200 chars to bound
+                # log volume + accidental PII.
+                class _LoggingHostIssueEmitter:
+                    """Plan 05.6-02 placeholder; 05.6-03 swaps for cycle-driver-fed list."""
+
+                    def emit_host_issue(self, *, detail: IssueDetail, raw_line: str) -> None:
+                        logger.info(
+                            "host_issue detail=%s raw=%r",
+                            detail.value,
+                            raw_line[:200],
+                        )
+
+                host_issue_emitter: _MainIssueEmitterProto = _LoggingHostIssueEmitter()
+
+                # events.jsonl reopener — consumed by the asyncinotify producer
+                # on logrotate rotation (R-01 dispatcher path).
+                events_log_reopener = EventLogReopener(writer=event_logger)
+
+                # --- Production-default 0-arg coroutine factories ----------
+                # Each wrapper re-constructs the inner coroutine on every
+                # call so restart_on_crash's bounded re-entry envelope works
+                # cleanly (an already-awaited coroutine raises RuntimeError).
+                #
+                # ``cast(Any, ...)`` at producer boundaries: each producer
+                # module declares its own narrow ``_EventQueueProto`` /
+                # ``_ZaoTailerProto`` Protocol (with ``put_nowait(item:
+                # object)`` / structural ``on_inotify_event`` surface) which
+                # is invariant-incompatible at type-check time with the
+                # concrete ``asyncio.Queue[WakeSignal]`` and the production
+                # ``ZaoLogInotifyTailer`` (whose ``ZaoLogTailer`` Protocol is
+                # a different nominal type than asyncinotify's local Protocol
+                # — both Protocols are co-located in their producer modules
+                # to keep cross-package imports out of event_sources/).
+                # ``cast`` makes the type-erasure explicit at the producer
+                # boundary; the runtime call is correct (the producers only
+                # call ``put_nowait(WakeSignal.UDEV)`` etc., which is a
+                # narrower argument to the queue's ``put_nowait(WakeSignal)``).
+                async def _udev_factory_default() -> None:
+                    await run_udev_producer(event_queue=cast(Any, event_queue))
+
+                async def _rtnetlink_factory_default() -> None:
+                    await run_rtnetlink_producer(event_queue=cast(Any, event_queue))
+
+                async def _asyncinotify_factory_default() -> None:
+                    await run_asyncinotify_producer(
+                        event_queue=cast(Any, event_queue),
+                        events_jsonl_path=event_log_path,
+                        zao_log_path=zao_log_path,
+                        events_log_reopener=events_log_reopener,
+                        zao_tailer=cast(Any, zao_tailer),
                     )
-                )
-                tg.create_task(_stub_sigterm_watcher(shutdown_event))
-                tg.create_task(_stub_sighup_watcher(shutdown_event, sighup_event))
+
+                async def _kmsg_factory_default() -> None:
+                    await run_kmsg_producer(
+                        event_queue=cast(Any, event_queue),
+                        dedup=kmsg_dedup,
+                        clock=clock,
+                        issue_emitter=host_issue_emitter,
+                    )
+
+                # --- restart_on_crash-compatible supervised wrappers -------
+                # 0-arg coroutine factories. Each call constructs a fresh
+                # inner coroutine; restart_on_crash re-enters on Exception
+                # with bounded (1,2,4,8,60)s backoff (supervisor.py:107).
+                async def _udev_supervised() -> None:
+                    if udev_factory is not None:
+                        await udev_factory(event_queue)
+                    else:
+                        await _udev_factory_default()
+
+                async def _rtnetlink_supervised() -> None:
+                    if rtnetlink_factory is not None:
+                        await rtnetlink_factory(event_queue)
+                    else:
+                        await _rtnetlink_factory_default()
+
+                async def _asyncinotify_supervised() -> None:
+                    if asyncinotify_factory is not None:
+                        await asyncinotify_factory(event_queue)
+                    else:
+                        await _asyncinotify_factory_default()
+
+                async def _kmsg_supervised() -> None:
+                    if kmsg_factory is not None:
+                        await kmsg_factory(event_queue)
+                    else:
+                        await _kmsg_factory_default()
+
+                # supervisor's ``EventLogWriterProto.append(event: object)`` is
+                # invariant-wider than the concrete
+                # ``EventLogWriter.append(event: Event-union)``; cast once
+                # here so the 4 restart_on_crash call sites stay clean.
+                supervisor_event_logger: Any = event_logger
+
+                # --- TaskGroup: 4 producers + cycle + 2 signal watchers ---
+                # The TaskGroup exits when shutdown_event is set:
+                # _stub_cycle_loop notices via its asyncio.timeout race,
+                # _stub_sigterm_watcher returns, the producers + sighup
+                # watcher get cancelled via CancelledError. Plan 05.6-04's
+                # SigtermChoreography reads producer_tasks at SIGTERM.
+                async with asyncio.TaskGroup() as tg:
+                    producer_tasks.append(
+                        tg.create_task(
+                            restart_on_crash(
+                                "udev_producer",
+                                _udev_supervised,
+                                sleeper=sleeper,
+                                event_logger=supervisor_event_logger,
+                                clock=clock,
+                            )
+                        )
+                    )
+                    producer_tasks.append(
+                        tg.create_task(
+                            restart_on_crash(
+                                "rtnetlink_producer",
+                                _rtnetlink_supervised,
+                                sleeper=sleeper,
+                                event_logger=supervisor_event_logger,
+                                clock=clock,
+                            )
+                        )
+                    )
+                    producer_tasks.append(
+                        tg.create_task(
+                            restart_on_crash(
+                                "asyncinotify_producer",
+                                _asyncinotify_supervised,
+                                sleeper=sleeper,
+                                event_logger=supervisor_event_logger,
+                                clock=clock,
+                            )
+                        )
+                    )
+                    producer_tasks.append(
+                        tg.create_task(
+                            restart_on_crash(
+                                "kmsg_producer",
+                                _kmsg_supervised,
+                                sleeper=sleeper,
+                                event_logger=supervisor_event_logger,
+                                clock=clock,
+                            )
+                        )
+                    )
+                    tg.create_task(
+                        _stub_cycle_loop(
+                            settings=settings,
+                            sd=sd,
+                            state_root_path=state_root_path,
+                            cycle_interval=cycle_interval,
+                            shutdown_event=shutdown_event,
+                        )
+                    )
+                    tg.create_task(_stub_sigterm_watcher(shutdown_event))
+                    tg.create_task(_stub_sighup_watcher(shutdown_event, sighup_event))
 
             # Phase 05.6 SC #3 budget for graceful shutdown (≤5 s) is honored
             # by plan 05.6-04's SigtermChoreography.execute(deadline_seconds=5.0).
