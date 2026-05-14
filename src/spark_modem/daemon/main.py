@@ -36,6 +36,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol, cast
 
+import yaml
+from pydantic import ValidationError
+
 from spark_modem.cli.clients import (
     _CliClock,
     _InventoryFromFile,
@@ -81,6 +84,7 @@ from spark_modem.inventory.udev import UdevInventory
 from spark_modem.kmsg.dedup import KmsgDedup
 from spark_modem.state_store.store import StateStore
 from spark_modem.status_reporter.metrics_registry import MetricRegistry
+from spark_modem.status_reporter.prom import start_metrics_server
 from spark_modem.status_reporter.status import write_status_json
 from spark_modem.subproc import runner as subproc_runner
 from spark_modem.webhook.poster import WebhookPoster
@@ -128,6 +132,54 @@ def _ensure_dirs(*paths: Path) -> None:
     """
     for p in paths:
         p.mkdir(parents=True, exist_ok=True)
+
+
+def _load_carrier_table_yaml(yaml_path: Path) -> CarrierTable:
+    """Synchronously load + validate the carrier-table YAML (idempotent).
+
+    ASYNC240 helper: pulled out of ``_production_main`` so the async body
+    holds no synchronous filesystem reads (mirrors ``_ensure_dirs``).
+
+    FR-63: malformed input is a logged error + empty-table degradation,
+    not a daemon-blocking crash (T-05.6-03-03). Plan 05.6-04 may decide
+    to refuse to start; for plan 05.6-03 we degrade.
+    """
+    try:
+        carrier_data = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
+        return CarrierTable.model_validate(carrier_data or {"carriers": []})
+    except FileNotFoundError:
+        logger.warning(
+            "carriers_yaml_path=%s missing; using empty CarrierTable",
+            yaml_path,
+        )
+        return CarrierTable(carriers=[])
+    except (OSError, yaml.YAMLError, ValidationError) as exc:
+        logger.error(
+            "carrier table parse failed: %s; using empty table",
+            exc,
+        )
+        return CarrierTable(carriers=[])
+
+
+def _read_hmac_secret(secret_path: Path) -> bytes:
+    """Synchronously read the HMAC secret bytes (idempotent).
+
+    ASYNC240 helper. T-05.6-03-01: secret_bytes never reaches a log line;
+    only the path is logged on missing-file fallback. If the file is
+    missing the webhook poster runs with empty secret — signing still
+    works but receivers will reject the X-Spark-Signature header. That's
+    the correct degradation: webhook delivery is observability, not a
+    daemon-blocking concern.
+    """
+    try:
+        return secret_path.read_bytes().strip()
+    except FileNotFoundError:
+        logger.warning(
+            "HMAC secret %s missing; webhook delivery will be skipped"
+            " by NFR-33-conformant receivers",
+            secret_path,
+        )
+        return b""
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -384,8 +436,15 @@ async def _production_main(  # noqa: PLR0915
             return 78
 
     # Step 4: read clean-shutdown marker; classify prior run.
-    prior_reason, prior_uptime = classify_prior_run(run_dir=run_dir)
-    logger.info("prior run classified reason=%s uptime=%.1fs", prior_reason.value, prior_uptime)
+    # Names carry through to step 7's boot-envelope construction (renamed
+    # from prior_reason / prior_uptime in plan 05.6-03; the boot envelope
+    # consumes them so we can no longer ``del`` them after acquire_pid_lock).
+    prior_reason_for_boot, prior_uptime_for_boot = classify_prior_run(run_dir=run_dir)
+    logger.info(
+        "prior run classified reason=%s uptime=%.1fs",
+        prior_reason_for_boot.value,
+        prior_uptime_for_boot,
+    )
 
     # Step 5: acquire PID lock at /run/.../lock (FR-61, ADR-0012).
     try:
@@ -397,7 +456,6 @@ async def _production_main(  # noqa: PLR0915
             # on top of this spine. This plan ships a STUB cycle loop only — proves the
             # TaskGroup wiring is sound before the heavier subsystems land.
             clock = _CliClock()
-            del prior_reason, prior_uptime  # consumed by plan 05.6-03's webhook boot envelope
 
             sd = SdNotifyLifecycle()
 
@@ -456,18 +514,13 @@ async def _production_main(  # noqa: PLR0915
                 if zao_factory is not None
                 else ZaoLogInotifyTailer(log_path=zao_log_path)
             )
-            # Keep ``inventory`` alive for plan 05.6-03 (CycleDriver wires it).
-            # Task 2 of this plan consumes the other scaffolding vars
-            # (event_queue, event_log_path, zao_tailer, clock, sleeper) inside
-            # the EventLogWriter context manager block below.
-            _ = inventory
-
-            # Spine: 4 producers + 1 cycle task + 2 signal watchers (7 tasks).
-            # Plan 05.6-04 replaces _stub_sigterm_watcher / _stub_sighup_watcher
-            # with the SigtermChoreography / SighupSwapper wiring. The
-            # ``producer_tasks`` list is declared OUTSIDE the TaskGroup body
-            # so plan 05.6-04's choreography can read the 4 task handles at
-            # SIGTERM (sigterm.py:94-117 takes ``producer_tasks: list[Task]``).
+            # Spine: 4 producers + cycle + webhook + prom + 2 signal watchers
+            # (9 tasks). Plan 05.6-04 replaces _stub_sigterm_watcher /
+            # _stub_sighup_watcher with the SigtermChoreography /
+            # SighupSwapper wiring. The ``producer_tasks`` list is declared
+            # OUTSIDE the TaskGroup body so plan 05.6-04's choreography can
+            # read the 4 task handles at SIGTERM (sigterm.py:94-117 takes
+            # ``producer_tasks: list[Task]``).
             cycle_interval = settings.cycle_interval_seconds
             producer_tasks: list[asyncio.Task[object]] = []
             with EventLogWriter(event_log_path) as event_logger:
@@ -495,6 +548,91 @@ async def _production_main(  # noqa: PLR0915
                 # events.jsonl reopener — consumed by the asyncinotify producer
                 # on logrotate rotation (R-01 dispatcher path).
                 events_log_reopener = EventLogReopener(writer=event_logger)
+
+                # ---- 05.6-03: production subsystem composition --------------
+                # StateStore + per-modem flocks under settings.run_dir/state.lock.
+                store = StateStore(
+                    state_root_override=state_root_path,
+                    run_dir_override=run_dir,
+                )
+
+                # MetricRegistry: process-singleton; the Prom UDS scrapes the
+                # same registry the cycle driver writes to (ADR-0013 chokepoint).
+                metrics = MetricRegistry()
+
+                # CarrierTable: production loads from settings.carriers_yaml_path.
+                # The .deb ships /etc/spark-modem-watchdog/conf.d/00-carriers.yaml
+                # (12 entries IL/US/GB/DE); operators SIGHUP-reload by editing
+                # the file (FR-33). yaml.safe_load + model_validate is the
+                # canonical pattern from test_default_carrier_table.py:28-32.
+                carriers = _load_carrier_table_yaml(Path(settings.carriers_yaml_path))
+
+                # CycleScheduler: production cadence = settings.cycle_interval_seconds
+                # (C-01 default 60.0; C-02 RELOAD_DATA so SIGHUP can retune).
+                scheduler = CycleScheduler(  # noqa: F841 - consumed by Task 2 cycle loop
+                    interval_seconds=settings.cycle_interval_seconds,
+                    clock=clock,
+                )
+
+                # HMAC secret read (settings.resolve_hmac_secret_path is the
+                # Phase 05.2 L-02 fallback). FileNotFoundError -> empty secret
+                # is documented in _read_hmac_secret.
+                secret_bytes = _read_hmac_secret(settings.resolve_hmac_secret_path())
+
+                # WebhookPoster: separate task in the TaskGroup (FR-44.8 —
+                # cycle never blocks on webhook I/O). DNS pre-resolve
+                # happens inside the poster's run_forever loop via DnsCache.
+                webhook_poster = WebhookPoster(
+                    url=settings.webhook_url,
+                    secret=secret_bytes,
+                    clock=clock,
+                    config=settings,
+                    event_logger=event_logger,
+                    metrics=metrics,
+                )
+
+                # Boot envelope (FR-44.5 — DaemonRestart with reason enum).
+                # Enqueue BEFORE TaskGroup entry so the very first webhook
+                # the receiver sees identifies the prior-run reason.
+                # _laptop_main:145-154 has the same shape.
+                boot_envelope = WebhookEnvelope(
+                    payload=DaemonRestart(
+                        ts_iso=clock.wall_clock_iso(),
+                        reason=prior_reason_for_boot,
+                        prior_run_uptime_seconds=prior_uptime_for_boot,
+                    ),
+                )
+                await webhook_poster.enqueue(boot_envelope)
+
+                # CycleDriver: the cycle's complete pipeline (observe →
+                # policy → actions → persist → status → webhook). The
+                # driver itself writes status.json INTERNALLY at step 6 of
+                # run_one_cycle (cycle_driver.py:270); DO NOT also call
+                # write_status_json from _cycle_loop — that would race.
+                driver = CycleDriver(  # noqa: F841 - consumed by Task 2 cycle loop
+                    store=store,
+                    settings=settings,
+                    clock=clock,
+                    runner=subproc_runner,
+                    inventory=inventory,
+                    zao=zao_tailer,
+                    carrier_table=carriers,
+                    event_logger=event_logger,
+                    metrics=metrics,
+                    webhook_poster=webhook_poster,
+                )
+
+                # Prometheus UDS server — starts BEFORE cycle 0 (CONTEXT.md
+                # Claude's Discretion: scrape protocol tolerates empty
+                # registries). The server runs in a worker thread via
+                # asyncio.to_thread so wsgiref's blocking serve_forever
+                # doesn't stall the event loop. registry=None makes the
+                # WSGI app expose the global REGISTRY — the same one
+                # MetricRegistry registered into above.
+                prom_server = start_metrics_server(  # noqa: F841 - consumed by Task 2 TaskGroup
+                    settings.metrics_socket_path,
+                    registry=None,
+                )
 
                 # --- Production-default 0-arg coroutine factories ----------
                 # Each wrapper re-constructs the inner coroutine on every
