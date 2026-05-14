@@ -31,8 +31,10 @@ import asyncio
 import logging
 import signal
 import sys
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Protocol
 
 from spark_modem.cli.clients import (
     _CliClock,
@@ -41,7 +43,10 @@ from spark_modem.cli.clients import (
     build_default_settings,
 )
 from spark_modem.config.settings import Settings
-from spark_modem.daemon.cycle_driver import CycleDriver
+from spark_modem.daemon.cycle_driver import (
+    CycleDriver,
+    InventorySourceProto,
+)
 from spark_modem.daemon.cycle_scheduler import CycleScheduler
 from spark_modem.daemon.lifecycle import (
     PidLockHeldError,
@@ -58,26 +63,49 @@ from spark_modem.daemon.preflight_triple import (
     UnknownFleetTriple,
     preflight_check_known_fleet_triple,
 )
+from spark_modem.event_logger.inotify_reopener import EventLogReopener  # noqa: F401
 from spark_modem.event_logger.writer import EventLogWriter
-
-# Imports kept alive for plans 05.6-02 / 03 / 04 (consumed by future task
-# additions; not referenced in the 05.6-01 spine body — noqa silences
-# the unused-import warning until plan 05.6-02 / 03 wires them).
-from spark_modem.event_sources.supervisor import restart_on_crash  # noqa: F401
-from spark_modem.inventory.udev import UdevInventory  # noqa: F401
+from spark_modem.event_sources.asyncinotify_producer import (  # noqa: F401
+    run_asyncinotify_producer,
+)
+from spark_modem.event_sources.kmsg_producer import run_kmsg_producer  # noqa: F401
+from spark_modem.event_sources.rtnetlink_producer import (  # noqa: F401
+    run_rtnetlink_producer,
+)
+from spark_modem.event_sources.supervisor import (
+    WakeSignal,
+    restart_on_crash,  # noqa: F401
+)
+from spark_modem.event_sources.udev_producer import run_udev_producer  # noqa: F401
+from spark_modem.inventory.udev import UdevInventory
+from spark_modem.kmsg.dedup import KmsgDedup  # noqa: F401
 from spark_modem.state_store.store import StateStore
 from spark_modem.status_reporter.metrics_registry import MetricRegistry
 from spark_modem.status_reporter.status import write_status_json
 from spark_modem.subproc import runner as subproc_runner
 from spark_modem.webhook.poster import WebhookPoster
 from spark_modem.wire.carriers import CarrierTable
+from spark_modem.wire.enums import IssueDetail
 from spark_modem.wire.status import (
     StatusCycleSummary,
     StatusModemSummary,
     StatusReport,
 )
 from spark_modem.wire.webhook import DaemonRestart, WebhookEnvelope
-from spark_modem.zao_log.inotify_tailer import ZaoLogInotifyTailer  # noqa: F401
+from spark_modem.zao_log.inotify_tailer import ZaoLogInotifyTailer
+from spark_modem.zao_log.protocol import ZaoLogTailer as ZaoLogTailerProto
+
+
+class _MainIssueEmitterProto(Protocol):
+    """Local re-derivation of kmsg_producer's module-private ``_IssueEmitterProto``.
+
+    Plan 05.6-02 wires a ``_LoggingHostIssueEmitter`` placeholder; plan 05.6-03
+    replaces it with a CycleDriver-fed accumulator. We re-derive here to avoid
+    importing an underscore-prefixed Protocol from another module.
+    """
+
+    def emit_host_issue(self, *, detail: IssueDetail, raw_line: str) -> None: ...
+
 
 logger = logging.getLogger(__name__)
 
@@ -270,7 +298,16 @@ async def _stub_sighup_watcher(
                 t.cancel()
 
 
-async def _production_main(args: argparse.Namespace) -> int:  # noqa: PLR0915
+async def _production_main(  # noqa: PLR0915
+    args: argparse.Namespace,
+    *,
+    inventory_factory: Callable[[], InventorySourceProto] | None = None,
+    zao_factory: Callable[[Path], ZaoLogTailerProto] | None = None,
+    udev_factory: Callable[[asyncio.Queue[WakeSignal]], Awaitable[None]] | None = None,
+    rtnetlink_factory: Callable[[asyncio.Queue[WakeSignal]], Awaitable[None]] | None = None,
+    asyncinotify_factory: Callable[[asyncio.Queue[WakeSignal]], Awaitable[None]] | None = None,
+    kmsg_factory: Callable[[asyncio.Queue[WakeSignal]], Awaitable[None]] | None = None,
+) -> int:
     """Phase 3 production main — long-lived event-driven loop (L-05).
 
     The production wiring is sketched here; full producer wiring lands
@@ -280,6 +317,13 @@ async def _production_main(args: argparse.Namespace) -> int:  # noqa: PLR0915
       * TaskGroup spawning supervised producers + cycle loop +
         signal watchers
       * READY=1 after first cycle, WATCHDOG=1 cycle-END (Issue #5).
+
+    Plan 05.6-02 adds 6 keyword-only factory parameters (all default
+    None → real producers / inventory / zao tailer). Plan 05.6-05's
+    integration test passes Fake* factories so the wiring is exercised
+    without monkey-patching pyudev / pyroute2 / asyncinotify / kmsg
+    modules. Production callers (the ``_sync_main`` / ``main`` chain
+    via ``main(argv)``) never set these — defaults stay None.
 
     Returns the daemon exit code.
     """
@@ -353,7 +397,6 @@ async def _production_main(args: argparse.Namespace) -> int:  # noqa: PLR0915
             # on top of this spine. This plan ships a STUB cycle loop only — proves the
             # TaskGroup wiring is sound before the heavier subsystems land.
             clock = _CliClock()
-            del clock  # plan 05.6-03 wires this into CycleDriver + SigtermChoreography
             del prior_reason, prior_uptime  # consumed by plan 05.6-03's webhook boot envelope
 
             sd = SdNotifyLifecycle()
@@ -367,6 +410,57 @@ async def _production_main(args: argparse.Namespace) -> int:  # noqa: PLR0915
             loop = asyncio.get_running_loop()
             loop.add_signal_handler(signal.SIGTERM, shutdown_event.set)
             loop.add_signal_handler(signal.SIGHUP, sighup_event.set)
+
+            # ---- 05.6-02: producer wiring scaffolding ---------------------
+            # The producers push opaque WakeSignal enums onto event_queue;
+            # plan 05.6-03's real _cycle_loop drains it via asyncio.wait
+            # between cycle iterations. The maxsize=1024 cap bounds memory
+            # under a producer-side storm (a USB hub PSU droop emits 16+
+            # rtnetlink + udev events; the cycle waking absorbs them all
+            # via re-observation, so the queue rarely backs up).
+            event_queue: asyncio.Queue[WakeSignal] = asyncio.Queue(maxsize=1024)
+
+            # EventLogWriter wire path: production = settings.events_log_path
+            # (RELOAD_RESTART; default /var/log/spark-modem-watchdog/events.jsonl).
+            # The writer itself is opened as a context manager INSIDE the
+            # TaskGroup block (plan 05.6-02 task 2 wraps it) so the fd is
+            # released cleanly on TaskGroup unwind. We resolve + parent-mkdir
+            # the path here so the writer's __init__ finds the directory.
+            event_log_path = Path(settings.events_log_path)
+            event_log_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Asyncio adapter for the Sleeper Protocol (supervisor.py:62-75).
+            # Production Sleeper wraps asyncio.sleep for restart_on_crash
+            # backoff; tests inject FakeSleeper via Sleeper Protocol.
+            class _AsyncioSleeper:
+                """Production Sleeper — wraps asyncio.sleep for restart_on_crash backoff."""
+
+                async def sleep(self, delay: float) -> None:
+                    await asyncio.sleep(delay)
+
+            sleeper = _AsyncioSleeper()
+
+            # ---- subsystem construction for producers ----
+            # InventorySource: production = UdevInventory (sysfs walk);
+            # plan 05.6-05's integration test passes a FixtureInventory
+            # via inventory_factory.
+            inventory: InventorySourceProto = (
+                inventory_factory() if inventory_factory is not None else UdevInventory()
+            )
+            # ZaoLogTailer: production = ZaoLogInotifyTailer(log_path=...);
+            # canonical zao log path matches preflight_triple._DEFAULT_ZAO_LOG_PATH
+            # and capture_fleet_fixture.py:55.
+            zao_log_path = Path("/var/log/zao-remote-endpoint.log")
+            zao_tailer: ZaoLogTailerProto = (
+                zao_factory(zao_log_path)
+                if zao_factory is not None
+                else ZaoLogInotifyTailer(log_path=zao_log_path)
+            )
+            # Keep producer-side scaffolding alive for plans 05.6-02 task 2
+            # (producer wiring) and 05.6-03 (CycleDriver). The intentional
+            # tuple reference here just silences the "assigned but unused"
+            # lint until task 2 of this plan consumes them.
+            _ = (event_queue, event_log_path, inventory, zao_tailer, clock, sleeper)
 
             # Spine: 1 cycle task + 2 signal watchers. Plans 05.6-02 / 04 add
             # producers + choreography on top. The TaskGroup exits when
