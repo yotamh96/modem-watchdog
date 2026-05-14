@@ -671,9 +671,24 @@ module landed in Phase 3 and every subsystem landed in Phases 1-2)
 `/gsd-plan-phase 05.6` after a discuss-phase pass)
 
 Plans:
-- [ ] 05.6-SPEC.md — full scope, breakdown, risk register, acceptance
+- [x] 05.6-SPEC.md — full scope, breakdown, risk register, acceptance
   criteria, prerequisites already in place. Drives the subsequent
   PLAN.md set via `/gsd-discuss-phase 05.6` then `/gsd-plan-phase 05.6`.
+- [x] 05.6-01-PLAN.md — TaskGroup skeleton + sd_notify lifecycle +
+  `loop.add_signal_handler` SIGTERM/SIGHUP + `Settings.cycle_interval_seconds`
+  RELOAD_DATA field (default 60.0, ge=1.0) + WatchdogSec 90 → 180 unit
+  edit. Stub `_cycle_loop` writes a placeholder `status.json` + fires
+  `sd.ready()` after cycle 0. Three task commits (`4432f63` settings,
+  `d5326d0` unit/audit, `9dbdb1c` daemon spine) — completed 2026-05-13.
+- [ ] 05.6-02-PLAN.md — Wire the 4 producers (udev, rtnetlink,
+  asyncinotify, kmsg) each `restart_on_crash`-wrapped.
+- [ ] 05.6-03-PLAN.md — Wire production `_cycle_loop` body:
+  `CycleDriver.run_one_cycle` → `write_status_json` →
+  `sd.watchdog_kick()` → `sd.status(...)`.
+- [ ] 05.6-04-PLAN.md — Wire `SigtermChoreography` + `SighupSwapper`
+  into the running daemon.
+- [ ] 05.6-05-PLAN.md — Integration test
+  `tests/integration/test_production_main.py` per T-01..T-04.
 
 ### Phase 6: Cutover & Fleet Rollout
 

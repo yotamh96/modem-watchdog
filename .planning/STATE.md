@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 05.6 context gathered (60s cycle, in-process main() integration test, defer cycle-time qmi-proxy retry, accept 5-plan slicing)
-last_updated: "2026-05-13T07:37:28.190Z"
-last_activity: 2026-05-13 -- Phase 05.6 execution started
+stopped_at: Completed 05.6-01 plan
+last_updated: "2026-05-14T06:56:38.389Z"
+last_activity: 2026-05-14
 progress:
   total_phases: 13
   completed_phases: 10
   total_plans: 56
-  completed_plans: 51
-  percent: 91
+  completed_plans: 52
+  percent: 93
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 05.6 (production-main-loop) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 05.6
-Last activity: 2026-05-13 -- Phase 05.6 execution started
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-05-14
 
-Progress: [██████████] 100%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -101,6 +101,7 @@ Progress: [██████████] 100%
 | Phase 05.1-deb-packaging-hotfix P06 | 2 | 2 tasks | 2 files |
 | Phase 05.1-deb-packaging-hotfix P03 | 84 | 1 tasks | 1 files |
 | Phase 05.1-deb-packaging-hotfix P05 | 222 | 3 tasks | 3 files |
+| Phase 05.6-production-main-loop P05.6-01 | 3h7m | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -347,6 +348,7 @@ Recent decisions affecting current work:
 - V-01: postinst smoke now imports spark_modem.daemon.main + spark_modem.cli.main (12 total) — bug class retired at install + every start
 - V-04: three audit assertions in test_unit_file_audit.py catch drift between unit/pyproject/install; runs cross-platform on every dev-host pytest
 - V-02: build-deb.yml Smoke-install step replaced with strict superset asserting console scripts, HMAC placeholder, and systemd-analyze verify (L-04 verdict surfaces in CI)
+- Phase 05.6-01: cycle_interval_seconds=60s default (C-01); WatchdogSec=180s (3x cycle, C-03); _production_main TaskGroup spine wired with loop.add_signal_handler before TaskGroup entry; stub helpers _stub_cycle_loop/_stub_sigterm_watcher/_stub_sighup_watcher at module scope
 
 ### Pending Todos
 
@@ -365,9 +367,9 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: --stopped-at
-Stopped at: Phase 05.6 context gathered (60s cycle, in-process main() integration test, defer cycle-time qmi-proxy retry, accept 5-plan slicing)
-Resume file: --resume-file
+Last session: 2026-05-14T06:56:38.363Z
+Stopped at: Completed 05.6-01 plan
+Resume file: None
 
 **Planned Phase:** 05.6 (production-main-loop) — 5 plans — 2026-05-13T07:15:11.588Z
 **Phase 2 status:** ✅ COMPLETE — all 10 plans shipped, replay harness 100% v1 agreement, 1675-test suite green in 11.82s
