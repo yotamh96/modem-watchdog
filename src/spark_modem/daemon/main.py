@@ -66,6 +66,7 @@ from spark_modem.daemon.preflight_triple import (
     UnknownFleetTriple,
     preflight_check_known_fleet_triple,
 )
+from spark_modem.daemon.sigterm import SigtermChoreography
 from spark_modem.event_logger.inotify_reopener import EventLogReopener
 from spark_modem.event_logger.writer import EventLogWriter
 from spark_modem.event_sources.asyncinotify_producer import (
@@ -401,6 +402,11 @@ async def _production_main(  # noqa: PLR0915
             # on top of this spine. This plan ships a STUB cycle loop only — proves the
             # TaskGroup wiring is sound before the heavier subsystems land.
             clock = _CliClock()
+            # boot_mono: captured BEFORE the TaskGroup. The SigtermChoreography
+            # uses this as the reference for uptime computation in step 5
+            # (DaemonStopped.uptime_seconds) and step 8 (clean-shutdown marker
+            # uptime_s). ADR-0007: monotonic only — never wall-clock arithmetic.
+            boot_mono = clock.monotonic()
 
             sd = SdNotifyLifecycle()
 
@@ -473,6 +479,13 @@ async def _production_main(  # noqa: PLR0915
             # final cycle count in the DaemonStopped event (sigterm.py:105).
             cycle_count_ref: list[int] = [0]
             producer_tasks: list[asyncio.Task[object]] = []
+            # ---- 05.6-04: SIGTERM choreography wiring ----
+            # cycle_task_ref holds the cycle task handle; populated inside
+            # the TaskGroup block after tg.create_task(_cycle_loop()). The
+            # _sigterm_watcher coroutine reads cycle_task_ref[0] when
+            # shutdown_event fires; by then the cycle task is fully
+            # created (asyncio guarantees tg.create_task is synchronous).
+            cycle_task_ref: list[asyncio.Task[object] | None] = [None]
             with EventLogWriter(event_log_path) as event_logger:
                 # KmsgDedup per-detail 30s window (CONTEXT.md E-03).
                 kmsg_dedup = KmsgDedup(window_seconds=30.0)
@@ -786,6 +799,58 @@ async def _production_main(  # noqa: PLR0915
                         cycle_id += 1
                         scheduler.advance()
 
+                # ---- 05.6-04 SIGTERM choreography watcher ----------------
+                # Replaces _stub_sigterm_watcher (plan 05.6-01). Waits for
+                # shutdown_event, then constructs and runs the 8-step
+                # SigtermChoreography. The choreography never raises
+                # (NFR-11); each step is bounded by the 5s deadline.
+                #
+                # After the choreography returns, this coroutine RETURNS —
+                # which signals the cycle_loop and the producer tasks to
+                # cancel via the choreography's step 1 + step 2.
+                #
+                # Step ordering invariants (sigterm.py docstring):
+                #   1. cancel cycle driver task FIRST
+                #   2. cancel the 4 producer tasks
+                #   3. webhook drain (<=3 s budget)
+                #   4. final state flush (no-op: cycle driver atomic per cycle)
+                #   5. emit DaemonStopped(reason=SIGTERM)
+                #   6. stop the webhook poster (closes httpx client)
+                #   7. unlink metrics socket
+                #   8. write clean-shutdown marker
+                async def _sigterm_watcher() -> None:
+                    """L-02 SIGTERM choreography watcher."""
+                    await shutdown_event.wait()
+                    cycle_task_local = cycle_task_ref[0]
+                    if cycle_task_local is None:
+                        # Defensive: shutdown_event fired before the cycle
+                        # task was created. Should never happen because
+                        # tg.create_task(...) is synchronous and the
+                        # cycle task is created BEFORE _sigterm_watcher
+                        # itself is created in the TaskGroup spawn block.
+                        logger.warning(
+                            "shutdown_event fired before cycle task created; "
+                            "skipping choreography step 1"
+                        )
+                        return
+
+                    choreography = SigtermChoreography(
+                        cycle_driver_task=cycle_task_local,
+                        producer_tasks=producer_tasks,
+                        webhook_poster=webhook_poster,
+                        event_logger=cast(Any, event_logger),
+                        metrics_socket_path=Path(settings.metrics_socket_path),
+                        run_dir=run_dir,
+                        clock=clock,
+                        boot_monotonic=boot_mono,
+                        cycle_count_ref=cycle_count_ref,
+                        state_flush=None,  # cycle driver's atomic per-cycle write
+                    )
+                    await choreography.execute(deadline_seconds=5.0)
+                    # After execute(): cycle_task already cancelled (step 1),
+                    # producer tasks already cancelled (step 2). Returning
+                    # from this watcher lets the TaskGroup unwind.
+
                 # --- TaskGroup: 4 producers + webhook + prom + cycle +
                 # 2 signal watchers (9 tasks total).
                 # The TaskGroup exits when shutdown_event is set: _cycle_loop
@@ -851,13 +916,20 @@ async def _production_main(  # noqa: PLR0915
                     tg.create_task(asyncio.to_thread(prom_server.serve_forever))
 
                     # ---- cycle + signal watchers -----------------------
-                    tg.create_task(_cycle_loop())
-                    tg.create_task(_stub_sigterm_watcher(shutdown_event))
+                    # Capture cycle task handle for SigtermChoreography
+                    # (plan 05.6-04). The choreography's step 1 cancels
+                    # this task FIRST so any in-flight cycle aborts before
+                    # the producers + webhook drain start.
+                    cycle_task_ref[0] = tg.create_task(_cycle_loop())
+                    tg.create_task(_sigterm_watcher())
                     tg.create_task(_stub_sighup_watcher(shutdown_event, sighup_event))
 
-            # Phase 05.6 SC #3 budget for graceful shutdown (≤5 s) is honored
-            # by plan 05.6-04's SigtermChoreography.execute(deadline_seconds=5.0).
-            # In the spine we just exit cleanly when the TaskGroup unwinds.
+                # Belt-and-suspenders: ensure webhook_poster is stopped even
+                # if the TaskGroup unwound via something other than SIGTERM
+                # (e.g. an uncaught exception bubble; the choreography's
+                # step 6 already calls stop() on the SIGTERM path, and
+                # WebhookPoster.stop() is idempotent).
+                webhook_poster.stop()
             return 0
     except PidLockHeldError as exc:
         logger.error("daemon already running: %s", exc)
