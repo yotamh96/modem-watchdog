@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05.6-01 plan
-last_updated: "2026-05-14T06:56:38.389Z"
+stopped_at: Completed 05.6-02 plan (wave-2 producers)
+last_updated: "2026-05-14T07:47:26.659Z"
 last_activity: 2026-05-14
 progress:
   total_phases: 13
   completed_phases: 10
   total_plans: 56
-  completed_plans: 52
-  percent: 93
+  completed_plans: 53
+  percent: 95
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 05.6 (production-main-loop) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-05-14
 
-Progress: [█████████░] 93%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -102,6 +102,7 @@ Progress: [█████████░] 93%
 | Phase 05.1-deb-packaging-hotfix P03 | 84 | 1 tasks | 1 files |
 | Phase 05.1-deb-packaging-hotfix P05 | 222 | 3 tasks | 3 files |
 | Phase 05.6-production-main-loop P05.6-01 | 3h7m | 3 tasks | 4 files |
+| Phase 05.6-production-main-loop P05.6-02 | ~45m | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -349,6 +350,9 @@ Recent decisions affecting current work:
 - V-04: three audit assertions in test_unit_file_audit.py catch drift between unit/pyproject/install; runs cross-platform on every dev-host pytest
 - V-02: build-deb.yml Smoke-install step replaced with strict superset asserting console scripts, HMAC placeholder, and systemd-analyze verify (L-04 verdict surfaces in CI)
 - Phase 05.6-01: cycle_interval_seconds=60s default (C-01); WatchdogSec=180s (3x cycle, C-03); _production_main TaskGroup spine wired with loop.add_signal_handler before TaskGroup entry; stub helpers _stub_cycle_loop/_stub_sigterm_watcher/_stub_sighup_watcher at module scope
+- Plan 05.6-02: cast(Any, ...) at 5 producer-boundary call sites + supervisor_event_logger: Any alias for 4 restart_on_crash event_logger= kwargs — producer modules' co-located narrow Protocols are mypy-invariant-incompatible with concrete Queue[WakeSignal] / EventLogWriter / ZaoLogInotifyTailer instances; runtime contract sound
+- Plan 05.6-02: 6 keyword-only factory parameters (inventory + zao + 4 producers) on _production_main, all defaulting None → production; plan 05.6-05's integration test injects Fake* monitors without monkey-patching pyudev/pyroute2/asyncinotify/kmsg
+- Plan 05.6-02: producer_tasks: list[asyncio.Task[object]] declared OUTSIDE the TaskGroup body so plan 05.6-04's SigtermChoreography closure can read the 4 handles at SIGTERM (sigterm.py:94-117 surface)
 
 ### Pending Todos
 
@@ -367,8 +371,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-14T06:56:38.363Z
-Stopped at: Completed 05.6-01 plan
+Last session: 2026-05-14T07:47:26.631Z
+Stopped at: Completed 05.6-02 plan (wave-2 producers)
 Resume file: None
 
 **Planned Phase:** 05.6 (production-main-loop) — 5 plans — 2026-05-13T07:15:11.588Z

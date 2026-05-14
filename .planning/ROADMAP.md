@@ -680,8 +680,13 @@ Plans:
   edit. Stub `_cycle_loop` writes a placeholder `status.json` + fires
   `sd.ready()` after cycle 0. Three task commits (`4432f63` settings,
   `d5326d0` unit/audit, `9dbdb1c` daemon spine) — completed 2026-05-13.
-- [ ] 05.6-02-PLAN.md — Wire the 4 producers (udev, rtnetlink,
-  asyncinotify, kmsg) each `restart_on_crash`-wrapped.
+- [x] 05.6-02-PLAN.md — Wire the 4 producers (udev, rtnetlink,
+  asyncinotify, kmsg) each `restart_on_crash`-wrapped into the
+  `_production_main` TaskGroup; 6 keyword-only factory parameters
+  default None → production wiring; `producer_tasks` accumulator
+  ready for 05.6-04's SigtermChoreography. Two task commits
+  (`9002dbb` factory params + scaffolding, `efd3517` 4 supervised
+  producers + TaskGroup wrap) — completed 2026-05-14.
 - [ ] 05.6-03-PLAN.md — Wire production `_cycle_loop` body:
   `CycleDriver.run_one_cycle` → `write_status_json` →
   `sd.watchdog_kick()` → `sd.status(...)`.
@@ -778,7 +783,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 05.3. libqmi-version-regex-hotfix (INSERTED) | 1/1 | Complete (bench verify pending) | 2026-05-12 |
 | 05.4. dms-revision-parser-hotfix (INSERTED) | 1/1 | Complete (parser deployed; upstream blocked) | 2026-05-12 |
 | 05.5. qmi-proxy-retry-hotfix (INSERTED) | 1/1 | Complete (bench PASS) | 2026-05-12 |
-| 05.6. production-main-loop (INSERTED) | 0/5 (spec only) | Not started | - |
+| 05.6. production-main-loop (INSERTED) | 2/5 | In progress (wave-2 producers wired) | 2026-05-14 |
 | 6. Cutover & Fleet Rollout | 0/TBD | Not started | - |
 | 7. v1 Decommission & Archive | 0/TBD | Not started | - |
 
