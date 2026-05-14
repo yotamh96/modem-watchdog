@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05.6-03 plan (production cycle body)
-last_updated: "2026-05-14T09:06:04.616Z"
+stopped_at: Completed 05.6-04 plan (SIGTERM choreography + SIGHUP transactional swap wiring)
+last_updated: "2026-05-14T09:41:09.177Z"
 last_activity: 2026-05-14
 progress:
   total_phases: 13
   completed_phases: 10
   total_plans: 56
-  completed_plans: 54
-  percent: 96
+  completed_plans: 55
+  percent: 98
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 05.6 (production-main-loop) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-05-14
 
-Progress: [██████████] 96%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -104,6 +104,7 @@ Progress: [██████████] 96%
 | Phase 05.6-production-main-loop P05.6-01 | 3h7m | 3 tasks | 4 files |
 | Phase 05.6-production-main-loop P05.6-02 | ~45m | 2 tasks | 1 files |
 | Phase 05.6 P05.6-03 | 25min | 2 tasks | 1 files |
+| Phase 05.6 P04 | 23m | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -358,6 +359,9 @@ Recent decisions affecting current work:
 - ASYNC240 hygiene via module-level _load_carrier_table_yaml + _read_hmac_secret helpers (mirrors _ensure_dirs); async _production_main body holds no synchronous filesystem reads
 - scheduler.advance() called twice in _cycle_loop (normal flow + driver-crash exception handler) so a driver crash does not lock the scheduler at the prior deadline
 - cycle 0 drops straight into observe (no scheduler.next_deadline wait) so READY=1 fires within NFR-13 60s boot budget
+- Plan 05.6-04: cycle_task_ref closure-mutable list captures TaskGroup-created cycle task handle so SigtermChoreography reads it on SIGTERM (mirrors plan 05.6-03 cycle_count_ref pattern)
+- Plan 05.6-04: _SettingsRef nested class + SighupSwapper(dns_cache=webhook_poster._dns_cache) wires transactional Settings reload; cycle_interval_seconds SIGHUP-retuning deliberately deferred (SPEC out-of-scope CycleDriver refactor)
+- Plan 05.6-04: belt-and-suspenders webhook_poster.stop() after TaskGroup unwind covers crash-exit path (idempotent; choreography step 6 already stops on SIGTERM path)
 
 ### Pending Todos
 
@@ -376,8 +380,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-14T09:06:04.594Z
-Stopped at: Completed 05.6-03 plan (production cycle body)
+Last session: 2026-05-14T09:41:09.153Z
+Stopped at: Completed 05.6-04 plan (SIGTERM choreography + SIGHUP transactional swap wiring)
 Resume file: None
 
 **Planned Phase:** 05.6 (production-main-loop) — 5 plans — 2026-05-13T07:15:11.588Z

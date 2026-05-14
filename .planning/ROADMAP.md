@@ -695,8 +695,22 @@ Plans:
   BEFORE TaskGroup entry. Two task commits (`a5e408e` subsystem
   construction + boot envelope, `b825ca9` cycle body + webhook + prom
   TaskGroup tasks) — completed 2026-05-13.
-- [ ] 05.6-04-PLAN.md — Wire `SigtermChoreography` + `SighupSwapper`
-  into the running daemon.
+- [x] 05.6-04-PLAN.md — Wire `SigtermChoreography` + `SighupSwapper`
+  into the running daemon. Replaces plan 05.6-01's `_stub_sigterm_watcher`
+  / `_stub_sighup_watcher` with two nested closures inside
+  `_production_main`: `_sigterm_watcher` runs the 8-step
+  `SigtermChoreography.execute(deadline_seconds=5.0)` on shutdown_event
+  (cycle cancel → producers cancel → webhook drain ≤3s → state flush
+  → emit DaemonStopped(SIGTERM) → webhook stop → metrics socket unlink
+  → clean-shutdown marker); `_sighup_watcher` calls
+  `SighupSwapper.try_apply_reload()` per SIGHUP (RELOAD_DATA applies
+  transactionally; RELOAD_RESTART refuses with `restart_required`
+  log; FR-54-runtime). cycle_task_ref closure-mutable list captures
+  the cycle task handle; _SettingsRef cell + dns_cache wiring
+  (webhook_poster._dns_cache forces W-02 DNS refresh on webhook_url
+  change). Belt-and-suspenders `webhook_poster.stop()` after TaskGroup
+  unwind. Two task commits (`4b370d1` SigtermChoreography wiring,
+  `6b1178d` SighupSwapper wiring) — completed 2026-05-14.
 - [ ] 05.6-05-PLAN.md — Integration test
   `tests/integration/test_production_main.py` per T-01..T-04.
 
