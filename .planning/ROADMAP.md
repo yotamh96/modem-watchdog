@@ -687,9 +687,14 @@ Plans:
   ready for 05.6-04's SigtermChoreography. Two task commits
   (`9002dbb` factory params + scaffolding, `efd3517` 4 supervised
   producers + TaskGroup wrap) — completed 2026-05-14.
-- [ ] 05.6-03-PLAN.md — Wire production `_cycle_loop` body:
-  `CycleDriver.run_one_cycle` → `write_status_json` →
-  `sd.watchdog_kick()` → `sd.status(...)`.
+- [x] 05.6-03-PLAN.md — Wire production `_cycle_loop` body:
+  `CycleDriver.run_one_cycle` (driver writes `status.json` INTERNALLY) →
+  watchdog kick → STATUS line → READY on cycle 0 → `scheduler.advance`.
+  Webhook poster + Prometheus UDS server added as 5th + 6th TaskGroup
+  tasks (9 tasks total). Boot envelope (DaemonRestart) enqueued
+  BEFORE TaskGroup entry. Two task commits (`a5e408e` subsystem
+  construction + boot envelope, `b825ca9` cycle body + webhook + prom
+  TaskGroup tasks) — completed 2026-05-13.
 - [ ] 05.6-04-PLAN.md — Wire `SigtermChoreography` + `SighupSwapper`
   into the running daemon.
 - [ ] 05.6-05-PLAN.md — Integration test
@@ -783,7 +788,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 05.3. libqmi-version-regex-hotfix (INSERTED) | 1/1 | Complete (bench verify pending) | 2026-05-12 |
 | 05.4. dms-revision-parser-hotfix (INSERTED) | 1/1 | Complete (parser deployed; upstream blocked) | 2026-05-12 |
 | 05.5. qmi-proxy-retry-hotfix (INSERTED) | 1/1 | Complete (bench PASS) | 2026-05-12 |
-| 05.6. production-main-loop (INSERTED) | 2/5 | In progress (wave-2 producers wired) | 2026-05-14 |
+| 05.6. production-main-loop (INSERTED) | 3/5 | In progress (production cycle body wired) | 2026-05-13 |
 | 6. Cutover & Fleet Rollout | 0/TBD | Not started | - |
 | 7. v1 Decommission & Archive | 0/TBD | Not started | - |
 

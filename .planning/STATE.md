@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05.6-02 plan (wave-2 producers)
-last_updated: "2026-05-14T07:47:26.659Z"
+stopped_at: Completed 05.6-03 plan (production cycle body)
+last_updated: "2026-05-14T09:06:04.616Z"
 last_activity: 2026-05-14
 progress:
   total_phases: 13
   completed_phases: 10
   total_plans: 56
-  completed_plans: 53
-  percent: 95
+  completed_plans: 54
+  percent: 96
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: 05.6 (production-main-loop) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-05-14
 
-Progress: [██████████] 95%
+Progress: [██████████] 96%
 
 ## Performance Metrics
 
@@ -103,6 +103,7 @@ Progress: [██████████] 95%
 | Phase 05.1-deb-packaging-hotfix P05 | 222 | 3 tasks | 3 files |
 | Phase 05.6-production-main-loop P05.6-01 | 3h7m | 3 tasks | 4 files |
 | Phase 05.6-production-main-loop P05.6-02 | ~45m | 2 tasks | 1 files |
+| Phase 05.6 P05.6-03 | 25min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -353,6 +354,10 @@ Recent decisions affecting current work:
 - Plan 05.6-02: cast(Any, ...) at 5 producer-boundary call sites + supervisor_event_logger: Any alias for 4 restart_on_crash event_logger= kwargs — producer modules' co-located narrow Protocols are mypy-invariant-incompatible with concrete Queue[WakeSignal] / EventLogWriter / ZaoLogInotifyTailer instances; runtime contract sound
 - Plan 05.6-02: 6 keyword-only factory parameters (inventory + zao + 4 producers) on _production_main, all defaulting None → production; plan 05.6-05's integration test injects Fake* monitors without monkey-patching pyudev/pyroute2/asyncinotify/kmsg
 - Plan 05.6-02: producer_tasks: list[asyncio.Task[object]] declared OUTSIDE the TaskGroup body so plan 05.6-04's SigtermChoreography closure can read the 4 handles at SIGTERM (sigterm.py:94-117 surface)
+- Prometheus UDS server starts BEFORE cycle 0 (scrape protocol tolerates empty registries; registry=None feeds global REGISTRY)
+- ASYNC240 hygiene via module-level _load_carrier_table_yaml + _read_hmac_secret helpers (mirrors _ensure_dirs); async _production_main body holds no synchronous filesystem reads
+- scheduler.advance() called twice in _cycle_loop (normal flow + driver-crash exception handler) so a driver crash does not lock the scheduler at the prior deadline
+- cycle 0 drops straight into observe (no scheduler.next_deadline wait) so READY=1 fires within NFR-13 60s boot budget
 
 ### Pending Todos
 
@@ -371,8 +376,8 @@ None yet — all eight PROJECT.md open questions (Q1-Q8) have a research-recomme
 
 ## Session Continuity
 
-Last session: 2026-05-14T07:47:26.631Z
-Stopped at: Completed 05.6-02 plan (wave-2 producers)
+Last session: 2026-05-14T09:06:04.594Z
+Stopped at: Completed 05.6-03 plan (production cycle body)
 Resume file: None
 
 **Planned Phase:** 05.6 (production-main-loop) — 5 plans — 2026-05-13T07:15:11.588Z
