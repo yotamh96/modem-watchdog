@@ -66,6 +66,7 @@ from spark_modem.daemon.preflight_triple import (
     UnknownFleetTriple,
     preflight_check_known_fleet_triple,
 )
+from spark_modem.daemon.sighup import SighupSwapper
 from spark_modem.daemon.sigterm import SigtermChoreography
 from spark_modem.event_logger.inotify_reopener import EventLogReopener
 from spark_modem.event_logger.writer import EventLogWriter
@@ -258,44 +259,6 @@ async def _laptop_main() -> int:
     return 0
 
 
-async def _stub_sigterm_watcher(shutdown_event: asyncio.Event) -> None:
-    """Wait for SIGTERM. Plan 05.6-04 replaces this with SigtermChoreography."""
-    await shutdown_event.wait()
-    # Spine: just let the TaskGroup observe shutdown_event by returning.
-    # Plan 05.6-04 wires the 8-step choreography here.
-
-
-async def _stub_sighup_watcher(
-    shutdown_event: asyncio.Event,
-    sighup_event: asyncio.Event,
-) -> None:
-    """Drain SIGHUP events. Plan 05.6-04 replaces this with SighupSwapper.
-
-    Races the sighup event against the shutdown event so this watcher
-    exits promptly when the daemon is shutting down (otherwise the
-    inner ``await sighup_event.wait()`` would block forever if SIGHUP
-    never fires before SIGTERM does).
-    """
-    shutdown_task = asyncio.create_task(shutdown_event.wait())
-    sighup_task = asyncio.create_task(sighup_event.wait())
-    try:
-        while not shutdown_event.is_set():
-            done, _pending = await asyncio.wait(
-                {shutdown_task, sighup_task},
-                return_when=asyncio.FIRST_COMPLETED,
-            )
-            if sighup_task in done:
-                sighup_event.clear()
-                logger.info("sighup received (no-op in spine; wired in 05.6-04)")
-                sighup_task = asyncio.create_task(sighup_event.wait())
-            if shutdown_task in done:
-                break
-    finally:
-        for t in (shutdown_task, sighup_task):
-            if not t.done():
-                t.cancel()
-
-
 async def _production_main(  # noqa: PLR0915
     args: argparse.Namespace,
     *,
@@ -466,11 +429,11 @@ async def _production_main(  # noqa: PLR0915
                 else ZaoLogInotifyTailer(log_path=zao_log_path)
             )
             # Spine: 4 producers + cycle + webhook + prom + 2 signal watchers
-            # (9 tasks). Plan 05.6-04 replaces _stub_sigterm_watcher /
-            # _stub_sighup_watcher with the SigtermChoreography /
-            # SighupSwapper wiring. The ``producer_tasks`` list is declared
-            # OUTSIDE the TaskGroup body so plan 05.6-04's choreography can
-            # read the 4 task handles at SIGTERM (sigterm.py:94-117 takes
+            # (9 tasks). Plan 05.6-04 wires the SigtermChoreography +
+            # SighupSwapper into the two signal watchers (replacing the
+            # plan-05.6-01 stubs). The ``producer_tasks`` list is declared
+            # OUTSIDE the TaskGroup body so the choreography can read the
+            # 4 task handles at SIGTERM (sigterm.py:94-117 takes
             # ``producer_tasks: list[Task]``).
             #
             # ``cycle_count_ref`` is a 1-element list (read-write cell) that
@@ -486,6 +449,40 @@ async def _production_main(  # noqa: PLR0915
             # shutdown_event fires; by then the cycle task is fully
             # created (asyncio guarantees tg.create_task is synchronous).
             cycle_task_ref: list[asyncio.Task[object] | None] = [None]
+
+            # ---- 05.6-04: SIGHUP transactional swap wiring ----
+            # _SettingsRef is a single-cell mutable container. The cycle
+            # driver reads its Settings ONCE per cycle via self._settings
+            # (the swap is naturally atomic at cycle boundary; sighup.py
+            # module docstring). For Phase 05.6, the cycle driver was
+            # constructed with `settings=settings` at the start of
+            # _production_main, so it holds a reference to the INITIAL
+            # Settings. The SighupSwapper updates settings_ref's cell;
+            # since the cycle driver doesn't read settings_ref directly,
+            # it keeps using the initial Settings. THAT IS EXPECTED for
+            # plan 05.6-04 — the swap is observable for fields that
+            # OTHER subsystems read live (e.g. webhook_poster's
+            # webhook_url which it pulls per request). Fields that
+            # the cycle driver caches at construction (e.g.
+            # cycle_interval_seconds in the scheduler) will not retune
+            # without a restart for THIS phase. A future phase can wire
+            # the cycle driver to read settings_ref.get() per cycle.
+            # SPEC out-of-scope "Refactoring CycleDriver internals"
+            # confirms this is intentional for plan 05.6.
+
+            class _SettingsRef:
+                """Single-cell mutable container around the current frozen Settings."""
+
+                def __init__(self, initial: Settings) -> None:
+                    self._cur = initial
+
+                def get(self) -> Settings:
+                    return self._cur
+
+                def set(self, new: Settings) -> None:
+                    self._cur = new
+
+            settings_ref = _SettingsRef(settings)
             with EventLogWriter(event_log_path) as event_logger:
                 # KmsgDedup per-detail 30s window (CONTEXT.md E-03).
                 kmsg_dedup = KmsgDedup(window_seconds=30.0)
@@ -552,6 +549,19 @@ async def _production_main(  # noqa: PLR0915
                     config=settings,
                     event_logger=event_logger,
                     metrics=metrics,
+                )
+
+                # ---- 05.6-04 SIGHUP swapper ---------------------------
+                # SighupSwapper rebuilds Settings from env+YAML via the
+                # zero-arg `Settings` constructor (pydantic-settings reads
+                # env vars at construction time). dns_cache is the same
+                # cache the webhook poster uses, so a SIGHUP-driven
+                # webhook_url change force-refreshes DNS via W-02
+                # (sighup.py:118-126).
+                sighup_swapper = SighupSwapper(
+                    settings_ref=settings_ref,
+                    settings_factory=Settings,
+                    dns_cache=webhook_poster._dns_cache,
                 )
 
                 # Boot envelope (FR-44.5 — DaemonRestart with reason enum).
@@ -851,15 +861,59 @@ async def _production_main(  # noqa: PLR0915
                     # producer tasks already cancelled (step 2). Returning
                     # from this watcher lets the TaskGroup unwind.
 
+                # ---- 05.6-04 SIGHUP transactional Settings swap watcher --
+                # Replaces _stub_sighup_watcher (plan 05.6-01). Loops until
+                # shutdown_event is set. On each SIGHUP:
+                #   * SighupSwapper.try_apply_reload() rebuilds Settings
+                #     from env+YAML, diffs against current.
+                #   * RELOAD_DATA-only diff: applies; webhook DNS
+                #     force-refresh on webhook_url change.
+                #   * RELOAD_RESTART field change: refuses with a
+                #     structured `restart_required` log line; keeps old
+                #     Settings (FR-54-runtime semantics).
+                #   * No-op SIGHUP (no diff): also returns True; common
+                #     pattern for operator "is daemon responsive?" probes.
+                async def _sighup_watcher() -> None:
+                    """L-03 SIGHUP transactional Settings swap watcher."""
+                    while not shutdown_event.is_set():
+                        # Race the SIGHUP event vs the shutdown event so
+                        # this watcher exits promptly under either trigger.
+                        # Same shape plan 05.6-01 established for
+                        # _stub_sighup_watcher (caught by smoke test as
+                        # deadlock-on-SIGTERM-without-SIGHUP).
+                        sighup_task = asyncio.create_task(sighup_event.wait())
+                        shutdown_task = asyncio.create_task(shutdown_event.wait())
+                        _done, pending = await asyncio.wait(
+                            {sighup_task, shutdown_task},
+                            return_when=asyncio.FIRST_COMPLETED,
+                        )
+                        for task in pending:
+                            task.cancel()
+                            with contextlib.suppress(asyncio.CancelledError, Exception):
+                                await task
+
+                        if shutdown_event.is_set():
+                            return
+
+                        # SIGHUP fired; consume the event and apply.
+                        sighup_event.clear()
+                        try:
+                            await sighup_swapper.try_apply_reload()
+                        except Exception:
+                            # NFR-11: a swap failure NEVER crashes the daemon.
+                            # SighupSwapper.try_apply_reload already catches
+                            # internally; this is belt-and-suspenders.
+                            logger.exception("sighup swap raised unexpectedly")
+
                 # --- TaskGroup: 4 producers + webhook + prom + cycle +
                 # 2 signal watchers (9 tasks total).
                 # The TaskGroup exits when shutdown_event is set: _cycle_loop
-                # observes via its asyncio.wait race, _stub_sigterm_watcher
-                # returns, the producers + webhook + prom + sighup watcher
-                # get cancelled via CancelledError. Plan 05.6-04 wires the
-                # SigtermChoreography (which cancels the cycle driver task
-                # FIRST, then producer_tasks, then drains webhook, then
-                # closes prom UDS socket).
+                # observes via its asyncio.wait race, _sigterm_watcher runs
+                # the 8-step SigtermChoreography (which cancels the cycle
+                # driver task FIRST, then producer_tasks, then drains the
+                # webhook, then closes the prom UDS socket), then the
+                # producers + webhook + prom + sighup watcher get cancelled
+                # via CancelledError when this watcher returns.
                 async with asyncio.TaskGroup() as tg:
                     producer_tasks.append(
                         tg.create_task(
@@ -922,7 +976,7 @@ async def _production_main(  # noqa: PLR0915
                     # the producers + webhook drain start.
                     cycle_task_ref[0] = tg.create_task(_cycle_loop())
                     tg.create_task(_sigterm_watcher())
-                    tg.create_task(_stub_sighup_watcher(shutdown_event, sighup_event))
+                    tg.create_task(_sighup_watcher())
 
                 # Belt-and-suspenders: ensure webhook_poster is stopped even
                 # if the TaskGroup unwound via something other than SIGTERM
