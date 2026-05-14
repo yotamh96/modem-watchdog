@@ -15,7 +15,7 @@ Startup order per CONTEXT.md L-05 (verbatim):
 
 CRITICAL — WATCHDOG cycle-end placement (PITFALLS §4.1, Issue #5):
 the cycle loop body executes in this order:
-    wait → cycle → status.json → sd.watchdog_kick() → sd.status(...)
+    wait -> cycle -> status.json -> watchdog kick -> STATUS line
 Firing WATCHDOG=1 BEFORE status.json admits a wedged-cycle window
 where qmicli is hung but watchdog is happy.
 
@@ -28,11 +28,11 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import logging
 import signal
 import sys
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol, cast
 
@@ -85,16 +85,10 @@ from spark_modem.kmsg.dedup import KmsgDedup
 from spark_modem.state_store.store import StateStore
 from spark_modem.status_reporter.metrics_registry import MetricRegistry
 from spark_modem.status_reporter.prom import start_metrics_server
-from spark_modem.status_reporter.status import write_status_json
 from spark_modem.subproc import runner as subproc_runner
 from spark_modem.webhook.poster import WebhookPoster
 from spark_modem.wire.carriers import CarrierTable
 from spark_modem.wire.enums import IssueDetail
-from spark_modem.wire.status import (
-    StatusCycleSummary,
-    StatusModemSummary,
-    StatusReport,
-)
 from spark_modem.wire.webhook import DaemonRestart, WebhookEnvelope
 from spark_modem.zao_log.inotify_tailer import ZaoLogInotifyTailer
 from spark_modem.zao_log.protocol import ZaoLogTailer as ZaoLogTailerProto
@@ -261,55 +255,6 @@ async def _laptop_main() -> int:
     if result.policy_exception is not None:
         logger.warning("policy raised: %s", result.policy_exception)
     return 0
-
-
-async def _stub_cycle_loop(
-    *,
-    settings: Settings,
-    sd: SdNotifyLifecycle,
-    state_root_path: Path,
-    cycle_interval: float,
-    shutdown_event: asyncio.Event,
-) -> None:
-    """Phase 05.6-01 stub cycle body.
-
-    Writes a placeholder status.json each cycle, fires sd.ready() once
-    after cycle 0, kicks the watchdog at cycle-end, and sleeps for
-    ``cycle_interval`` seconds (or until ``shutdown_event`` is set).
-    Plan 05.6-03 replaces this with the real CycleDriver invocation.
-    """
-    cycle_id = 0
-    while not shutdown_event.is_set():
-        # 1. Stub status.json so plan 05.6-05's integration test can
-        #    assert the file exists with the canonical 4-modem shape.
-        report = StatusReport(
-            last_modified=datetime.now(UTC).isoformat(),
-            cycle_index=cycle_id,
-            cycle=StatusCycleSummary(n=cycle_id, duration_seconds=0.0),
-            summary=StatusModemSummary(expected_modems=settings.expected_modem_count),
-            modems=[],
-        )
-        write_status_json(state_root_path / "status.json", report)
-
-        # 2. WATCHDOG=1 fires AFTER status.json is written
-        #    (PITFALLS §4.1 / Issue #5 cycle-end placement).
-        sd.watchdog_kick()
-
-        # 3. STATUS= per cycle (C-05 terse format; plan 05.6-03 fills
-        #    healthy/actions/drift after real cycle work).
-        sd.status(f"cycle={cycle_id} stub healthy=?/4 actions=0 drift=0.0s")
-
-        # 4. READY=1 only after cycle 0 completes (PITFALLS §4.1
-        #    "READY = real work done"; L-01 / C-04).
-        if cycle_id == 0:
-            sd.ready("stub-skeleton cycle 0 ok")
-
-        cycle_id += 1
-        try:
-            async with asyncio.timeout(cycle_interval):
-                await shutdown_event.wait()
-        except TimeoutError:
-            pass  # normal: cadence elapsed, run the next cycle
 
 
 async def _stub_sigterm_watcher(shutdown_event: asyncio.Event) -> None:
@@ -521,7 +466,12 @@ async def _production_main(  # noqa: PLR0915
             # OUTSIDE the TaskGroup body so plan 05.6-04's choreography can
             # read the 4 task handles at SIGTERM (sigterm.py:94-117 takes
             # ``producer_tasks: list[Task]``).
-            cycle_interval = settings.cycle_interval_seconds
+            #
+            # ``cycle_count_ref`` is a 1-element list (read-write cell) that
+            # the cycle loop bumps after every cycle. Plan 05.6-04's
+            # SigtermChoreography reads cycle_count_ref[0] to report the
+            # final cycle count in the DaemonStopped event (sigterm.py:105).
+            cycle_count_ref: list[int] = [0]
             producer_tasks: list[asyncio.Task[object]] = []
             with EventLogWriter(event_log_path) as event_logger:
                 # KmsgDedup per-detail 30s window (CONTEXT.md E-03).
@@ -569,7 +519,7 @@ async def _production_main(  # noqa: PLR0915
 
                 # CycleScheduler: production cadence = settings.cycle_interval_seconds
                 # (C-01 default 60.0; C-02 RELOAD_DATA so SIGHUP can retune).
-                scheduler = CycleScheduler(  # noqa: F841 - consumed by Task 2 cycle loop
+                scheduler = CycleScheduler(
                     interval_seconds=settings.cycle_interval_seconds,
                     clock=clock,
                 )
@@ -609,7 +559,7 @@ async def _production_main(  # noqa: PLR0915
                 # driver itself writes status.json INTERNALLY at step 6 of
                 # run_one_cycle (cycle_driver.py:270); DO NOT also call
                 # write_status_json from _cycle_loop — that would race.
-                driver = CycleDriver(  # noqa: F841 - consumed by Task 2 cycle loop
+                driver = CycleDriver(
                     store=store,
                     settings=settings,
                     clock=clock,
@@ -629,7 +579,7 @@ async def _production_main(  # noqa: PLR0915
                 # doesn't stall the event loop. registry=None makes the
                 # WSGI app expose the global REGISTRY — the same one
                 # MetricRegistry registered into above.
-                prom_server = start_metrics_server(  # noqa: F841 - consumed by Task 2 TaskGroup
+                prom_server = start_metrics_server(
                     settings.metrics_socket_path,
                     registry=None,
                 )
@@ -710,12 +660,141 @@ async def _production_main(  # noqa: PLR0915
                 # here so the 4 restart_on_crash call sites stay clean.
                 supervisor_event_logger: Any = event_logger
 
-                # --- TaskGroup: 4 producers + cycle + 2 signal watchers ---
-                # The TaskGroup exits when shutdown_event is set:
-                # _stub_cycle_loop notices via its asyncio.timeout race,
-                # _stub_sigterm_watcher returns, the producers + sighup
-                # watcher get cancelled via CancelledError. Plan 05.6-04's
-                # SigtermChoreography reads producer_tasks at SIGTERM.
+                # ---- 05.6-03 production cycle body ------------------------
+                # Closure over: clock, scheduler, shutdown_event, event_queue,
+                # driver, metrics, sd, cycle_count_ref, logger.
+                #
+                # Pipeline per cycle (PITFALLS §4.1 / L-01 ORDER):
+                #   1. Wait: event_queue.get() OR scheduler.next_deadline() OR
+                #      shutdown.
+                #   2. CycleDriver.run_one_cycle(cycle_id) — observe / policy /
+                #      actions / persist / status.json / metrics / webhook
+                #      enqueues (driver writes status.json INTERNALLY at
+                #      cycle_driver.py line 270; never call the status
+                #      writer twice — that would race).
+                #   3. kick the systemd watchdog AFTER the cycle.
+                #   4. emit a terse STATUS line per C-05.
+                #   5. fire sd READY ONLY on cycle 0 (PITFALLS §4.1
+                #      "real work done").
+                #   6. advance the cycle scheduler.
+                async def _cycle_loop() -> None:
+                    cycle_id = 0
+                    while not shutdown_event.is_set():
+                        # Step 1: wait for wake. The wake conditions are
+                        # event_queue arrival, scheduler deadline, or shutdown.
+                        # On the FIRST cycle there is no previous deadline so
+                        # we drop straight into observe — cycle 0 runs ASAP
+                        # to honour NFR-13 60 s READY budget.
+                        if cycle_id > 0:
+                            now_mono = clock.monotonic()
+                            wait_seconds = max(
+                                0.0,
+                                scheduler.next_deadline() - now_mono,
+                            )
+                            try:
+                                async with asyncio.timeout(wait_seconds):
+                                    # event_queue.get() OR shutdown_event.wait()
+                                    queue_task = asyncio.create_task(event_queue.get())
+                                    shutdown_task = asyncio.create_task(shutdown_event.wait())
+                                    _done, pending = await asyncio.wait(
+                                        {queue_task, shutdown_task},
+                                        return_when=asyncio.FIRST_COMPLETED,
+                                    )
+                                    for task in pending:
+                                        task.cancel()
+                                        with contextlib.suppress(
+                                            asyncio.CancelledError,
+                                            Exception,
+                                        ):
+                                            await task
+                            except TimeoutError:
+                                pass  # normal: scheduler deadline elapsed
+                            # Drain coalesced wake signals UNCONDITIONALLY
+                            # (after EITHER the queue/shutdown arm OR the
+                            # timeout arm). A USB hub storm can deposit
+                            # dozens of WakeSignals in <100 ms — and
+                            # producers may also have enqueued items between
+                            # cycle-end and the next get(); both paths must
+                            # drain so no wake-signal is silently dropped on
+                            # the next timeout boundary. The drain MUST live
+                            # OUTSIDE the asyncio.timeout(...) block
+                            # (placing it inside would skip drain on the
+                            # normal-cadence timeout arm).
+                            while True:
+                                try:
+                                    event_queue.get_nowait()
+                                except asyncio.QueueEmpty:
+                                    break
+
+                        if shutdown_event.is_set():
+                            return
+
+                        # Step 2: drift accounting BEFORE cycle work begins (O-03).
+                        cycle_start_mono = clock.monotonic()
+                        if cycle_id > 0:
+                            drift = max(
+                                0.0,
+                                cycle_start_mono - scheduler.expected_for_drift(),
+                            )
+                            metrics.set_cycle_drift(drift)
+                        else:
+                            drift = 0.0
+
+                        # Step 3: the production cycle (NFR-11: errors are data,
+                        # never crash; cycle_driver.run_one_cycle catches policy
+                        # exceptions internally).
+                        try:
+                            result = await driver.run_one_cycle(cycle_id=cycle_id)
+                        except Exception:
+                            # Belt-and-suspenders: a bug in the driver itself
+                            # MUST NOT kill the daemon. NFR-11.
+                            logger.exception(
+                                "cycle %d crashed in driver; continuing",
+                                cycle_id,
+                            )
+                            cycle_id += 1
+                            cycle_count_ref[0] = cycle_id
+                            scheduler.advance()
+                            continue
+
+                        cycle_count_ref[0] = cycle_id + 1
+
+                        # Step 4: WATCHDOG=1 fires AFTER the cycle completes
+                        # (cycle driver writes status.json inside run_one_cycle
+                        # step 6). PITFALLS §4.1 cycle-end placement.
+                        sd.watchdog_kick()
+
+                        # Step 5: STATUS= per cycle (C-05 verbatim format).
+                        new_states = (
+                            result.cycle_result.new_states
+                            if result.cycle_result is not None
+                            else {}
+                        )
+                        healthy_count = sum(
+                            1 for s in new_states.values() if str(s.state).lower() == "healthy"
+                        )
+                        actions_count = len(result.action_results)
+                        sd.status(
+                            f"cycle={cycle_id} healthy={healthy_count}/4 "
+                            f"actions={actions_count} drift={drift:.1f}s"
+                        )
+
+                        # Step 6: READY=1 only after cycle 0 (PITFALLS §4.1).
+                        if cycle_id == 0:
+                            sd.ready(f"first cycle ok healthy={healthy_count}/4")
+
+                        cycle_id += 1
+                        scheduler.advance()
+
+                # --- TaskGroup: 4 producers + webhook + prom + cycle +
+                # 2 signal watchers (9 tasks total).
+                # The TaskGroup exits when shutdown_event is set: _cycle_loop
+                # observes via its asyncio.wait race, _stub_sigterm_watcher
+                # returns, the producers + webhook + prom + sighup watcher
+                # get cancelled via CancelledError. Plan 05.6-04 wires the
+                # SigtermChoreography (which cancels the cycle driver task
+                # FIRST, then producer_tasks, then drains webhook, then
+                # closes prom UDS socket).
                 async with asyncio.TaskGroup() as tg:
                     producer_tasks.append(
                         tg.create_task(
@@ -761,15 +840,18 @@ async def _production_main(  # noqa: PLR0915
                             )
                         )
                     )
-                    tg.create_task(
-                        _stub_cycle_loop(
-                            settings=settings,
-                            sd=sd,
-                            state_root_path=state_root_path,
-                            cycle_interval=cycle_interval,
-                            shutdown_event=shutdown_event,
-                        )
-                    )
+
+                    # ---- webhook background task (FR-44.8: cycle never
+                    # blocks on webhook I/O) ------------------------------
+                    tg.create_task(webhook_poster.run_forever())
+
+                    # ---- Prometheus UDS scrape server ------------------
+                    # serve_forever is blocking sync; run in a worker thread
+                    # so wsgiref's accept loop doesn't stall the event loop.
+                    tg.create_task(asyncio.to_thread(prom_server.serve_forever))
+
+                    # ---- cycle + signal watchers -----------------------
+                    tg.create_task(_cycle_loop())
                     tg.create_task(_stub_sigterm_watcher(shutdown_event))
                     tg.create_task(_stub_sighup_watcher(shutdown_event, sighup_event))
 
