@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 05.6-04 plan (SIGTERM choreography + SIGHUP transactional swap wiring)
-last_updated: "2026-05-17T05:17:57.912Z"
+status: ready_to_plan
+stopped_at: Phase 05.6 complete (5/5) — ready to discuss Phase 6
+last_updated: 2026-05-17T05:55:40.058Z
 last_activity: 2026-05-17 -- Phase 05.6 execution started
 progress:
   total_phases: 13
   completed_phases: 10
   total_plans: 56
-  completed_plans: 55
+  completed_plans: 56
   percent: 77
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-05)
 
 **Core value:** Maximize end-user uplink availability across the four bonded modems by applying minimum-impact recovery actions — and never running a destructive recovery that has zero chance of fixing the observed issue.
-**Current focus:** Phase 05.6 — production-main-loop
+**Current focus:** Phase 6 — cutover & fleet rollout
 
 ## Current Position
 
-Phase: 05.6 (production-main-loop) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 05.6
-Last activity: 2026-05-17 -- Phase 05.6 execution started
+Phase: 6
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-05-17
 
 Progress: [██████████] 98%
 
@@ -36,7 +36,7 @@ Progress: [██████████] 98%
 
 **Velocity:**
 
-- Total plans completed: 38
+- Total plans completed: 43
 - Average duration: -
 - Total execution time: 0.0 hours
 

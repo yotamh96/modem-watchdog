@@ -802,7 +802,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 05.3. libqmi-version-regex-hotfix (INSERTED) | 1/1 | Complete (bench verify pending) | 2026-05-12 |
 | 05.4. dms-revision-parser-hotfix (INSERTED) | 1/1 | Complete (parser deployed; upstream blocked) | 2026-05-12 |
 | 05.5. qmi-proxy-retry-hotfix (INSERTED) | 1/1 | Complete (bench PASS) | 2026-05-12 |
-| 05.6. production-main-loop (INSERTED) | 5/5 | Complete   | 2026-05-17 |
+| 05.6. production-main-loop (INSERTED) | 5/5 | Complete    | 2026-05-17 |
 | 6. Cutover & Fleet Rollout | 0/TBD | Not started | - |
 | 7. v1 Decommission & Archive | 0/TBD | Not started | - |
 
