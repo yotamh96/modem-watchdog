@@ -137,8 +137,13 @@ async def test_production_main_wires_taskgroup_and_fires_ready(  # noqa: PLR0915
         str(integration_run_dir / "metrics.sock"),
     )
     monkeypatch.setenv("SPARK_MODEM_CARRIERS_YAML_PATH", str(carriers_yaml))
-    # Force cycle interval short so cycle 0 finishes promptly.
-    monkeypatch.setenv("SPARK_MODEM_CYCLE_INTERVAL_SECONDS", "0.1")
+    # Force cycle interval to the Settings floor (ge=1.0 enforced by pydantic;
+    # 05.6-01 explicitly preserved that floor against this plan's earlier
+    # 0.1 example). Cycle 0 drops straight into observe without waiting on
+    # the scheduler deadline (per plan 05.6-03 wiring), so the 1.0s value
+    # only affects cycles 1+, which the asyncio.wait_for(timeout=15.0)
+    # budget accommodates.
+    monkeypatch.setenv("SPARK_MODEM_CYCLE_INTERVAL_SECONDS", "1.0")
     # Disable sd_notify in production: NOTIFY_SOCKET unset means the
     # SdNotifyLifecycle constructor silently no-ops. The monkeypatch below
     # swaps in FakeSdNotify so calls are observable.
