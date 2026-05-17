@@ -697,9 +697,16 @@ async def _production_main(  # noqa: PLR0915
                 #      writer twice — that would race).
                 #   3. kick the systemd watchdog AFTER the cycle.
                 #   4. emit a terse STATUS line per C-05.
-                #   5. fire sd READY ONLY on cycle 0 (PITFALLS §4.1
-                #      "real work done").
+                #   5. fire sd READY on the FIRST SUCCESSFUL cycle (PITFALLS
+                #      §4.1 "real work done"). Tracked via the
+                #      ``ready_fired_ref`` single-cell list rather than the
+                #      ``cycle_id == 0`` predicate so a cycle-0 crash that
+                #      falls into the except arm below does not orphan READY
+                #      — cycle 1's success branch will fire it. Same
+                #      single-cell-list pattern as ``cycle_count_ref``.
                 #   6. advance the cycle scheduler.
+                ready_fired_ref: list[bool] = [False]
+
                 async def _cycle_loop() -> None:
                     cycle_id = 0
                     while not shutdown_event.is_set():
@@ -802,9 +809,13 @@ async def _production_main(  # noqa: PLR0915
                             f"actions={actions_count} drift={drift:.1f}s"
                         )
 
-                        # Step 6: READY=1 only after cycle 0 (PITFALLS §4.1).
-                        if cycle_id == 0:
+                        # Step 6: READY=1 on the first SUCCESSFUL cycle
+                        # (PITFALLS §4.1). Decoupled from ``cycle_id`` so a
+                        # cycle-0 crash followed by cycle-1 success still
+                        # fires READY — see ready_fired_ref docstring above.
+                        if not ready_fired_ref[0]:
                             sd.ready(f"first cycle ok healthy={healthy_count}/4")
+                            ready_fired_ref[0] = True
 
                         cycle_id += 1
                         scheduler.advance()
