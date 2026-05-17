@@ -249,4 +249,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-11 after Phase 5 (Bench & Field Shadow) code-completion — Plans 05-01..05-07 shipped (X-* fleet-triple chain, audit tools, .deb known-fleet shipment, operator docs). Plan 05-08 (3-4 week operator soak campaign + SIGNOFF) tracked in 05-HUMAN-UAT.md.*
+*Last updated: 2026-05-17 after Phase 05.6 (production-main-loop) code-completion — Plans 05.6-01..05 wired the production `_production_main` TaskGroup (Settings.cycle_interval_seconds RELOAD_DATA + WatchdogSec=180s + 4 supervised producers + production cycle body + Prometheus UDS + WebhookPoster + SigtermChoreography + SighupSwapper + in-process pytest pinning the wiring). Bench Jetson SC #1..#7 deferred to operator session (tracked in 05.6-HUMAN-UAT.md). Prior state: 2026-05-11 after Phase 5 code-completion — Plans 05-01..05-07 shipped (X-* fleet-triple chain, audit tools, .deb known-fleet shipment, operator docs). Plan 05-08 (3-4 week operator soak campaign + SIGNOFF) tracked in 05-HUMAN-UAT.md.*
