@@ -45,7 +45,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 05.3: libqmi-version-regex-hotfix (INSERTED)** ✅ 2026-05-12 - `_LIBQMI_VERSION_RE` broadened to match both `qmicli X.Y.Z` and `Compiled with libqmi-glib X.Y.Z` formats; JetPack 5.1.5 / libqmi 1.30.4 output (qmicli-only banner, no libqmi-glib footer) now parses correctly through the Phase 5 X-03 preflight
 - [x] **Phase 05.4: dms-revision-parser-hotfix (INSERTED)** ✅ 2026-05-12 - `parse_get_revision` header check broadened to accept both `Device revisions retrieved` (plural — when both Revision + Boot code lines are present) and `Device revision retrieved` (singular — when only Revision is present); bench Jetson SWI9X50C modem stdout now parses through the X-03 preflight's second probe
 - [x] **Phase 05.5: qmi-proxy-retry-hotfix (INSERTED)** ✅ 2026-05-12 - `compute_fleet_triple` firmware probe now retries 3× with 0.5s backoff on transient qmi-proxy contention failures (CID allocation races with Zao's continuous NAS/UIM queries; ~25% per-call failure rate observed → ~99% cumulative success); raised error message now includes qmicli stderr instead of misleading "no revisions block in stdout"
-- [ ] **Phase 05.6: production-main-loop (INSERTED, SPEC ONLY)** 📋 2026-05-12 - Replace the documented placeholder in `_production_main` (lines 261-306) with the real TaskGroup wiring that Plan 03-09 was supposed to land: 4 event producers + cycle driver + sd_notify lifecycle + signal handlers. Five-plan breakdown suggested in `.planning/phases/05.6-production-main-loop/05.6-SPEC.md`. Surfaced by the bench Jetson deploy walk after Phases 05.1-05.5 unblocked everything else.
+- [x] **Phase 05.6: production-main-loop (INSERTED, SPEC ONLY)** 📋 2026-05-12 - Replace the documented placeholder in `_production_main` (lines 261-306) with the real TaskGroup wiring that Plan 03-09 was supposed to land: 4 event producers + cycle driver + sd_notify lifecycle + signal handlers. Five-plan breakdown suggested in `.planning/phases/05.6-production-main-loop/05.6-SPEC.md`. Surfaced by the bench Jetson deploy walk after Phases 05.1-05.5 unblocked everything else. (completed 2026-05-17)
 - [ ] **Phase 6: Cutover & Fleet Rollout** - MIGRATION Phases 3-5: one box live → 10% canary → 100% rolling; meet M1-M7 success metrics
 - [ ] **Phase 7: v1 Decommission & Archive** - MIGRATION Phase 6: purge v1 packages, archive scripts, update agent docs
 
@@ -711,7 +711,7 @@ Plans:
   change). Belt-and-suspenders `webhook_poster.stop()` after TaskGroup
   unwind. Two task commits (`4b370d1` SigtermChoreography wiring,
   `6b1178d` SighupSwapper wiring) — completed 2026-05-14.
-- [ ] 05.6-05-PLAN.md — Integration test
+- [x] 05.6-05-PLAN.md — Integration test
   `tests/integration/test_production_main.py` per T-01..T-04.
 
 ### Phase 6: Cutover & Fleet Rollout
@@ -802,7 +802,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 05.3. libqmi-version-regex-hotfix (INSERTED) | 1/1 | Complete (bench verify pending) | 2026-05-12 |
 | 05.4. dms-revision-parser-hotfix (INSERTED) | 1/1 | Complete (parser deployed; upstream blocked) | 2026-05-12 |
 | 05.5. qmi-proxy-retry-hotfix (INSERTED) | 1/1 | Complete (bench PASS) | 2026-05-12 |
-| 05.6. production-main-loop (INSERTED) | 3/5 | In progress (production cycle body wired) | 2026-05-13 |
+| 05.6. production-main-loop (INSERTED) | 5/5 | Complete   | 2026-05-17 |
 | 6. Cutover & Fleet Rollout | 0/TBD | Not started | - |
 | 7. v1 Decommission & Archive | 0/TBD | Not started | - |
 
