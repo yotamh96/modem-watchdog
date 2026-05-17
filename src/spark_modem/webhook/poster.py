@@ -131,6 +131,18 @@ class WebhookPoster:
             self._path = ""
             self._scheme = ""
 
+    # -------- public accessors --------
+
+    @property
+    def dns_cache(self) -> DnsCacheProto:
+        """Read-only view of the resolver this poster signs request URLs with.
+
+        Exposed so SighupSwapper can force a DNS refresh on ``webhook_url``
+        change (W-02 / sighup.py:118-126) without crossing the underscore
+        encapsulation boundary into ``self._dns_cache``.
+        """
+        return self._dns_cache
+
     # -------- producer side (called from the cycle driver) --------
 
     async def enqueue(

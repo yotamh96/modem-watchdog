@@ -561,7 +561,7 @@ async def _production_main(  # noqa: PLR0915
                 sighup_swapper = SighupSwapper(
                     settings_ref=settings_ref,
                     settings_factory=Settings,
-                    dns_cache=webhook_poster._dns_cache,
+                    dns_cache=webhook_poster.dns_cache,
                 )
 
                 # Boot envelope (FR-44.5 — DaemonRestart with reason enum).
