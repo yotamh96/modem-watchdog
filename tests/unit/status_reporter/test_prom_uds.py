@@ -39,6 +39,53 @@ def _close_server(server: _UnixWSGIServer) -> None:
         server.server_close()
 
 
+def test_unix_wsgi_server_bind_initializes_server_name_and_port(
+    tmp_path: Path,
+) -> None:
+    """Regression: _UnixWSGIServer.server_bind MUST assign server_name + server_port.
+
+    Bench Jetson 2026-05-18: a daemon boot past fleet-triple preflight
+    crashed in `_production_main` with::
+
+        AttributeError: '_UnixWSGIServer' object has no attribute 'server_name'
+
+    Root cause: `UnixStreamServer.server_bind` does a plain `socket.bind`
+    and does NOT set `server_name` / `server_port` (the TCP path's
+    `HTTPServer.server_bind` does, from `self.server_address[:2]`).
+    `wsgiref.simple_server.setup_environ()` then reads `self.server_name`
+    unconditionally → AttributeError.
+
+    The integration test `tests/integration/test_production_main.py`
+    monkeypatches `start_metrics_server` away (Generator self-eval blind
+    spot — Anthropic harness research) so it cannot catch this. This
+    unit test exercises the real bind path with NO socket connection,
+    NO threading, NO scrape — just construct + assert + close.
+    """
+    sock_path = tmp_path / "regression.sock"
+    # Use start_metrics_server (the production caller) so the test exercises
+    # the same bind path the daemon does — _UnixWSGIServer construction
+    # triggers server_bind() via UnixStreamServer.__init__.
+    server = start_metrics_server(sock_path, registry=CollectorRegistry(auto_describe=False))
+    try:
+        # The attributes MUST exist after server_bind() (which is called
+        # automatically by UnixStreamServer.__init__ when
+        # bind_and_activate=True, the default). Values are nonsense for
+        # UDS but the wsgiref handler does not consume them.
+        assert hasattr(server, "server_name"), (
+            "_UnixWSGIServer.server_bind must assign server_name before "
+            "setup_environ() reads it (regression — bench Jetson 2026-05-18)"
+        )
+        assert hasattr(server, "server_port"), (
+            "_UnixWSGIServer.server_bind must assign server_port before "
+            "setup_environ() reads it (regression — bench Jetson 2026-05-18)"
+        )
+        # Sanity-check the placeholder values are sensible types.
+        assert isinstance(server.server_name, str)
+        assert isinstance(server.server_port, int)
+    finally:
+        _close_server(server)
+
+
 def test_start_metrics_server_creates_socket(tmp_path: Path) -> None:
     """start_metrics_server creates the socket with mode 0o660.
 
