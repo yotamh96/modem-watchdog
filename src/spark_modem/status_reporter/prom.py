@@ -64,10 +64,16 @@ if sys.platform != "win32":
             """Bind the AF_UNIX socket; populate ``environ`` for wsgiref."""
             # Plain UnixStreamServer bind — no SO_REUSEADDR setsockopt.
             UnixStreamServer.server_bind(self)
-            # wsgiref sets SERVER_NAME / SERVER_PORT etc. from the socket
-            # address; values are nonsense for UDS but the WSGI handler
-            # does not consume them. Skipping setup_environ would leave
-            # WSGIServer in a half-initialized state.
+            # HTTPServer.server_bind would assign server_name/server_port
+            # from self.server_address[:2]; AF_UNIX server_address is a
+            # single path string with no (host, port) tuple, so we MUST
+            # assign placeholders before setup_environ() reads them
+            # (wsgiref/simple_server.py:56 unconditionally reads
+            # self.server_name; missing attribute → AttributeError).
+            # Values are nonsense for UDS but the WSGI handler does not
+            # consume them; the scrape protocol uses the socket path only.
+            self.server_name = "localhost"
+            self.server_port = 0
             self.setup_environ()
 
 else:  # pragma: no cover - Windows dev-host path
