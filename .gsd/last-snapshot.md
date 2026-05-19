@@ -1,7 +1,4 @@
-# GSD context snapshot (2026-05-19T09:30:36.266Z)
-
-## Active context
-Active: M001 / S11 / T06 - Communication templates
+# GSD context snapshot (2026-05-19T11:21:07.995Z)
 
 ## Top project memories
 - [MEM001] (architecture) Rollback strategy for v2 fleet cutover Chose: Rollback is v2-current to v2-previous-version only. No v1 rollback .deb will be built. The apt repo retains the last 3 v2 .deb versions for downgrade.. Rationale: v1 is already retired across the entire fleet (scope pivot locked 2026-05-11 in 05-CONTEXT.md). v1 was never .deb-packaged; building one now from unmaintained bash scripts creates false confidence. T….
