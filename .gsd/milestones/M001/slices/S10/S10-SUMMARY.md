@@ -1,0 +1,101 @@
+---
+id: S10
+parent: M001
+milestone: M001
+provides: []
+requires: []
+affects: []
+key_files: []
+key_decisions: []
+patterns_established: []
+observability_surfaces: []
+drill_down_paths: []
+duration: 
+verification_result: passed
+completed_at: 2026-05-12
+blocker_discovered: false
+---
+# S10: Qmi Proxy Retry Hotfix
+
+**# Plan 05.5-01 — SUMMARY**
+
+## What Happened
+
+# Plan 05.5-01 — SUMMARY
+
+## What was done
+
+Two source files modified in a single commit (plus the planning trail in
+this phase directory):
+
+1. **`src/spark_modem/qmi/version.py`**
+   - Added `import asyncio` (needed for `asyncio.sleep` in the retry loop).
+   - Added module-level constants:
+     - `_FIRMWARE_PROBE_ATTEMPTS: Final[int] = 3`
+     - `_FIRMWARE_PROBE_BACKOFF_S: Final[float] = 0.5`
+   - Inlined the retry-budget rationale (bench-Jetson 25% per-call failure
+     rate observed 2026-05-12 → ~99% cumulative-success with 3 attempts).
+   - Replaced the single-shot `cp = await wrapper.dms_get_revision()` +
+     parser block in `compute_fleet_triple` with a `for attempt in
+     range(_FIRMWARE_PROBE_ATTEMPTS):` retry loop. The loop checks
+     `cp.exit_code` BEFORE invoking the parser; on non-zero exit it
+     captures `cp.stderr` (truncated to `_STDERR_EXCERPT_BYTES`) and
+     advances to the next attempt. On exhausted retries it raises
+     `QmiVersionDetectionFailed(f"dms_get_revision failed after
+     {_FIRMWARE_PROBE_ATTEMPTS} attempts: {last_error}")` — the
+     `last_error` carries through either the qmicli stderr excerpt OR
+     the parser-level error message, so the operator sees the actual
+     root cause.
+
+2. **`tests/unit/qmi/test_version.py`**
+   - Extended `_FakeWrapper` to accept either the existing single-stdout
+     shape OR a new `responses=[(exit_code, stdout, stderr), ...]`
+     sequence. Added a `call_count` property for assertions about how
+     many attempts were used. The sequence path repeats the final entry
+     indefinitely so over-call doesn't IndexError. All existing call
+     sites continue to use `_FakeWrapper(stdout=...)` unchanged.
+   - Updated `test_compute_fleet_triple_firmware_qmierror_raises` match
+     regex to `r"dms_get_revision failed after 3 attempts: parser
+     returned QmiError"` (was `r"dms_get_revision returned QmiError"`).
+     Semantic intent preserved — malformed stdout still raises — only
+     the message wording changes because the error is now produced by
+     the retry-exhausted branch.
+   - Added `test_compute_fleet_triple_retries_transient_qmicli_failure`:
+     first two attempts return `(1, b"", <CID-fail stderr>)`, third
+     returns `(0, fw_body, b"")`. Asserts triple parses correctly and
+     `wrapper.call_count == 3`.
+   - Added `test_compute_fleet_triple_exhausts_retries_with_stderr_in_error`:
+     every attempt fails with the CID-allocation stderr. Asserts the
+     raised `QmiVersionDetectionFailed` message contains both `"failed
+     after 3 attempts"` AND `"CID allocation failed"`, and
+     `wrapper.call_count == 3`.
+
+## Verification
+
+**Local (dev host):**
+- `uv run mypy --strict src/spark_modem/qmi/version.py` — 0 issues
+- `uv run ruff check ...` — clean (after splitting an over-long match
+  string across two lines)
+- `uv run pytest tests/unit/qmi/ -q` → **98 passed** in 4.65s (up
+  from 95; 1 updated test + 2 new retry tests = +3 net)
+
+**CI:** see VERIFICATION.md (pending push, run number TBD)
+
+**Bench Jetson:** see VERIFICATION.md (pending build + install)
+
+## Architectural posture
+
+The retry pattern stays scoped to `compute_fleet_triple` for now. If
+the same proxy-contention class affects steady-state cycle diag probes
+(very likely), the proper fix is at a different seam — wrap each
+qmicli invocation in `QmiWrapper` with retry-on-transient, with
+classified-failure semantics (idempotent reads retry, mutating actions
+do NOT retry without explicit safeguards). That's a Phase 6 hardening
+concern; out of 05.5 scope.
+
+Behavior change is strictly additive: callers that previously saw the
+fragile-one-shot behavior now see a more robust 3-attempt probe. No
+caller-facing API changes; the only observable difference on success
+is up to ~1 second of additional wallclock when the first two attempts
+race against Zao. On failure, the error message gains an attempt
+count and the underlying qmicli stderr.

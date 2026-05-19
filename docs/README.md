@@ -3,8 +3,9 @@
 Seed documents for the rewrite of the Sierra EM7421 multi-modem
 diagnostic, recovery, and provisioning toolchain.
 
-The v1 system (the scripts in the parent directory) works in production
-but has limits we want to break out of in v2. These documents are the
+The v1 system (a set of bash scripts, now retired — see
+[archive/v1/README.md](../archive/v1/README.md)) worked in production
+but had limits we needed to break out of in v2. These documents are the
 single source of truth for *what* v2 is, *why* it is that way, and
 *how* it is built and operated.
 
@@ -40,16 +41,24 @@ in the architecture surprises you — the rationale is in the ADRs.
 - [ADR-0005 — Explicit per-modem state machine](adr/0005-explicit-state-machine.md)
 - [ADR-0006 — Recovery counters decay on healthy cycles](adr/0006-counter-decay.md)
 - [ADR-0007 — Use CLOCK_MONOTONIC for all backoff arithmetic](adr/0007-monotonic-clock.md)
+- [ADR-0008 — Per-modem state machine: 5 + 2 flags](adr/0008-state-machine-5-plus-2.md)
+- [ADR-0009 — State files keyed by usb_path](adr/0009-state-files-keyed-by-usb-path.md)
+- [ADR-0010 — Packaging via python-build-standalone](adr/0010-packaging-python-build-standalone.md)
+- [ADR-0011 — Webhook subsystem (HMAC v2.0)](adr/0011-webhook-subsystem.md)
+- [ADR-0012 — 3-layer locking model](adr/0012-concurrency-locks.md)
+- [ADR-0013 — Integer-encoded modem_state_value](adr/0013-metric-surface.md)
+- [ADR-0014 — v1-Retired Scope Pivot](adr/0014-v1-retired-pivot.md)
 
 ## What v1 looked like
 
-The previous toolchain is a set of bash scripts (`diag.sh`, `recovery.sh`,
+The previous toolchain was a set of bash scripts (`diag.sh`, `recovery.sh`,
 `auto_profile.sh`, `zao_reset_line.sh`, `spark-modem-watchdog.sh`) plus
-a systemd unit. Its strengths and weaknesses are catalogued at the
-top of [PRD.md § Background](PRD.md#background) and in
+a systemd unit. v1 has been retired across the entire fleet (see
+[ADR-0014](adr/0014-v1-retired-pivot.md)). Its strengths and weaknesses
+are catalogued at the top of [PRD.md § Background](PRD.md#background) and in
 [ARCHITECTURE.md § What we are taking from v1](ARCHITECTURE.md#what-we-are-taking-from-v1).
-We keep the architectural insights; we replace almost all of the
-implementation.
+We kept the architectural insights; v2 replaces all of the implementation.
+For the v1 archive pointer, see [archive/v1/README.md](../archive/v1/README.md).
 
 ## Document conventions
 

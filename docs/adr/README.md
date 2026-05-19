@@ -23,6 +23,7 @@ leaves the original in place with a status change.
 | [ADR-0011](0011-webhook-subsystem.md) | Webhook subsystem (HMAC v2.0) | Accepted | Q5; Q1, Q2, Q4 (notes) |
 | [ADR-0012](0012-concurrency-locks.md) | 3-layer locking model | Accepted | — |
 | [ADR-0013](0013-metric-surface.md) | Integer-encoded modem_state_value | Accepted | — |
+| [ADR-0014](0014-v1-retired-pivot.md) | v1-Retired Scope Pivot | Accepted | — |
 
 ## Mapping: PROJECT.md open questions to ADRs
 

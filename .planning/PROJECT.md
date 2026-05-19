@@ -125,12 +125,11 @@ operational invariants v2 must preserve, not capabilities to re-prove. -->
 
 **Migration (delivery, not a feature)**
 - [ ] Phase 0: `.deb` builds, HIL passes, dry-run replay agrees with v1 on ≥1000 historical cycles
-- [ ] Phase 1: bench Jetson, v2 dry-run alongside v1 for one week
-- [ ] Phase 2: one field box, dry-run alongside v1, two weeks
-- [ ] Phase 3: one field box, v2 active, v1 disabled, two weeks
-- [ ] Phase 4: 10 % canary, two weeks
-- [ ] Phase 5: rolling 10 %/day to 100 %
-- [ ] Phase 6: archive v1 scripts, decommission
+- [ ] Phase 1: bench Jetson soak (one week)
+- [ ] Phase 2: one field box live, two weeks
+- [ ] Phase 3: 10 % canary, two weeks
+- [ ] Phase 4: rolling 10 %/day to 100 %
+- [ ] Phase 5: archive v1 scripts, decommission
 
 ### Out of Scope
 
@@ -149,11 +148,11 @@ operational invariants v2 must preserve, not capabilities to re-prove. -->
 
 ## Context
 
-**Production reality.** v1 is a pipeline of bash scripts (`diag.sh` →
+**Production reality.** v1 was a pipeline of bash scripts (`diag.sh` →
 `recovery.sh` → `auto_profile.sh`, `zao_reset_line.sh`) driven by a systemd
-watchdog on a 120 s loop. It currently keeps a real fleet online; v2 must
-prove itself in shadow mode before replacing v1 on any box (see Migration
-phases 1-2).
+watchdog on a 120 s loop. v1 has been retired across the fleet (ADR-0014,
+2026-05-11). v2 deploys directly to canonical paths; rollback is
+v2-previous-version only (no v1 `.deb` exists).
 
 **What v1 got wrong (motivates the rewrite).**
 - Two-language hybrid (bash + python heredocs); hand-rolled JSON; fragile
@@ -213,7 +212,7 @@ slice).
 | Per-action escalation counters decay to zero after K consecutive Healthy cycles (default K=10) | ADR-0006: fixes v1's permanent-`Exhausted` failure mode after a single bad incident | — Pending |
 | All backoff arithmetic uses `time.monotonic()`; wall clock only for ISO-8601 stamps | ADR-0007: NTP step on the Jetson can wedge wall-clock backoff | — Pending |
 | Policy engine is a pure function `Diag × {ModemState, Globals, Config, Clock} → PlannedAction[]` — no subprocess, no I/O | Testability: every decision-table row in RECOVERY_SPEC § 4 is a fixture | — Pending |
-| Six-phase migration (bench → field box dry-run → field box live → 10 % canary → 100 %) before v1 decommission | v1 keeps a real fleet online; conservative cutover; rollback button at every phase | — Pending |
+| Five-phase migration (bench soak → field box live → 10 % canary → 100 % → archive) after v1 retirement | v1 retired across the fleet (ADR-0014); rollback is v2-previous-version only; health-gate holds between phases | — Pending |
 | CLI-only ctl tool (no HTTP API on Unix socket) for v2.0 | Open question Q1 deferred to v2.1; minimize surface area | — Pending |
 
 ## Open questions (carried from PRD § 10)

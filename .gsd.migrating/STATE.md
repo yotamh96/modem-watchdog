@@ -1,12 +1,12 @@
 # GSD State
 
-**Active Milestone:** M001: M001: Migration
+**Active Milestone:** M001: Migration
 **Active Slice:** S12: V1 Decommission & Archive
 **Phase:** executing
 **Requirements Status:** 0 active · 14 validated · 0 deferred · 0 out of scope
 
 ## Milestone Registry
-- 🔄 **M001:** M001: Migration
+- 🔄 **M001:** Migration
 
 ## Recent Decisions
 - None recorded
@@ -15,4 +15,4 @@
 - None
 
 ## Next Action
-Execute T01: Archive pointer and purge checklist in slice S12.
+Execute T01: V1 archive pointer and purge checklist in slice S12.
