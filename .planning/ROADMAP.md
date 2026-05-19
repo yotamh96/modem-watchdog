@@ -5,8 +5,9 @@
 `spark-modem-watchdog` v2 is a from-scratch Python rewrite of an in-production
 bash toolchain that keeps a fleet of NVIDIA Jetson Orin NX bonded-uplink boxes
 online by recovering misbehaving Sierra EM7421 modems with the smallest action
-that has a chance of fixing the issue. v1 currently keeps a real fleet online,
-so v2 must prove itself in shadow mode before replacing v1 on any box.
+that has a chance of fixing the issue. v1 has been retired across the fleet
+(ADR-0014, 2026-05-11); v2 deploys directly to canonical paths with rollback
+defined as v2-previous-version only.
 
 The roadmap is organized as **four build phases** (1-4) that produce the
 software, followed by **three delivery phases** (5-7) that map onto the
@@ -716,13 +717,12 @@ Plans:
 
 ### Phase 6: Cutover & Fleet Rollout
 
-**Goal**: Cut v2 live on one field box for two weeks (MIGRATION Phase 3)
-with v1 disabled and masked but available for ≤10-minute rollback,
-expand to 10% of the fleet for two weeks (MIGRATION Phase 4), then roll
-forward at 10% per day with the fleet-management tool gating each batch
-on the previous batch's health metrics (MIGRATION Phase 5). Exit when
-100% of the fleet is on v2 and the success metrics M1-M7 are met over
-a rolling 30-day window.
+**Goal**: Deploy v2 live on one field box for two weeks, expand to 10%
+of the fleet for two weeks, then roll forward at 10% per day with the
+fleet-management tool gating each batch on the previous batch's health
+metrics. Rollback is v2-previous-version only (ADR-0014 — no v1 `.deb`
+exists). Exit when 100% of the fleet is on v2 and the success metrics
+M1-M7 are met over a rolling 30-day window.
 
 **Depends on**: Phase 5
 
@@ -730,13 +730,13 @@ a rolling 30-day window.
 (no v1 REQ-IDs — delivery phase mapping to MIGRATION.md Phases 3-5)
 
 **Success Criteria** (what must be TRUE):
-  1. The single-box live cutover (MIGRATION §5) completes cleanly: v1
-     stopped/disabled/masked, v2 moved to canonical paths, v2 reaches
+  1. The single-box live cutover completes cleanly: `apt install
+     spark-modem-watchdog` + `systemctl enable --now`, v2 reaches
      Healthy on all four modems within 60 s, the rollback procedure
-     (unmask v1, reinstall `spark-modem-watchdog-v1_1.0.0_all.deb`,
-     restart) is exercised end-to-end and completes in <10 minutes;
-     two clean weeks follow with per-modem availability within ±0.2%
-     of the historical baseline.
+     (`apt install spark-modem-watchdog=<prev-version>`, restart —
+     ADR-0014: no v1 `.deb` exists) is exercised end-to-end and
+     completes in <10 minutes; two clean weeks follow with per-modem
+     availability within ±0.2% of the historical baseline.
   2. The 10% canary cohort (two weeks) hits all four fleet-aggregate
      gates: `modem_state_value` time-in-`exhausted` ≤ baseline,
      destructive-reset rate ≤ baseline + 10%, session-disconnect rate
