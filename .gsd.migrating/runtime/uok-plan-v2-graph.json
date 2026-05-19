@@ -1,0 +1,815 @@
+{
+  "compiledAt": "2026-05-19T12:00:01.595Z",
+  "milestoneId": "M001",
+  "pipeline": {
+    "clarifyRoundLimit": 3,
+    "researchSynthesized": true,
+    "draftContextIncluded": false,
+    "finalizedContextIncluded": true,
+    "sourcePhase": "executing"
+  },
+  "nodes": [
+    {
+      "id": "execute-task:M001:S02:T01",
+      "kind": "unit",
+      "dependsOn": [],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S02.T01",
+        "title": "02-core-daemon-laptop-testable 01",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S02:T02",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S02:T01"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S02.T02",
+        "title": "02-core-daemon-laptop-testable 02",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S02:T03",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S02:T02"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S02.T03",
+        "title": "02-core-daemon-laptop-testable 03",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S02:T04",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S02:T03"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S02.T04",
+        "title": "02-core-daemon-laptop-testable 04",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S02:T05",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S02:T04"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S02.T05",
+        "title": "02-core-daemon-laptop-testable 05",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S02:T06",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S02:T05"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S02.T06",
+        "title": "02-core-daemon-laptop-testable 06",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S02:T07",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S02:T06"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S02.T07",
+        "title": "02-core-daemon-laptop-testable 07",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S02:T08",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S02:T07"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S02.T08",
+        "title": "02-core-daemon-laptop-testable 08",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S02:T09",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S02:T08"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S02.T09",
+        "title": "02-core-daemon-laptop-testable 09",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S02:T10",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S02:T09"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S02.T10",
+        "title": "02-core-daemon-laptop-testable 10",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "complete-slice:M001:S02",
+      "kind": "verification",
+      "dependsOn": [
+        "execute-task:M001:S02:T10"
+      ],
+      "metadata": {
+        "unitType": "complete-slice",
+        "unitId": "M001.S02",
+        "title": "Core Daemon Laptop Testable",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S03:T01",
+      "kind": "unit",
+      "dependsOn": [],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S03.T01",
+        "title": "Plan 01",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S03:T02",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S03:T01"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S03.T02",
+        "title": "Plan 02",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S03:T03",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S03:T02"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S03.T03",
+        "title": "Plan 03",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S03:T04",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S03:T03"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S03.T04",
+        "title": "Plan 04",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S03:T05",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S03:T04"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S03.T05",
+        "title": "Plan 05",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S03:T06",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S03:T05"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S03.T06",
+        "title": "Plan 06",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S03:T07",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S03:T06"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S03.T07",
+        "title": "03-linux-event-sources-lifecycle 07",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S03:T08",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S03:T07"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S03.T08",
+        "title": "03-linux-event-sources-lifecycle 08",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S03:T09",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S03:T08"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S03.T09",
+        "title": "Plan 09",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "complete-slice:M001:S03",
+      "kind": "verification",
+      "dependsOn": [
+        "execute-task:M001:S03:T09"
+      ],
+      "metadata": {
+        "unitType": "complete-slice",
+        "unitId": "M001.S03",
+        "title": "Linux Event Sources Lifecycle",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S05:T01",
+      "kind": "unit",
+      "dependsOn": [],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S05.T01",
+        "title": "Plan 01",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S05:T02",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S05:T01"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S05.T02",
+        "title": "Plan 02",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S05:T03",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S05:T02"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S05.T03",
+        "title": "Plan 03",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S05:T04",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S05:T03"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S05.T04",
+        "title": "Plan 04",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S05:T05",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S05:T04"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S05.T05",
+        "title": "Plan 05",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S05:T06",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S05:T05"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S05.T06",
+        "title": "Plan 06",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S05:T07",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S05:T06"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S05.T07",
+        "title": "Plan 07",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S05:T08",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S05:T07"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S05.T08",
+        "title": "Plan 08",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "complete-slice:M001:S05",
+      "kind": "verification",
+      "dependsOn": [
+        "execute-task:M001:S05:T08"
+      ],
+      "metadata": {
+        "unitType": "complete-slice",
+        "unitId": "M001.S05",
+        "title": "Bench Field Shadow",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S06:T01",
+      "kind": "unit",
+      "dependsOn": [],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S06.T01",
+        "title": "Plan 01",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S06:T02",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S06:T01"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S06.T02",
+        "title": "Plan 02",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S06:T03",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S06:T02"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S06.T03",
+        "title": "05.1-deb-packaging-hotfix 03",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S06:T04",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S06:T03"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S06.T04",
+        "title": "05.1-deb-packaging-hotfix 04",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S06:T05",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S06:T04"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S06.T05",
+        "title": "05.1-deb-packaging-hotfix 05",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S06:T06",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S06:T05"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S06.T06",
+        "title": "Plan 06",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "complete-slice:M001:S06",
+      "kind": "verification",
+      "dependsOn": [
+        "execute-task:M001:S06:T06"
+      ],
+      "metadata": {
+        "unitType": "complete-slice",
+        "unitId": "M001.S06",
+        "title": "Deb Packaging Hotfix",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S07:T01",
+      "kind": "unit",
+      "dependsOn": [],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S07.T01",
+        "title": "05.2-daemon-startup-hotfix 01",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "complete-slice:M001:S07",
+      "kind": "verification",
+      "dependsOn": [
+        "execute-task:M001:S07:T01"
+      ],
+      "metadata": {
+        "unitType": "complete-slice",
+        "unitId": "M001.S07",
+        "title": "Daemon Startup Hotfix",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S08:T01",
+      "kind": "unit",
+      "dependsOn": [],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S08.T01",
+        "title": "05.3-libqmi-version-regex-hotfix 01",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "complete-slice:M001:S08",
+      "kind": "verification",
+      "dependsOn": [
+        "execute-task:M001:S08:T01"
+      ],
+      "metadata": {
+        "unitType": "complete-slice",
+        "unitId": "M001.S08",
+        "title": "Libqmi Version Regex Hotfix",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S09:T01",
+      "kind": "unit",
+      "dependsOn": [],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S09.T01",
+        "title": "05.4-dms-revision-parser-hotfix 01",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "complete-slice:M001:S09",
+      "kind": "verification",
+      "dependsOn": [
+        "execute-task:M001:S09:T01"
+      ],
+      "metadata": {
+        "unitType": "complete-slice",
+        "unitId": "M001.S09",
+        "title": "Dms Revision Parser Hotfix",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S10:T01",
+      "kind": "unit",
+      "dependsOn": [],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S10.T01",
+        "title": "05.5-qmi-proxy-retry-hotfix 01",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "complete-slice:M001:S10",
+      "kind": "verification",
+      "dependsOn": [
+        "execute-task:M001:S10:T01"
+      ],
+      "metadata": {
+        "unitType": "complete-slice",
+        "unitId": "M001.S10",
+        "title": "Qmi Proxy Retry Hotfix",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S11:T01",
+      "kind": "unit",
+      "dependsOn": [],
+      "writes": [
+        "docs/adr/0014-v1-retired-pivot.md"
+      ],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S11.T01",
+        "title": "Wrote ADR-0014 formally recording the v1-retired scope pivot from 2026-05-11",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S11:T02",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S11:T01"
+      ],
+      "writes": [
+        "docs/MIGRATION.md"
+      ],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S11.T02",
+        "title": "Rewrote MIGRATION.md to reflect v1-retired reality — removed all shadow-alongside-v1 framing, dead artifacts, and stale metric names",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S11:T03",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S11:T02"
+      ],
+      "writes": [
+        "docs/FLEET_GATES.md",
+        "tests/unit/test_fleet_gates_doc.py"
+      ],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S11.T03",
+        "title": "Created docs/FLEET_GATES.md with 4 PromQL canary gate definitions referencing only metrics from metrics_registry.py",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S11:T04",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S11:T03"
+      ],
+      "writes": [
+        "tools/validate_cutover.py"
+      ],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S11.T04",
+        "title": "Created tools/validate_cutover.py — standalone post-cutover validation script with 7 checks, structured JSON output, and exit-code-based pass/fail",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S11:T05",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S11:T04"
+      ],
+      "writes": [
+        "docs/PRD.md",
+        ".planning/PROJECT.md",
+        ".planning/ROADMAP.md"
+      ],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S11.T05",
+        "title": "Removed stale v1-as-active references from PROJECT.md and ROADMAP.md to reflect the v1-retired pivot (ADR-0014)",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S11:T06",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S11:T05"
+      ],
+      "writes": [
+        "docs/templates/cutover-phase3-notice.md",
+        "docs/templates/cutover-phase4-notice.md",
+        "docs/templates/cutover-phase5-notice.md"
+      ],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S11.T06",
+        "title": "Created Phase 3/4/5 operator communication templates referenced by MIGRATION.md §10",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S11:T07",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S11:T06"
+      ],
+      "writes": [
+        "docs/CUTOVER_RUNBOOK.md",
+        "tests/unit/test_cutover_runbook_doc.py"
+      ],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S11.T07",
+        "title": "Created docs/CUTOVER_RUNBOOK.md — operator-facing 7-step per-box cutover procedure with prerequisites, troubleshooting, and post-cutover checklist",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "complete-slice:M001:S11",
+      "kind": "verification",
+      "dependsOn": [
+        "execute-task:M001:S11:T07"
+      ],
+      "metadata": {
+        "unitType": "complete-slice",
+        "unitId": "M001.S11",
+        "title": "S11",
+        "status": "complete"
+      }
+    },
+    {
+      "id": "execute-task:M001:S12:T01",
+      "kind": "unit",
+      "dependsOn": [],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S12.T01",
+        "title": "Archive pointer and purge checklist",
+        "status": "pending"
+      }
+    },
+    {
+      "id": "execute-task:M001:S12:T02",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S12:T01"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S12.T02",
+        "title": "Migration postmortem template",
+        "status": "pending"
+      }
+    },
+    {
+      "id": "execute-task:M001:S12:T03",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S12:T02"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S12.T03",
+        "title": "ADR README and docs README updates",
+        "status": "pending"
+      }
+    },
+    {
+      "id": "execute-task:M001:S12:T04",
+      "kind": "unit",
+      "dependsOn": [
+        "execute-task:M001:S12:T03"
+      ],
+      "writes": [],
+      "metadata": {
+        "unitType": "execute-task",
+        "unitId": "M001.S12.T04",
+        "title": "Stale-reference sweep and validation test",
+        "status": "pending"
+      }
+    },
+    {
+      "id": "complete-slice:M001:S12",
+      "kind": "verification",
+      "dependsOn": [
+        "execute-task:M001:S12:T04"
+      ],
+      "metadata": {
+        "unitType": "complete-slice",
+        "unitId": "M001.S12",
+        "title": "V1 Decommission & Archive",
+        "status": "pending"
+      }
+    }
+  ]
+}

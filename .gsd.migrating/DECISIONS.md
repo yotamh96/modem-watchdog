@@ -1,0 +1,10 @@
+# Decisions Register
+
+<!-- Append-only. Never edit or remove existing rows.
+     To reverse a decision, add a new row that supersedes it.
+     Read this file at the start of any planning or research phase. -->
+
+| # | When | Scope | Decision | Choice | Rationale | Revisable? | Made By |
+|---|------|-------|----------|--------|-----------|------------|---------|
+| D238 | S11 planning (2026-05-19). v1 retired across fleet since before 2026-05-11. MIGRATION.md §5 references a nonexistent v1 .deb. | operations | Rollback strategy for v2 fleet cutover | Rollback is v2-current to v2-previous-version only. No v1 rollback .deb will be built. The apt repo retains the last 3 v2 .deb versions for downgrade. | v1 is already retired across the entire fleet (scope pivot locked 2026-05-11 in 05-CONTEXT.md). v1 was never .deb-packaged; building one now from unmaintained bash scripts creates false confidence. The v2 .deb build pipeline is proven and tested. Rolling back to the previous v2 release candidate is the honest and tested rollback path. | Yes — if a scenario arises where v2-prev is also broken and manual v1 reinstall is needed, document the manual procedure as a break-glass appendix. | agent |
+| D239 |  | operations | Rollback strategy for v2 fleet cutover — whether to build a v1 .deb, document manual v1 reinstall, or define rollback as v2-previous-version only | Rollback is v2-previous-version only (Option C). No v1 .deb will be built. The fleet management tool's apt repo retains the last 3 v2 .deb versions for downgrade. MIGRATION.md removes all v1 .deb rollback references. | v1 is already retired across the entire fleet (scope pivot 2026-05-11). v1 was never .deb-packaged — building one now means packaging unmaintained bash scripts, creating false confidence. The v2 .deb pipeline is proven and apt install downgrade works. Honest rollback story is v2.0.0 → v2.0.0-rcN. | yes — if a v2 regression requires v1 restoration, revisit, but v1 scripts would need significant validation first | agent |
